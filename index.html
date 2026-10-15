@@ -669,9 +669,13 @@ function crashLoop(){const step=()=>{const el=$('#cm');if(!el)return;const r=C.r
   else{const t=(now-r.start)/1000;let m=Math.pow(Math.E,.12*t);
    if(r.crashAt&&m>=r.crashAt){m=r.crashAt;C.m=m;el.textContent='x'+m.toFixed(2);el.style.color='#ff5a5f';$('#surf').textContent='🌊';
     if(C.toastAt!==r.id){C.toastAt=r.id;if(C.bet&&!C.out)toast('Волна накрыла 🌊');srv('me',{},{quiet:1})}}
-   else{C.m=m;el.textContent='x'+m.toFixed(2);el.style.color='';const x=Math.min(85,10+t*7),y=Math.max(10,85-(m-1)*22);
-    const last=C.pts[C.pts.length-1];if(!last||Math.abs(last[0]-x)>.4)C.pts.push([x,y]);$('#cpath').setAttribute('d','M'+C.pts.map(p=>p.join(',')).join(' L'));
-    const s=$('#surf');s.style.left=x+'%';s.style.bottom=(100-y)*2.6+'px';s.style.transform=`translateX(-50%) rotate(${-Math.min(25,t*3)}deg)`}}
+   else{C.m=m;el.textContent='x'+m.toFixed(2);el.style.color='';
+    /* автомасштаб: график всегда помещается в поле, серфер не улетает за экран */
+    const last=C.pts[C.pts.length-1];if(!last||t-last[0]>.08)C.pts.push([t,m]);if(C.pts.length>400)C.pts=C.pts.filter((_,i)=>i%2===0);
+    const tMax=Math.max(8,t*1.1),mMax=Math.max(2,m*1.15),H=$('.crash-box').clientHeight||300;
+    const X=tt=>10+tt/tMax*75,Y=mm=>88-(mm-1)/(mMax-1)*43;
+    $('#cpath').setAttribute('d','M'+[...C.pts,[t,m]].map(p=>X(p[0]).toFixed(2)+','+Y(p[1]).toFixed(2)).join(' L'));
+    const s=$('#surf');s.style.left=X(t)+'%';s.style.bottom=Math.max(0,(100-Y(m))/100*H-22)+'px';s.style.transform=`translateX(-50%) rotate(${-Math.min(20,4+t*2)}deg)`}}
   setBtn();S.raf=requestAnimationFrame(step)};S.raf=requestAnimationFrame(step)}
 function setBtn(){const b=$('#cbtn');if(!b)return;const ph=crashPhase();let t,c='btn sand';
  if(ph==='run'&&C.bet&&!C.out){t=`Забрать ★ ${fmt(C.bet*C.m)}`;c='btn'}
