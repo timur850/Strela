@@ -106,7 +106,8 @@ export class Game {
     this.L = makeLogic(() => this.st, rand);
     uid = String(uid);
     if (op.startsWith("admin/")) {
-      if (!isAdmin) fail("Нет доступа");
+      const ok = isAdmin === true || (isAdmin === "check" && (this.st.admins || []).map(String).includes(uid));
+      if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d);
     }
     const u = await this.user(uid, name);

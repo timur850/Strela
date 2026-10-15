@@ -706,7 +706,7 @@ function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
   const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки']];
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users')S.adm=null;setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users')adLoad();setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
@@ -736,11 +736,11 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  const tot={};S.feed.forEach(e=>{tot[e.n]=(tot[e.n]||0)+e.a});const top=Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,10);
  const wd=`<div class="card"><div class="ad-h">📤 Заявки на вывод <small style="background:var(--coral)">${A.withdrawals.length}</small></div><div class="list">${A.withdrawals.length?A.withdrawals.map(w=>{const g=giftBy(w.slug);return `<div class="it"><span style="width:36px;height:36px;display:inline-block">${gi(g)}</span><div class="nm">${esc(w.gname)}<small>${esc(w.name)} · ID ${w.uid} · ★ ${fmt(w.price)} · ${ago(w.t)}</small></div><button class="btn sm sand" onclick="adWdDone('${w.id}')">Выдал ✅</button></div>`}).join(''):'<div class="empty">Заявок нет</div>'}</div></div>`;
  const extra=`<div class="card"><div class="ad-h">🏆 Топ по выигрышам</div><div class="list">${top.length?top.map(([n,a],i)=>`<div class="it"><b style="width:22px;color:var(--muted)">${i+1}</b><div class="nm">${esc(n)}</div><b class="star">${fmt(a)} ★</b></div>`).join(''):'<div class="empty">Нет данных</div>'}</div></div>
- <div class="card"><div class="ad-h">📜 Кто что выиграл <small style="background:var(--sea)">${S.feed.length}</small></div><div class="list">${S.feed.length?S.feed.map(feedRow).join(''):'<div class="empty">Пока пусто</div>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="loadFeed();adLoad()">Обновить</button></div>`;
+ <div class="card"><div class="ad-h">📜 Кто что выиграл <small style="background:var(--sea)">${S.feed.length}</small></div><div class="list">${S.feed.length?S.feed.map(feedRow).join(''):'<div class="empty">Пока пусто</div>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="loadFeed();adLoad(1)">Обновить</button></div>`;
  return `<div class="kpi"><div><b>${us}</b><small>Игроков</small></div><div><b>${fmt(st.dep)} ★</b><small>Пополнения</small></div>
  <div><b>${fmt(st.bets)} ★</b><small>Оборот ставок</small></div><div><b style="color:${profit>=0?'#3dff8b':'#ff8a8a'}">${fmt(profit)} ★</b><small>Профит проекта</small></div></div>
  ${wd}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
- <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad()}})">Сбросить статистику</button>`+extra},
+ <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]}%</b></div>`).join('')}
  <div class="rng"><span>PvP комиссия</span><input type="range" min="0" max="20" value="${ADM.pvpFee}" oninput="ADM.pvpFee=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.pvpFee}%</b></div></div>
@@ -777,8 +777,11 @@ function ensureUser(id){id=String(id).trim();if(!/^\d{3,15}$/.test(id)){toast('�
 async function adApi(op,body){if(!(tg&&tg.initData)){toast('Открой через бота в Telegram');return null}
  try{const j=await API('api/admin/'+op,body);if(!j.ok){toast(j.err||'Ошибка');return null}
   if(j.user&&j.user.id===ME.id)sync(j.user);return j}catch(e){toast('Нет связи с сервером');return null}}
-function adLoad(){adApi('stats',{}).then(j=>{if(!j)return;S.adm=j;if(S.tab==='admin'&&(S.adTab==='stats'||S.adTab==='users'))setTab('admin')})}
-function adWdDone(wid){adApi('wd_done',{wid}).then(j=>{if(j){toast('Отмечено ✅');adLoad()}})}
+let adLoading=0,adAt=0;
+function adLoad(force){if(adLoading||(!force&&S.adm&&Date.now()-adAt<8000))return;adLoading=1;
+ adApi('stats',{}).then(j=>{adLoading=0;if(!j)return;adAt=Date.now();const same=S.adm&&JSON.stringify(S.adm)===JSON.stringify(j);S.adm=j;
+  if(!same&&S.tab==='admin'&&!S.stack.length&&(S.adTab==='stats'||S.adTab==='users')){const y=view.scrollTop;setTab('admin');view.scrollTop=y}}).catch(()=>{adLoading=0})}
+function adWdDone(wid){if(S.adm)S.adm.withdrawals=S.adm.withdrawals.filter(w=>w.id!==wid);setTab('admin');adApi('wd_done',{wid}).then(j=>{if(j){toast('Отмечено ✅');adLoad(1)}})}
 function adGive(){const id=ensureUser($('#gId').value);const a=Math.round(+$('#gAmt').value);if(!id)return;if(!a)return toast('Укажите количество');adApi('give',{id,amount:a}).then(j=>{if(j)toast(`${a>0?'Выдано':'Списано'} ${fmt(Math.abs(a))} ★ → ${id} (баланс ${fmt(j.user.bal)})`)})}
 function adGiveGift(){const id=ensureUser($('#ggId').value);if(!id)return;const g=giftBy($('#ggS').value);adApi('gift',{id,slug:g.slug}).then(j=>{if(j)toast(`${g.name} → ${id}`)})}
 function adTick(){const id=ensureUser($('#tId').value);const a=Math.round(+$('#tAmt').value);if(!id||!a)return toast('Укажите ID и количество');adApi('tick',{id,amount:a}).then(j=>{if(j)toast(`+${a} 🎫 → ${id}`)})}
@@ -829,7 +832,7 @@ function ceCreate(){const n=($('#ncN').value||'').trim().replace(/['"<>`]/g,'');
  ADM.customCases.push([n,p,autoDist(p,R('cases'))[0][0]]);saveAdm();setTab('admin');ceOpen('c:'+n)}
 function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n];saveAdm();closeSheet();setTab('admin');toast('Кейс удалён')}
 
-upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(loadFeed,20000);
+upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(loadFeed,20000);
 </script>
 </body>
 </html>

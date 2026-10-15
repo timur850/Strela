@@ -56,7 +56,7 @@ export class Store {
     // игровые операции: всё считается здесь, атомарно, в одном месте
     if (key.startsWith("op/") && req.method === "POST") {
       const b = await req.json();
-      try { return json(await new Game(this.state.storage).run(key.slice(3), b.uid, b.name, b.d || {}, !!b.admin)); }
+      try { return json(await new Game(this.state.storage).run(key.slice(3), b.uid, b.name, b.d || {}, b.admin)); }
       catch (e) { if (e instanceof GameError) return json({ ok: false, err: e.message }); console.log("op error", e); return json({ ok: false, err: "Ошибка сервера" }); }
     }
     if (req.method === "POST") { await this.state.storage.put(key, await req.text()); return new Response("ok"); }
@@ -336,9 +336,10 @@ export default {
       if (!ADMIN_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
-      if (!u || !(await isAdminUser(env, u))) return json({ ok: false, err: "Нет доступа" }, 403);
+      if (!u) return json({ ok: false, err: "Нет доступа" }, 403);
       delete d.initData;
-      return json(await op(env, "admin/" + name, u.id, uname(u), d, true));
+      // владелец — сразу; остальных админов проверяет само хранилище (без лишнего запроса)
+      return json(await op(env, "admin/" + name, u.id, uname(u), d, isOwner(u.username) ? true : "check"));
     }
 
     // лента выигрышей: кто что выиграл
