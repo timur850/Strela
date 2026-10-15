@@ -11,8 +11,8 @@ const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес �
 // TON-кошелёк для пополнений (можно поменять в мини-аппе: Админ → 💎 Оплата)
 const TON_WALLET = "ВСТАВЬ_СЮДА_АДРЕС_TON_КОШЕЛЬКА";
 const TON_STARS = 150;                 // сколько ★ даём за 1 TON (тоже меняется в админке)
-const UPDATES = ["message", "pre_checkout_query"];
-const hookBad = (r, origin) => r.url !== origin + "/webhook" || !(r.allowed_updates || []).includes("pre_checkout_query");
+const UPDATES = ["message", "pre_checkout_query", "business_connection"];
+const hookBad = (r, origin) => r.url !== origin + "/webhook" || UPDATES.some(x => !(r.allowed_updates || []).includes(x));
 const BUTTON_TEXT = "🏝 Играть";
 const WELCOME = "🏹 <b>STRELA CASE</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
 
@@ -122,7 +122,58 @@ async function isAdminUser(env, u) {
 const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
 const putKey = (env, k, v) => store(env).fetch("https://s/" + k, { method: "POST", body: typeof v === "string" ? v : JSON.stringify(v) });
 
+// ===== АВТОВЫДАЧА КОЛЛЕКЦИОННЫХ ПОДАРКОВ через Telegram Business =====
+// Аккаунт-склад (владелец) подключает бота: Настройки → Telegram Business → Чат-боты → @бот,
+// права «Подарки и звёзды» (просмотр, передача подарков, передача звёзд).
+const giftKey = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+async function bizConn(env) { const r = await getKey(env, "bizconn"); try { return r ? JSON.parse(r) : null; } catch { return null; } }
+async function bizGifts(env, conn) {
+  const out = []; let offset = "";
+  for (let i = 0; i < 10; i++) {
+    const r = await tg(env, "getBusinessAccountGifts", { business_connection_id: conn.id, exclude_unlimited: true, limit: 100, ...(offset ? { offset } : {}) });
+    if (!r.ok) throw new Error(r.description || "getBusinessAccountGifts");
+    for (const g of r.result.gifts || []) if (g.type === "unique") out.push(g);
+    offset = r.result.next_offset; if (!offset) break;
+  }
+  return out;
+}
+const BIZ_HINTS = [[/active|not found|chat/i, "игрок должен написать любое сообщение складу-аккаунту (в течение 24 ч), потом выдай вручную"],
+  [/BALANCE|not enough|STARS/i, "не хватает звёзд на аккаунте-складе для оплаты передачи"],
+  [/right|RIGHTS|forbidden/i, "у бота нет прав «Передача подарков/звёзд» в Telegram Business"]];
+async function bizTransfer(env, slug, toId) {
+  const conn = await bizConn(env);
+  if (!conn || !conn.on) return { err: "аккаунт-склад не подключён к боту через Telegram Business" };
+  let list; try { list = await bizGifts(env, conn); } catch (e) { return { err: e.message }; }
+  const now = Date.now() / 1000, key = giftKey(slug);
+  const cand = list.filter(g => giftKey(g.gift.base_name) === key && g.can_be_transferred !== false && !(g.next_transfer_date > now))
+    .sort((a, b) => (a.transfer_star_count || 0) - (b.transfer_star_count || 0));
+  if (!cand.length) return { err: "такого подарка нет на складе" };
+  let last = "";
+  for (const g of cand.slice(0, 3)) {
+    const r = await tg(env, "transferGift", { business_connection_id: conn.id, owned_gift_id: g.owned_gift_id, new_owner_chat_id: Number(toId),
+      ...(g.transfer_star_count > 0 ? { star_count: g.transfer_star_count } : {}) });
+    if (r.ok) return { ok: true, name: g.gift.name || g.gift.base_name };
+    last = r.description || "ошибка";
+    if (!/TRANSFER|UNAVAILABLE|not found/i.test(last)) break;
+  }
+  const h = BIZ_HINTS.find(([re]) => re.test(last));
+  return { err: last + (h ? " — " + h[1] : "") };
+}
+
 async function handleUpdate(env, origin, upd) {
+  // подключение/отключение бота к аккаунту-складу (Telegram Business)
+  if (upd.business_connection) {
+    const b = upd.business_connection, owner = b.user && isOwner(b.user.username);
+    if (owner) {
+      const r = b.rights || {};
+      await putKey(env, "bizconn", { id: b.id, on: !!b.is_enabled, user: b.user.username, chat: b.user_chat_id, rights: r, t: Date.now() });
+      const miss = [["can_view_gifts_and_stars", "просмотр подарков"], ["can_transfer_and_upgrade_gifts", "передача подарков"], ["can_transfer_stars", "передача звёзд"]].filter(([k]) => !r[k]).map(x => x[1]);
+      await tg(env, "sendMessage", { chat_id: b.user_chat_id, parse_mode: "HTML", text: b.is_enabled
+        ? "✅ <b>Автовыдача подключена</b> — коллекционные подарки с этого аккаунта будут уходить игрокам сами." + (miss.length ? "\n\n⚠️ Включи права бота: " + miss.join(", ") : "")
+        : "⛔ Бот отключён от аккаунта — автовыдача коллекционных подарков выключена." }).catch(() => {});
+    }
+    return;
+  }
   // оплата звёздами: Telegram спрашивает «можно?» — отвечаем да (иначе платёж не пройдёт)
   if (upd.pre_checkout_query) {
     const q = upd.pre_checkout_query, ok = String(q.invoice_payload || "").startsWith("dep:");
@@ -162,6 +213,21 @@ async function handleUpdate(env, origin, upd) {
       reply_markup: { inline_keyboard: [[{ text: "🛠 Открыть админку", web_app: { url: origin + "/#admin" } }]] } });
     else await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
       text: `⛔ Нет доступа.\nТвой юзернейм: @${u.username || "—"}, ID: <code>${u.id}</code>\nАдминка доступна владельцу (@${OWNERS.join(", @")}) и тем, кому он выдал доступ по ID.` });
+  }
+  else if (cmd === "/biz" && msg.from && isOwner(msg.from.username)) {
+    const conn = await bizConn(env);
+    let t = "🏪 <b>Склад подарков (Telegram Business)</b>\n\n";
+    if (!conn || !conn.on) t += "❌ Не подключён.\nОткрой на аккаунте-складе: Настройки → Telegram Business → Чат-боты → добавь этого бота и включи права «Подарки и звёзды».";
+    else {
+      t += `✅ Подключён: @${conn.user}\n`;
+      try {
+        const list = await bizGifts(env, conn), cnt = {};
+        list.forEach(g => { const k = g.gift.base_name; cnt[k] = (cnt[k] || 0) + 1; });
+        const rows = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `• ${k} — ${v} шт.`);
+        t += `🎁 Коллекционных на складе: ${list.length}\n` + (rows.slice(0, 40).join("\n") || "пусто");
+      } catch (e) { t += "⚠️ Не могу прочитать подарки: " + e.message; }
+    }
+    await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: t });
   }
   else if (cmd === "/help") await tg(env, "sendMessage", { chat_id: chat, text: "Поддержка: " + SUPPORT });
   else await tg(env, "sendMessage", { chat_id: chat, text: "Открой игру кнопкой ниже 👇", reply_markup: kb });
@@ -305,11 +371,23 @@ export default {
           return json({ ...r, auto: true });
         }
         autoErr = g.description || "ошибка";
+      } else {
+        // коллекционный подарок — передаём с аккаунта-склада через Telegram Business
+        const b = await bizTransfer(env, w.slug, u.id);
+        if (b.ok) {
+          await op(env, "withdraw_done", u.id, uname(u), { id: w.id });
+          for (const o of OWNERS) {
+            const chat = await getKey(env, "ownerchat:" + o.toLowerCase());
+            if (chat) await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: `🤖 Автовыдача: <b>${e(b.name)}</b> (${w.price} ★) → ${e(uname(u))}, ID <code>${u.id}</code>` });
+          }
+          return json({ ...r, auto: true });
+        }
+        autoErr = b.err;
       }
       const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(w.name)}</b>\n⭐ Цена: ${w.price} ★\n` +
         `👤 Игрок: ${e(uname(u))}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
         (!w.slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${w.slug}` : "") +
-        (autoErr ? `\n\n⚠️ Автовыдача не сработала: ${e(autoErr)}\nПроверь баланс звёзд бота (@BotFather → бот → Balance) и отправь вручную.` : "");
+        (autoErr ? `\n\n⚠️ Автовыдача не сработала: ${e(autoErr)}\n` + (w.tgid ? "Проверь баланс звёзд бота (@BotFather → бот → Balance) и отправь вручную." : "Отправь вручную или проверь склад командой /biz.") : "");
       const kb = { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] };
       let sent = 0;
       for (const o of OWNERS) {
