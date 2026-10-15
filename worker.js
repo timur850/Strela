@@ -122,7 +122,7 @@ export default {
       let w = await tg(env, "getWebhookInfo", {}), repaired = false;
       if (w.ok && w.result.url !== origin + "/webhook") { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
       const r = w.result || {};
-      const out = { webhook_ok: r.url === origin + "/webhook", repaired, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+      const out = { version: "v5", webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
         last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
       return json(out);
     }
