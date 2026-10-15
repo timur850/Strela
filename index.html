@@ -739,7 +739,7 @@ function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
   const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users'||k==='bc')adLoad();setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
