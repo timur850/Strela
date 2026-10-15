@@ -119,8 +119,10 @@ export default {
 
     // диагностика: куда Telegram шлёт апдейты и последняя ошибка
     if (path === "/status") {
-      const w = await tg(env, "getWebhookInfo", {}), r = w.result || {};
-      const out = { webhook_ok: r.url === origin + "/webhook", url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+      let w = await tg(env, "getWebhookInfo", {}), repaired = false;
+      if (w.ok && w.result.url !== origin + "/webhook") { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
+      const r = w.result || {};
+      const out = { webhook_ok: r.url === origin + "/webhook", repaired, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
         last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
       return json(out);
     }
