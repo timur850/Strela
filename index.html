@@ -614,19 +614,23 @@ try{const m=localStorage.getItem('strela_ton');if(m&&tg&&tg.initData)setTimeout(
 function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(i===1){$('#dep').innerHTML=`<div class="card" style="text-align:center;margin-top:20px"><h2 style="font-size:20px">Внесите подарок</h2><p class="sub">Затем продайте его за звёзды на баланс или используйте для апгрейда</p><button class="btn" onclick="open_('addgift')">Добавить</button></div>`}else if(i===2){tonOpen()}else{S.stack.pop();open_('deposit')}}
 
 /* кейсы */
-function openCase(i){S.curCase=CASES()[i];S.freeK=null;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
+function openCase(i){S.curCase=CASES()[i];S.freeK=null;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
 function armSpin(){S.openAt=Date.now();const b=$('#spinBtn');if(b){b.disabled=true;setTimeout(()=>{if(b.isConnected)b.disabled=false},800)}}
 function freeCase(k){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else if(Date.now()-(U().daily||0)<864e5)return toast('Кейс доступен раз в 24 часа');
- S.curCase=FREE(k);S.freeK=k;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
+ S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 function fillStrip(prize){const s=$('#strip');if(!s)return;const c=S.curCase;S.items=Array.from({length:60},()=>caseGift(c));if(prize)S.items[50]=prize;s.style.transition='none';s.style.transform='translateX(0)';s.innerHTML=S.items.map(g=>`<div class="cell">${gi(g)}<small><span class="star">★</span> ${fmt(g.price)}</small></div>`).join('')}
 async function spinCase(){const c=S.curCase;if(S.spinning)return;if(c.p&&Date.now()-(S.openAt||0)<800)return;
  const btn=$('#spinBtn');if(btn)btn.disabled=true;S.spinning=1;
+ /* лента стартует сразу, не дожидаясь сервера; приз подставляется в ячейку, пока она ещё далеко за экраном */
+ if(S.spunOnce)fillStrip();S.spunOnce=1;const s=$('#strip');
+ if(s){const off=50*106+48-s.parentNode.clientWidth/2+(Math.random()*60-30);s.offsetWidth;s.style.transition='transform 5s cubic-bezier(.1,.8,.15,1)';s.style.transform=`translateX(${-off}px)`}
+ const t0=Date.now();
  const j=await srv('case',c.free?{free:S.freeK}:{name:c.n},{hold:j=>{const g=giftBy(j.prize);return g&&isStar(g)?g.price:0}});
- if(!j){S.spinning=0;const b=$('#spinBtn');if(b)b.disabled=false;return}
- const prize=giftBy(j.prize);fillStrip(prize);const s=$('#strip');
- if(s){const off=50*106+48-s.parentNode.clientWidth/2+(Math.random()*60-30);s.offsetWidth;requestAnimationFrame(()=>{s.style.transition='transform 5s cubic-bezier(.1,.8,.15,1)';s.style.transform=`translateX(${-off}px)`})}
+ if(!j){S.spinning=0;S.spunOnce=0;const st=$('#strip');if(st){st.style.transition='transform .4s';st.style.transform='translateX(0)'}const b=$('#spinBtn');if(b)b.disabled=false;return}
+ const prize=giftBy(j.prize);S.items[50]=prize;const cell=$('#strip')&&$('#strip').children[50];
+ if(cell)cell.innerHTML=`${gi(prize)}<small><span class="star">★</span> ${fmt(prize.price)}</small>`;
  S.spinTok=(S.spinTok||0)+1;const tok=S.spinTok;
- setTimeout(()=>{S.spinning=0;sync(j.me);loadFeed();const b=$('#spinBtn');if(b&&S.spinTok===tok&&S.stack[S.stack.length-1]==='caseOpen'){winSheet(prize);b.disabled=false}else toast(isStar(prize)?`+${fmt(prize.price)} ★ на балансе`:`${prize.name} — в профиле 🎁`)},5200)}
+ setTimeout(()=>{S.spinning=0;sync(j.me);loadFeed();const b=$('#spinBtn');if(b&&S.spinTok===tok&&S.stack[S.stack.length-1]==='caseOpen'){winSheet(prize);b.disabled=false}else toast(isStar(prize)?`+${fmt(prize.price)} ★ на балансе`:`${prize.name} — в профиле 🎁`)},Math.max(300,5200-(Date.now()-t0)))}
 function caseItemsHtml(c){const D=caseDist(c).filter(([s])=>giftBy(s)).sort((a,b)=>giftBy(b[0]).price-giftBy(a[0]).price);const W=D.reduce((a,[,w])=>a+w,0)||1;
  return `<div class="inv">${D.map(([s,w])=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small><small style="color:var(--lagoon)">${(w/W*100).toFixed(w/W<.01?2:1)}%</small></div>`}).join('')}</div>`}
 function casePrizes(){const c=S.curCase;sheet(`<h2>Призы · ${c.n}</h2>${caseItemsHtml(c)}`)}
