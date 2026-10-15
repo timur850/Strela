@@ -33,7 +33,7 @@ BUTTON_TEXT = "🏝 Играть"
 WELCOME = ("🏹 <b>STRELA CASE</b>\n\n"
            "Кейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\n"
            "Жми кнопку ниже, чтобы открыть игру 👇")
-SUPPORT = "@Sdelka_ton"
+SUPPORT = "@PODONOK_UC_1"
 OWNERS = ["PODONOK_UC_1"]  # владельцы админки (username без @)
 OWNER = ", @".join(OWNERS)
 

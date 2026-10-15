@@ -3,7 +3,7 @@
 // После деплоя один раз открой https://<твой-воркер>.workers.dev/setup
 
 const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
-const SUPPORT = "@Sdelka_ton";
+const SUPPORT = "@PODONOK_UC_1";
 const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
 const BUTTON_TEXT = "🏝 Играть";
 const WELCOME = "🏹 <b>STRELA CASE</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
@@ -151,6 +151,26 @@ export default {
         await store(env).fetch("https://s/", { method: "POST", body });
         return json({ ok: true });
       }
+    }
+
+    // лента выигрышей: кто что выиграл
+    if (path === "/api/feed" && req.method === "GET") {
+      const raw = await (await store(env).fetch("https://s/feed")).text();
+      return json(raw ? JSON.parse(raw).slice(0, 100) : []);
+    }
+    if (path === "/api/win" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "bad initData" }, 403);
+      const a = Math.round(Number(d.a));
+      if (!(a > 0 && a < 1e8)) return json({ ok: false }, 400);
+      const e = { n: u.username ? "@" + u.username : (u.first_name || "Игрок"), id: u.id,
+        g: String(d.g || "Игра").slice(0, 30), s: String(d.s || "").replace(/[^a-z0-9_]/g, "").slice(0, 40), a, t: Date.now() };
+      const raw = await (await store(env).fetch("https://s/feed")).text();
+      const list = raw ? JSON.parse(raw) : [];
+      list.unshift(e);
+      await store(env).fetch("https://s/feed", { method: "POST", body: JSON.stringify(list.slice(0, 300)) });
+      return json({ ok: true });
     }
 
     // всё остальное — сайт игры

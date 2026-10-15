@@ -319,6 +319,7 @@ function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.js
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
 const R=g=>(ADM.rtp[g]??90)/100;
+const GIFT_ACC='PODONOK_UC_1'; // аккаунт, куда игроки отправляют подарки
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TASK_TYPES={channel:'📢 Подписка на канал',chat:'💬 Вступить в чат',link:'🔗 Открыть ссылку',story:'📸 История',bio:'🧾 Ссылка в био',home:'🏖️ На рабочий стол'};
 const TASK_HINT={channel:'https://t.me/твой_канал',chat:'https://t.me/твой_чат',link:'https://youtube.com/@канал',story:'Ссылка на картинку/видео для истории (https://...)',bio:'Текст для био, напр. t.me/StrelaCaseBot',home:'— ссылка не нужна'};
@@ -354,8 +355,18 @@ const S={tab:'games',stack:[]};
 function upd(){$('#bal').textContent=fmt(U().bal);$('#tick').textContent=U().tick;saveAdm()}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}
 function pay(n){if(ADM.banned.includes(ME.id)){toast('Аккаунт заблокирован');return false}if(U().bal<n){toast('Недостаточно звёзд');return false}U().bal-=n;ADM.stats.bets+=n;upd();return true}
-function win(n){U().bal+=Math.round(n);ADM.stats.wins+=Math.round(n);upd()}
-function giveGift(g){if(isStar(g)){win(g.price);return}U().inv.push(g.slug);ADM.stats.wins+=g.price;saveAdm()}
+function win(n){U().bal+=Math.round(n);ADM.stats.wins+=Math.round(n);upd();if(n>0)logWin(null,Math.round(n))}
+/* ===== лента выигрышей (общая для всех, хранится у бота) ===== */
+S.feed=[];
+const GNAME={caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',pvp:'PvP',slots:'Слоты',upgrade:'Апгрейд',contracts:'Контракты'};
+function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.curCase?'Кейс '+S.curCase.n:(GNAME[t]||'Игра')}
+function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);
+ if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
+function loadFeed(){fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(!S.stack.length&&(S.tab==='tour'))setTab('tour');const t=document.querySelector('.live .track');if(t&&S.tab==='games'&&!S.stack.length)t.innerHTML=liveIcons()}}).catch(()=>{})}
+function ago(t){const d=(Date.now()-t)/1e3;return d<60?'только что':d<3600?Math.floor(d/60)+' мин':d<86400?Math.floor(d/3600)+' ч':Math.floor(d/86400)+' д'}
+function feedRow(e){const g=e.s?giftBy(e.s):null;return `<div class="it"><div class="av" style="background:hsl(${hue(e.n||'?')},65%,50%)">${esc((e.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(e.n)}<small>${esc(e.g)} · ${ago(e.t)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}<b class="star" style="margin-left:6px;white-space:nowrap">+${fmt(e.a)} ★</b></div>`}
+function liveIcons(){const fromFeed=S.feed.filter(e=>e.s).map(e=>giftBy(e.s)).filter(Boolean).slice(0,14);const L=fromFeed.length>=5?fromFeed:GIFTS().filter(g=>!isStar(g)).sort(()=>Math.random()-.5).slice(0,14);return [...L,...L].map(x=>gi(x)).join('')}
+function giveGift(g){if(isStar(g)){win(g.price);return}U().inv.push(g.slug);ADM.stats.wins+=g.price;saveAdm();logWin(g,g.price)}
 function bubbles(){let h='';for(let i=0;i<3;i++){const s=6+Math.random()*10;h+=`<i class="bubble" style="width:${s}px;height:${s}px;right:${20+Math.random()*90}px;bottom:${Math.random()*10}px;animation-delay:${Math.random()*6}s"></i>`}return h}
 
 /* выбор подарка так, чтобы средний выигрыш = цена × RTP */
@@ -377,7 +388,7 @@ const GAMES=[
 ];
 const T={
 games(){
-  const L=GIFTS().filter(g=>!isStar(g)).sort(()=>Math.random()-.5).slice(0,14);const g=[...L,...L].map(x=>gi(x)).join('');
+  const g=liveIcons();
   return `<div class="brand"><div class="lg"><svg viewBox="0 0 32 32" fill="none" stroke="#5a2600" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 27 L25 7"/><path d="M17 7 H25 V15"/><path d="M8 24 L4 23 M8 24 L9 28 M11 21 L7 20 M11 21 L12 25" stroke-width="2.4"/></svg></div><h1>STRELA<span>CASE</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
   GAMES.filter(x=>!ADM.off[x[0]]).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('');
 },
@@ -396,7 +407,9 @@ tour(){
   const names=['Miracle','Maksimy','Zakaria','Fallen_Seraph','jr','Nate','Kai','Moana','Aloha_x','Svetlana'];
   const cols=['#ff5a5f','#22b45a','#0ea5e9','#7c3aed','#ff8a2a','#14c8c8','#ff3d8b','#f5b829','#0369a1','#15803d'];
   const gl=GIFTS().filter(g=>!isStar(g));let v=731151;
-  return `<h1>Турнир</h1><p class="sub">Каждую неделю топ игроков по обороту игр получают призы</p>
+  const feed=S.feed.slice(0,15);
+  return `<div class="card"><div class="ad-h">🔥 Последние выигрыши <small style="background:var(--palm)">LIVE</small></div><div class="list">${feed.length?feed.map(feedRow).join(''):'<div class="empty">Пока никто не выигрывал — будь первым!</div>'}</div></div>
+  <h1>Турнир</h1><p class="sub">Каждую неделю топ игроков по обороту игр получают призы</p>
   <div class="card timer" id="timer"></div>
   <div class="card"><p class="sub" style="margin-top:0">Эти подарки получат случайные пользователи из топ 1000</p>
   <div class="grid3">${[['candycane','x50'],['sleighbell','x25'],['ionicdryer','x5']].map(([s,x])=>`<div class="prize">${gi(giftBy(s))}<b>${x}</b></div>`).join('')}</div></div>
@@ -450,7 +463,7 @@ function sellLast(slug){const inv=U().inv;const k=inv.lastIndexOf(slug);if(k<0)r
 function winSheet(g){sheet(`<div class="winbox"><h2>Поздравляем! 🌴</h2>${gi(g)}<h2 style="margin:4px 0">${esc(g.name)}</h2><p class="sub">Стоимость: <span class="star">★</span> ${fmt(g.price)}</p>
  ${isStar(g)?`<p class="sub">Звёзды уже на балансе ✅</p><button class="btn sand" onclick="closeSheet()">Отлично</button>`:`<p class="sub">Подарок уже в вашем профиле ✅</p><div class="row"><button class="btn sand" onclick="closeSheet()">Оставить</button><button class="btn ghost" onclick="sellLast('${g.slug}')">Продать за ★ ${fmt(g.price)}</button></div>`}</div>`)}
 const G={
-deposit(){return `<h1>Пополнение баланса</h1><div class="seg" style="margin:14px 0"><button class="on" onclick="depTab(this,0)">⭐ Звёздами</button><button onclick="depTab(this,1)">🎁 Подарками</button><button onclick="depTab(this,2)">💎 Крипто</button></div>
+deposit(){return `<h1>Пополнение баланса</h1><div class="seg" style="margin:14px 0"><button class="on" onclick="depTab(this,0)">⭐ Звёздами</button><button onclick="depTab(this,1)">🎁 Подарками</button></div>
   <div id="dep"><div class="big" id="damt">200 <span class="star">★</span></div><p class="sub">≈ 2,6$</p>
   <div class="row" style="margin:30px 0 12px">${[500,2000,5000].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="addAmt(${v})">+ ${fmt(v)}</button>`).join('')}</div>
   <button class="btn sand" onclick="deposit()">Пополнить</button></div>`},
@@ -496,8 +509,8 @@ slots(){return `<h1>Слоты</h1><div class="card" style="margin-top:14px"><di
 raffle(){return `<h1>Розыгрыш</h1><p class="sub">Участники</p><div class="card list">${['semmu','nup','Darkol','Женя','vlad','chxtvxrg','Светлана','Herry','malbag','Hunter'].map((n,i)=>`<div class="it"><div class="av" style="background:hsl(${i*37},70%,50%)">${n[0].toUpperCase()}</div><div class="nm">${n}<small>Candy Cane</small></div><span style="width:34px;height:34px;display:inline-block">${gi(giftBy('candycane'))}</span></div>`).join('')}</div>
  <button class="btn sand" onclick="toast('Вы участвуете! 🌴')">Участвовать</button>`},
 addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style="background:rgba(255,90,95,.3)"><b>Не дарите подарки с Telegram маркета!</b><br><small style="color:var(--muted)">Отправляйте подарки только напрямую со своего аккаунта</small></div>
- <div class="card steps">${[['Перейдите в бота','Юзернейм бота @StrelaCaseBot'],['Отправьте ему подарок','Модель, фон и символ не учитываются'],['Подарок добавится в профиль','В течении нескольких минут']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
- <button class="btn" onclick="closeSheet();toast('Открываем бота…')">Перейти</button>`);return null},
+ <div class="card steps">${[['Откройте аккаунт '+'@'+GIFT_ACC,'Сюда принимаются все подарки'],['Отправьте ему подарок','Модель, фон и символ не учитываются'],['Подарок добавится в профиль','В течении нескольких минут']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
+ <button class="btn" onclick="closeSheet();openUrl('https://t.me/'+GIFT_ACC)">Перейти</button>`);return null},
 };
 
 /* ================== РОУТЕР ================== */
@@ -541,7 +554,7 @@ function showPrizes(cost){const P=GIFTS().filter(g=>g.price>=cost*.15&&g.price<=
 /* апгрейд */
 function pickOwn(){if(!U().inv.length)return toast('Нет подарков');sheet(`<h2>Ваши подарки</h2><div class="inv">${U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case" onclick="S.upA=${i};closeSheet();rerender()">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`}).join('')}</div>`)}
 function pickTarget(){const a=S.upA!=null?giftBy(U().inv[S.upA]).price:0;const P=GIFTS().filter(g=>!isStar(g)&&g.price>a).sort((x,y)=>x.price-y.price);sheet(`<h2>Желаемый подарок</h2><div class="inv">${P.map(g=>`<div class="case" onclick="S.upB='${g.slug}';closeSheet();rerender()">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`).join('')}</div>`)}
-function doUpgrade(ch){const a=giftBy(U().inv[S.upA]),b=giftBy(S.upB);ADM.stats.bets+=a.price;U().inv.splice(S.upA,1);S.upA=null;if(Math.random()*100<ch){U().inv.push(b.slug);ADM.stats.wins+=b.price;toast(`Успех! ${b.name} 🎉`)}else toast('Не повезло 🌊');S.upB=null;saveAdm();rerender()}
+function doUpgrade(ch){const a=giftBy(U().inv[S.upA]),b=giftBy(S.upB);ADM.stats.bets+=a.price;U().inv.splice(S.upA,1);S.upA=null;if(Math.random()*100<ch){U().inv.push(b.slug);logWin(b,b.price);ADM.stats.wins+=b.price;toast(`Успех! ${b.name} 🎉`)}else toast('Не повезло 🌊');S.upB=null;saveAdm();rerender()}
 function contract(){const inv=U().inv;if(inv.length<2)return toast('Нужно минимум 2 подарка');const sum=inv.reduce((s,x)=>s+giftBy(x).price,0);ADM.stats.bets+=sum;U().inv=[];const g=pickGift(sum,R('upgrade'));giveGift(g);saveAdm();winSheet(g)}
 /* краш */
 let C={st:'idle'};
@@ -625,10 +638,13 @@ tasks(){return `<div class="card"><div class="ad-h">📜 Задания <small s
  <button class="btn sand" onclick="ADM.tasks.push({id:'t'+Date.now(),e:'⭐',t:'Новое задание',type:'channel',url:'https://t.me/',r:1,on:1});saveAdm();setTab('admin');setTimeout(()=>view.scrollTop=1e6,50)">＋ Добавить задание</button>
  <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="U().done={};U().started={};saveAdm();navBadge();toast('Ваши выполнения сброшены')">Сбросить мои выполнения</button><button class="btn ghost" onclick="ADM.tasks=structuredClone(DEF_TASKS);saveAdm();setTab('admin')">Задания по умолчанию</button></div>`},
 stats(){const st=ADM.stats,us=Object.keys(ADM.users).length,profit=st.bets-st.wins;
+ const tot={};S.feed.forEach(e=>{tot[e.n]=(tot[e.n]||0)+e.a});const top=Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,10);
+ const extra=`<div class="card"><div class="ad-h">🏆 Топ по выигрышам</div><div class="list">${top.length?top.map(([n,a],i)=>`<div class="it"><b style="width:22px;color:var(--muted)">${i+1}</b><div class="nm">${esc(n)}</div><b class="star">${fmt(a)} ★</b></div>`).join(''):'<div class="empty">Нет данных</div>'}</div></div>
+ <div class="card"><div class="ad-h">📜 Кто что выиграл <small style="background:var(--sea)">${S.feed.length}</small></div><div class="list">${S.feed.length?S.feed.map(feedRow).join(''):'<div class="empty">Пока пусто</div>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="loadFeed();setTimeout(()=>setTab('admin'),600)">Обновить</button></div>`;
  return `<div class="kpi"><div><b>${us}</b><small>Игроков</small></div><div><b>${fmt(st.dep)} ★</b><small>Пополнения</small></div>
  <div><b>${fmt(st.bets)} ★</b><small>Оборот ставок</small></div><div><b style="color:${profit>=0?'#3dff8b':'#ff8a8a'}">${fmt(profit)} ★</b><small>Профит проекта</small></div></div>
  <div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
- <button class="btn ghost" onclick="ADM.stats={dep:0,bets:0,wins:0};saveAdm();setTab('admin');toast('Статистика сброшена')">Сбросить статистику</button>`},
+ <button class="btn ghost" onclick="ADM.stats={dep:0,bets:0,wins:0};saveAdm();setTab('admin');toast('Статистика сброшена')">Сбросить статистику</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]}%</b></div>`).join('')}
  <div class="rng"><span>PvP комиссия</span><input type="range" min="0" max="20" value="${ADM.pvpFee}" oninput="ADM.pvpFee=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.pvpFee}%</b></div></div>
@@ -708,7 +724,7 @@ function ceCreate(){const n=($('#ncN').value||'').trim().replace(/['"<>`]/g,'');
  ADM.customCases.push([n,p,autoDist(p,R('cases'))[0][0]]);saveAdm();setTab('admin');ceOpen('c:'+n)}
 function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n];saveAdm();closeSheet();setTab('admin');toast('Кейс удалён')}
 
-upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();
+upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();loadFeed();setInterval(loadFeed,20000);
 </script>
 </body>
 </html>
