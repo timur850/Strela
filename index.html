@@ -247,6 +247,7 @@ canvas{display:block;width:100%;border-radius:22px}
 /* pvp */
 .wheel{position:relative;overflow:hidden}
 .wheel .wl{position:absolute;left:50%;top:50%;font-weight:900;font-size:12px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;pointer-events:none}
+#damt::-webkit-inner-spin-button,#damt::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}#damt{-moz-appearance:textfield;appearance:textfield}
 </style>
 </head>
 <body>
@@ -448,8 +449,9 @@ function winSheet(g){sheet(`<div class="winbox"><h2>Поздравляем! 🌴
  ${isStar(g)?`<p class="sub">Звёзды уже на балансе ✅</p><button class="btn sand" onclick="closeSheet()">Отлично</button>`:`<p class="sub">Подарок уже в вашем профиле ✅</p><div class="row"><button class="btn sand" onclick="closeSheet()">Оставить</button><button class="btn ghost" onclick="sellLast('${g.slug}')">Продать за ★ ${fmt(g.price)}</button></div>`}</div>`)}
 const G={
 deposit(){return `<h1>Пополнение баланса</h1><div class="seg" style="margin:14px 0"><button class="on" onclick="depTab(this,0)">⭐ Звёзды</button><button onclick="depTab(this,2)">💎 TON</button><button onclick="depTab(this,1)">🎁 Подарки</button></div>
-  <div id="dep"><div class="big" id="damt">${fmt(dAmt)} <span class="star">★</span></div><p class="sub" id="dusd">≈ ${usd(dAmt)}$</p>
-  <div class="row" style="margin:30px 0 12px">${[500,2000,5000].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="addAmt(${v})">+ ${fmt(v)}</button>`).join('')}</div>
+  <div id="dep"><div class="big" style="display:flex;align-items:center;justify-content:center;gap:10px"><input id="damt" type="number" inputmode="numeric" min="1" max="10000" value="${dAmt}" oninput="setAmt(this.value,1)" onblur="setAmt(this.value)" style="width:min(70%,260px);background:none;border:0;border-bottom:2px solid rgba(255,255,255,.35);color:#fff;font:inherit;text-align:center;outline:none;padding:0"><span class="star">★</span></div>
+  <p class="sub" id="dusd">≈ ${usd(dAmt)}$ · от 1 до 10 000 ★</p>
+  <div class="row" style="margin:30px 0 12px">${[100,500,1000,5000].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="setAmt(${v})">${fmt(v)}</button>`).join('')}</div>
   <button class="btn sand" onclick="deposit()">Пополнить</button></div>`},
 cases(){sheet(`<h2>Кейсы</h2><div class="cgrid">${CASES().map((c,i)=>caseCard(c,`openCase(${i})`)).join('')}</div>`);return null},
 free(){const d=FREE('daily'),t=FREE('tick');sheet(`<h2>Бесплатно</h2><div class="cgrid">${caseCard(d,"freeCase('daily')")}${caseCard(t,"freeCase('tick')").replace('бесплатно','🎫 10')}</div>`);return null},
@@ -525,11 +527,12 @@ function doTask(id){const t=ADM.tasks.find(x=>x.id===id);if(!t)return;const u=U(
 function navBadge(){const d=(U().done)||{};const n=TASKS().filter(t=>!d[t.id]).length;const b=document.querySelector('.nav .badge');if(b){b.textContent=n;b.style.display=n?'':'none'}}
 /* ================== ПОПОЛНЕНИЕ: ЗВЁЗДЫ (настоящий счёт Telegram) ================== */
 let dAmt=200;const usd=n=>(n*0.013).toFixed(1).replace('.',',');
-function addAmt(v){dAmt=Math.min(10000,dAmt+v);$('#damt').innerHTML=fmt(dAmt)+' <span class="star">★</span>';const u=$('#dusd');if(u)u.textContent='≈ '+usd(dAmt)+'$'}
+function setAmt(v,typing){const n=Math.round(+v);dAmt=n>0?Math.min(10000,n):0;const i=$('#damt');if(i&&(!typing||n>10000))i.value=dAmt||'';const u=$('#dusd');if(u)u.textContent='≈ '+usd(dAmt)+'$ · от 1 до 10 000 ★'}
+function addAmt(v){setAmt(dAmt+v)}
 function credited(j,src){if(j&&j.me)sync(j.me);if(j&&j.got>0){toast(`+${fmt(j.got)} ★ зачислено (${src})`);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}}
 const API=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:tg&&tg.initData},b))}).then(r=>r.json());
 let depBusy=false;
-async function deposit(){
+async function deposit(){setAmt($('#damt')?$('#damt').value:dAmt);if(!(dAmt>=1))return toast('Введите сколько звёзд пополнить');
  if(!(tg&&tg.initData&&tg.openInvoice))return toast('Открой игру через бота в Telegram');
  if(depBusy)return;depBusy=true;
  try{const j=await API('api/stars/invoice',{amount:dAmt});
