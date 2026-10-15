@@ -2,6 +2,8 @@
 // Секрет BOT_TOKEN задаётся в Cloudflare: Settings → Variables and Secrets.
 // После деплоя один раз открой https://<твой-воркер>.workers.dev/setup
 
+import { Game, GameError } from "./game.js";
+
 const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
 const SUPPORT = "@PODONOK_UC_1";
 const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
@@ -50,6 +52,12 @@ export class Store {
   constructor(state) { this.state = state; }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
+    // игровые операции: всё считается здесь, атомарно, в одном месте
+    if (key.startsWith("op/") && req.method === "POST") {
+      const b = await req.json();
+      try { return json(await new Game(this.state.storage).run(key.slice(3), b.uid, b.name, b.d || {}, !!b.admin)); }
+      catch (e) { if (e instanceof GameError) return json({ ok: false, err: e.message }); console.log("op error", e); return json({ ok: false, err: "Ошибка сервера" }); }
+    }
     if (req.method === "POST") { await this.state.storage.put(key, await req.text()); return new Response("ok"); }
     return new Response((await this.state.storage.get(key)) || (key === "settings" ? "{}" : ""));
   }
@@ -63,6 +71,17 @@ async function setupBot(env, origin, hookKey, dropPending) {
   const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
   await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
   return { a, b };
+}
+
+const op = async (env, name, uid, uname, d, admin) =>
+  (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
+const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
+const PUBLIC_OPS = new Set(["me", "case", "egg", "upgrade", "contract", "crash_bet", "crash_cash", "crash_peek", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task"]);
+const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "wd_done"]);
+async function isAdminUser(env, u) {
+  if (isOwner(u.username)) return true;
+  const st = await loadSettings(env);
+  return (st.admins || []).map(String).includes(String(u.id));
 }
 
 const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
@@ -147,7 +166,7 @@ export default {
       if (w.ok && hookBad(w.result, origin)) { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
       const r = w.result || {};
       const me = await tg(env, "getMe", {});
-      const out = { version: "v7", token_ok: !!me.ok, telegram_error: me.ok ? null : (env.BOT_TOKEN ? me.error_code + " " + me.description : "BOT_TOKEN не задан — добавь его как Secret"), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+      const out = { version: "v8", token_ok: !!me.ok, telegram_error: me.ok ? null : (env.BOT_TOKEN ? me.error_code + " " + me.description : "BOT_TOKEN не задан — добавь его как Secret"), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
         last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
       return json(out);
     }
@@ -199,13 +218,7 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
       if (!u) return json({ ok: false }, 403);
-      const key = "pay:" + String(d.payload || ""), raw = await getKey(env, key);
-      if (!raw) return json({ ok: false, wait: true });
-      const p = JSON.parse(raw);
-      if (p.uid !== String(u.id)) return json({ ok: false }, 403);
-      if (p.claimed) return json({ ok: false, err: "Уже зачислено" });
-      p.claimed = true; await putKey(env, key, p);
-      return json({ ok: true, a: p.a });
+      return json(await op(env, "claim_stars", u.id, uname(u), { payload: String(d.payload || "") }));
     }
 
     // ===== ПОПОЛНЕНИЕ TON =====
@@ -226,8 +239,9 @@ export default {
       const tx = r.result.find(t => t.in_msg && t.in_msg.message === memo && Number(t.in_msg.value) > 0);
       if (!tx) return json({ ok: false, wait: true });
       const ton = Number(tx.in_msg.value) / 1e9, a = Math.floor(ton * rate);
-      await putKey(env, "ton:" + memo, { uid: String(u.id), ton, a, hash: tx.transaction_id && tx.transaction_id.hash, t: Date.now() });
-      return json({ ok: true, a, ton });
+      const r2 = await op(env, "credit_ton", u.id, uname(u), { memo, ton, a, hash: tx.transaction_id && tx.transaction_id.hash });
+      if (r2.ok && r2.already) return json({ ok: false, err: "Уже зачислено" });
+      return json({ ...r2, a: r2.got, ton });
     }
 
     // ===== ЗАЯВКА НА ВЫВОД ПОДАРКА → сообщение владельцу =====
@@ -235,27 +249,45 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
-      const st = await loadSettings(env);
-      if ((st.banned || []).map(String).includes(String(u.id))) return json({ ok: false, err: "Аккаунт заблокирован" }, 403);
-      const last = Number(await getKey(env, "wd:" + u.id)) || 0;
-      if (Date.now() - last < 10000) return json({ ok: false, err: "Подожди пару секунд" });
-      await putKey(env, "wd:" + u.id, String(Date.now()));
-      const e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-      const slug = String(d.slug || "").replace(/[^a-z0-9_]/gi, "").slice(0, 40);
-      const who = u.username ? "@" + u.username : e([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-      const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(String(d.name || slug).slice(0, 60))}</b>\n⭐ Цена: ${Math.round(Number(d.price)) || 0} ★\n` +
-        `👤 Игрок: ${who}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
-        (slug && !slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${slug}` : "");
+      const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug });
+      if (!r.ok) return json(r);
+      const w = r.wd, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(w.name)}</b>\n⭐ Цена: ${w.price} ★\n` +
+        `👤 Игрок: ${e(uname(u))}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
+        (!w.slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${w.slug}` : "");
       const kb = { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] };
       let sent = 0;
       for (const o of OWNERS) {
         const chat = await getKey(env, "ownerchat:" + o.toLowerCase());
         if (!chat) continue;
-        const r = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true });
-        if (r.ok) sent++;
+        const x = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true });
+        if (x.ok) sent++;
       }
-      if (!sent) return json({ ok: false, err: "Вывод временно недоступен, напиши в поддержку " + SUPPORT });
-      return json({ ok: true });
+      if (!sent) {
+        const back = await op(env, "withdraw_undo", u.id, uname(u), { id: w.id });
+        return json({ ok: false, err: "Вывод временно недоступен, напиши в поддержку " + SUPPORT, me: back.me });
+      }
+      return json(r);
+    }
+
+    // ===== ИГРЫ: результат решает сервер =====
+    if (path.startsWith("/api/game/") && req.method === "POST") {
+      const name = path.slice(10);
+      if (!PUBLIC_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      delete d.initData;
+      return json(await op(env, name, u.id, uname(u), d));
+    }
+    if (path.startsWith("/api/admin/") && req.method === "POST") {
+      const name = path.slice(11);
+      if (!ADMIN_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u || !(await isAdminUser(env, u))) return json({ ok: false, err: "Нет доступа" }, 403);
+      delete d.initData;
+      return json(await op(env, "admin/" + name, u.id, uname(u), d, true));
     }
 
     // лента выигрышей: кто что выиграл
@@ -263,21 +295,6 @@ export default {
       const raw = await (await store(env).fetch("https://s/feed")).text();
       return json(raw ? JSON.parse(raw).slice(0, 100) : []);
     }
-    if (path === "/api/win" && req.method === "POST") {
-      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
-      if (!u) return json({ ok: false, err: "bad initData" }, 403);
-      const a = Math.round(Number(d.a));
-      if (!(a > 0 && a < 1e8)) return json({ ok: false }, 400);
-      const e = { n: u.username ? "@" + u.username : (u.first_name || "Игрок"), id: u.id,
-        g: String(d.g || "Игра").slice(0, 30), s: String(d.s || "").replace(/[^a-z0-9_]/g, "").slice(0, 40), a, t: Date.now() };
-      const raw = await (await store(env).fetch("https://s/feed")).text();
-      const list = raw ? JSON.parse(raw) : [];
-      list.unshift(e);
-      await store(env).fetch("https://s/feed", { method: "POST", body: JSON.stringify(list.slice(0, 300)) });
-      return json({ ok: true });
-    }
-
     // всё остальное — сайт игры
     return env.ASSETS.fetch(req);
   }
