@@ -109,7 +109,7 @@ export class Game {
     if (op.startsWith("admin/")) {
       const ok = isAdmin === true || (isAdmin === "check" && (this.st.admins || []).map(String).includes(uid));
       if (!ok) fail("Нет доступа");
-      return this.admin(op.slice(6), d);
+      return this.admin(op.slice(6), d, isAdmin === true);
     }
     const u = await this.user(uid, name);
     const banned = (this.st.banned || []).map(String).includes(uid);
@@ -419,7 +419,7 @@ export class Game {
   }
 
   // ===== админка =====
-  async admin(op, d) {
+  async admin(op, d, owner) {
     const id = String(d.id || "").trim();
     const needId = () => { if (!/^\d{3,15}$/.test(id)) fail("Неверный ID"); };
     const save = async u => { await this.s.put("u:" + id, u); return { ok: true, user: { id, ...this.view(u), name: u.name } }; };
@@ -452,6 +452,22 @@ export class Game {
       return { ok: true, total: job.ids.length };
     }
     if (op === "bc_stop") { const j = await this.s.get("bc:job"); if (j && !j.done) { j.done = true; j.stopped = true; j.finished = Date.now(); await this.s.put("bc:job", j); } return { ok: true }; }
+    if (op === "resetall") {   // обнулить баланс/билеты у всех + вся статистика (только владельцы)
+      if (!owner) fail("Только для владельца");
+      let n = 0, after;
+      for (;;) {
+        const page = await this.s.list({ prefix: "u:", limit: 500, ...(after ? { startAfter: after } : {}) });
+        if (!page.size) break;
+        const batch = {};
+        for (const [k, u] of page) { u.bal = 0; u.tick = 0; u.refEarn = 0; batch[k] = u; after = k; n++; }
+        const keys = Object.keys(batch);
+        for (let i = 0; i < keys.length; i += 128) await this.s.put(Object.fromEntries(keys.slice(i, i + 128).map(k => [k, batch[k]])));
+        if (page.size < 500) break;
+      }
+      await this.s.put("stats", { dep: 0, bets: 0, wins: 0 });
+      await this.s.delete("feed");
+      return { ok: true, users: n };
+    }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
     fail("Неизвестное действие");
