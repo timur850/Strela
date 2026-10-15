@@ -25,6 +25,7 @@ export class Game {
 
   async user(uid, name) {
     let u = await this.s.get("u:" + uid);
+    this.isNew = !u;
     if (!u) {
       const st = this.st;
       u = { name: name || "Игрок", bal: Math.max(0, Math.round(+st.startBal || 0)), tick: Math.max(0, Math.round(+st.startTick || 0)), inv: [], done: {}, daily: 0, t: Date.now() };
@@ -33,7 +34,30 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0 }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
+
+  // рефералы: новый игрок пришёл по ссылке → пригласившему 5 🎫 (не больше 30 в день)
+  async op_ref_bind(u, uid, d) {
+    const ref = String(d.ref || "");
+    if (!this.isNew || u.ref || !/^\d{3,15}$/.test(ref) || ref === uid) return {};
+    const r = await this.s.get("u:" + ref); if (!r) return {};
+    u.ref = ref;
+    const day = new Date().toISOString().slice(0, 10);
+    if (r.refDay !== day) { r.refDay = day; r.refDayTick = 0; }
+    const t = Math.min(5, 30 - (r.refDayTick || 0));
+    if (t > 0) { r.tick += t; r.refDayTick = (r.refDayTick || 0) + t; }
+    r.refCount = (r.refCount || 0) + 1;
+    await this.s.put("u:" + ref, r);
+    return { bound: true };
+  }
+  // 10% от пополнений приглашённого — пригласившему
+  async refBonus(u, amount) {
+    if (!u.ref || !(amount > 0)) return;
+    const b = Math.floor(amount * 0.1); if (!b) return;
+    const r = await this.s.get("u:" + u.ref); if (!r) return;
+    r.bal += b; r.refEarn = (r.refEarn || 0) + b;
+    await this.s.put("u:" + u.ref, r);
+  }
 
   async stat(k, v) {
     if (!v) return;
@@ -306,7 +330,7 @@ export class Game {
     if (p.uid !== uid) fail("Чужой платёж");
     if (p.claimed) return { got: 0, already: true };
     p.claimed = true; await this.s.put(key, JSON.stringify(p));
-    u.bal += p.a; await this.stat("dep", p.a);
+    u.bal += p.a; await this.stat("dep", p.a); await this.refBonus(u, p.a);
     return { got: p.a };
   }
   async op_credit_ton(u, uid, d) {          // вызывает только сервер после проверки сети
@@ -316,7 +340,7 @@ export class Game {
     const a = Math.max(0, Math.floor(+d.a || 0));
     await this.s.put(key, JSON.stringify({ uid, ton: d.ton, a, hash: d.hash, t: Date.now() }));
     if (d.hash) await this.s.put("tonh:" + d.hash, 1);
-    u.bal += a; await this.stat("dep", a);
+    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a);
     return { got: a, ton: d.ton };
   }
 

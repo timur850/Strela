@@ -108,6 +108,10 @@ async function handleUpdate(env, origin, upd) {
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const kb = { inline_keyboard: [[{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }],
     [{ text: "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
+  if (cmd === "/start") {
+    const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
+    if (m && msg.from) await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
+  }
   if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, parse_mode: "HTML", reply_markup: kb });
   else if (cmd === "/id") {
     const u = msg.from || {};
