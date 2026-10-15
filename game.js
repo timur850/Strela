@@ -77,7 +77,27 @@ export class Game {
   async charge(u, n) {
     if (!(n > 0)) fail("Неверная ставка");
     if (u.bal < n) fail("Недостаточно звёзд");
-    u.bal -= n; await this.stat("bets", n);
+    u.bal -= n; await this.stat("bets", n); await this.tourAdd(u, n);
+  }
+  // ===== турнир: недельный оборот ставок реальных игроков =====
+  async tourGet() {
+    const now = Date.now(); let t = await this.s.get("tour");
+    if (!t || now >= t.end) {
+      if (t && Object.keys(t.rows || {}).length) await this.s.put("tour:prev", t);
+      t = { start: now, end: now + 7 * 864e5, rows: {} }; await this.s.put("tour", t);
+    }
+    return t;
+  }
+  async tourAdd(u, n) {
+    if (!this.uid || !(n > 0)) return;
+    const t = await this.tourGet(), r = t.rows[this.uid] || [u.name, 0];
+    r[0] = u.name; r[1] += Math.round(n); t.rows[this.uid] = r;
+    await this.s.put("tour", t);
+  }
+  async tourTop(k = 10) {
+    const t = await this.tourGet();
+    const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
+    return { end: t.end, count: Object.keys(t.rows).length, top };
   }
   // выдать выигрыш звёздами
   async payout(u, uid, n, game) {
@@ -111,6 +131,8 @@ export class Game {
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
+    if (op === "tour") return { ok: true, ...(await this.tourTop(10)) };
+    this.uid = uid;
     const u = await this.user(uid, name);
     const banned = (this.st.banned || []).map(String).includes(uid);
     if (banned && op !== "me") fail("Аккаунт заблокирован");
@@ -466,8 +488,10 @@ export class Game {
       }
       await this.s.put("stats", { dep: 0, bets: 0, wins: 0 });
       await this.s.delete("feed");
+      await this.s.delete(["tour", "tour:prev"]);
       return { ok: true, users: n };
     }
+    if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
     fail("Неизвестное действие");

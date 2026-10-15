@@ -112,7 +112,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start"]);
-const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "resetall", "wd_done", "bc_start", "bc_stop", "bc_test"]);
+const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -387,6 +387,9 @@ export default {
     }
 
     // лента выигрышей: кто что выиграл
+    if (path === "/api/tour" && req.method === "GET") {
+      return json(await op(env, "tour", "0", "", {}, false));
+    }
     if (path === "/api/feed" && req.method === "GET") {
       const raw = await (await store(env).fetch("https://s/feed")).text();
       return json(raw ? JSON.parse(raw).slice(0, 100) : []);

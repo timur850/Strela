@@ -381,10 +381,11 @@ const GNAME={caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины
 function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.curCase?'Кейс '+S.curCase.n:(GNAME[t]||'Игра')}
 function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);return;
  if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
+function loadTour(){fetch('api/tour',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok){const first=!S.tour;S.tour=j;if(S.tab==='tour'&&!S.stack.length&&first){stopAll();render(T.tour());tick()}}}).catch(()=>{})}
 function loadFeed(){fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(!S.stack.length&&(S.tab==='tour'))setTab('tour');const t=document.querySelector('.live .track');if(t&&S.tab==='games'&&!S.stack.length)t.innerHTML=liveIcons()}}).catch(()=>{})}
 function ago(t){const d=(Date.now()-t)/1e3;return d<60?'только что':d<3600?Math.floor(d/60)+' мин':d<86400?Math.floor(d/3600)+' ч':Math.floor(d/86400)+' д'}
 function feedRow(e){const g=e.s?giftBy(e.s):null;return `<div class="it"><div class="av" style="background:hsl(${hue(e.n||'?')},65%,50%)">${esc((e.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(e.n)}<small>${esc(e.g)} · ${ago(e.t)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}<b class="star" style="margin-left:6px;white-space:nowrap">+${fmt(e.a)} ★</b></div>`}
-function liveIcons(){const fromFeed=S.feed.filter(e=>e.s).map(e=>giftBy(e.s)).filter(Boolean).slice(0,14);const L=fromFeed.length>=5?fromFeed:GIFTS().filter(g=>!isStar(g)).sort(()=>Math.random()-.5).slice(0,14);return [...L,...L].map(x=>gi(x)).join('')}
+function liveIcons(){const fromFeed=S.feed.filter(e=>e.s).map(e=>giftBy(e.s)).filter(Boolean).slice(0,14);const L=fromFeed;return [...L,...L].map(x=>gi(x)).join('')}
 
 function bubbles(){let h='';for(let i=0;i<3;i++){const s=6+Math.random()*10;h+=`<i class="bubble" style="width:${s}px;height:${s}px;right:${20+Math.random()*90}px;bottom:${Math.random()*10}px;animation-delay:${Math.random()*6}s"></i>`}return h}
 
@@ -418,16 +419,14 @@ tasks(){const d=U().done||{},st=U().started||{};const L=TASKS();
   <div class="card list">${L.map(t=>`<div class="it"><div class="av" style="background:rgba(255,255,255,.15);font-size:22px">${esc(t.e)}</div><div class="nm">${esc(t.t)}<small>🎫 ${t.r}</small></div>${d[t.id]?'<button class="btn sm ghost" disabled>✓</button>':`<button class="btn sm ${st[t.id]?'sand':''}" onclick="doTask('${t.id}')">${st[t.id]?'Проверить':'Начать'}</button>`}</div>`).join('')||'<div class="empty">Заданий пока нет</div>'}</div>`;
 },
 tour(){
-  const names=['Miracle','Maksimy','Zakaria','Fallen_Seraph','jr','Nate','Kai','Moana','Aloha_x','Svetlana'];
-  const cols=['#ff5a5f','#22b45a','#0ea5e9','#7c3aed','#ff8a2a','#14c8c8','#ff3d8b','#f5b829','#0369a1','#15803d'];
-  const gl=GIFTS().filter(g=>!isStar(g));let v=731151;
+  const gl=GIFTS().filter(g=>!isStar(g));
   const feed=S.feed.slice(0,15);
   return `<div class="card"><div class="ad-h">🔥 Последние выигрыши <small style="background:var(--palm)">LIVE</small></div><div class="list">${feed.length?feed.map(feedRow).join(''):'<div class="empty">Пока никто не выигрывал — будь первым!</div>'}</div></div>
   <h1>Турнир</h1><p class="sub">Каждую неделю топ игроков по обороту игр получают призы</p>
   <div class="card timer" id="timer"></div>
   <div class="card"><p class="sub" style="margin-top:0">Эти подарки получат случайные пользователи из топ 1000</p>
   <div class="grid3">${[['candycane','x50'],['sleighbell','x25'],['ionicdryer','x5']].map(([s,x])=>`<div class="prize">${gi(giftBy(s))}<b>${x}</b></div>`).join('')}</div></div>
-  <div class="card list">${names.map((n,i)=>{const val=i?(v=Math.round(v*.82)):731151;return `<div class="it"><b style="width:22px;color:var(--muted)">${i+1}</b><div class="av" style="background:${cols[i]}">${n[0]}</div><div class="nm">${n}<small><span class="star">★</span> ${fmt(val)}</small></div><span style="width:34px;height:34px;display:inline-block">${gi(gl[i%gl.length])}</span></div>`}).join('')}
+  <div class="card list">${(S.tour&&S.tour.top.length)?S.tour.top.map((r,i)=>`<div class="it"${String(r.id)===String(ME.id)?' style="background:rgba(255,210,63,.15);border-radius:12px"':''}><b style="width:22px;color:var(--muted)">${i+1}</b><div class="av" style="background:hsl(${hue(r.n||'?')},65%,50%)">${esc((r.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${gl.length?`<span style="width:34px;height:34px;display:inline-block">${gi(gl[i%gl.length])}</span>`:''}</div>`).join(''):`<div class="empty">${S.tour?'Турнир только начался — сделай ставку и стань первым!':'Загрузка…'}</div>`}
   <div class="it me"><b style="width:22px">100+</b><div class="av" style="background:var(--sand);color:#4a2c00">Вы</div><div class="nm">Вы<small><span class="star">★</span> 0</small></div></div></div>`;
 },
 profile(){
@@ -532,7 +531,7 @@ addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style
 /* ================== РОУТЕР ================== */
 function render(html){view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length?'block':'none'}
 function tMove(i,d){const j=i+d;if(j<0||j>=ADM.tasks.length)return;[ADM.tasks[i],ADM.tasks[j]]=[ADM.tasks[j],ADM.tasks[i]];saveAdm();setTab('admin')}
-function setTab(t){S.tab=t;S.stack=[];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));stopAll();render(T[t]());if(t==='tour')tick()}
+function setTab(t){S.tab=t;S.stack=[];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));stopAll();render(T[t]());if(t==='tour'){tick();loadTour()}}
 function open_(id){if(ADM.off[id]){toast('Игра временно отключена');return}const h=G[id]();if(h===null)return;closeSheet();stopAll();S.stack.push(id);render(h);init(id)}
 function rerender(){const id=S.stack[S.stack.length-1];render(G[id]())}
 function goBack(){stopAll();S.spinTok=(S.spinTok||0)+1;S.stack.pop();if(S.stack.length){const id=S.stack[S.stack.length-1];render(G[id]());init(id)}else setTab(S.tab)}
@@ -543,7 +542,7 @@ function closeSheet(){$('#sheetBg').classList.remove('show')}
 function init(id){({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashInit,pvp:pvpInit})[id]?.()}
 let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelAnimationFrame(S.raf)}
 
-function tick(){const end=Date.now()+5*864e5+11*36e5+28*6e4+54e3;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
+function tick(){const end=(S.tour&&S.tour.end)||Date.now()+7*864e5;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
 function openUrl(u){if(!u)return;if(!/^https?:\/\//.test(u))u='https://'+u;try{if(tg&&/^https:\/\/t\.me\//.test(u))return tg.openTelegramLink(u);if(tg)return tg.openLink(u)}catch(e){}window.open(u,'_blank')}
 function claimTask(id){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');if(busy)return;busy=true;
  API('api/task',{id}).then(j=>{busy=false;if(j.me)sync(j.me);if(!j.ok){if(/Начать/.test(j.err||'')){const u=U();if(u.started)delete u.started[id];saveAdm();if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')}return toast(j.err||'Задание не выполнено')}toast(j.got?`+${j.got} 🎫`:'Уже выполнено');if(S.tab==='tasks'&&!S.stack.length)setTab('tasks');navBadge()}).catch(()=>{busy=false;toast('Нет связи с сервером')})}
@@ -812,7 +811,7 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  return `<div class="kpi"><div><b>${us}</b><small>Игроков</small></div><div><b>${fmt(st.dep)} ★</b><small>Пополнения</small></div>
  <div><b>${fmt(st.bets)} ★</b><small>Оборот ставок</small></div><div><b style="color:${profit>=0?'#3dff8b':'#ff8a8a'}">${fmt(profit)} ★</b><small>Профит проекта</small></div></div>
  ${wd}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
- <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button><button class="btn ghost" style="color:#ff8a8a" onclick="if(confirm('Обнулить баланс и билеты у ВСЕХ игроков и всю статистику? Отменить нельзя.'))adApi('resetall',{}).then(j=>{if(j){toast('Обнулено игроков: '+j.users);adLoad(1)}})">🧹 Обнулить всех</button>`+extra},
+ <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button><button class="btn ghost" style="color:#ff8a8a" onclick="if(confirm('Обнулить баланс и билеты у ВСЕХ игроков и всю статистику? Отменить нельзя.'))adApi('resetall',{}).then(j=>{if(j){toast('Обнулено игроков: '+j.users);adLoad(1)}})">🧹 Обнулить всех</button><button class="btn ghost" onclick="if(confirm('Обнулить турнир (начать новую неделю)?'))adApi('resettour',{}).then(j=>{if(j){S.tour=null;toast('Турнир обнулён')}})">🏆 Обнулить турнир</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]}%</b></div>`).join('')}
  <div class="rng"><span>PvP комиссия</span><input type="range" min="0" max="20" value="${ADM.pvpFee}" oninput="ADM.pvpFee=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.pvpFee}%</b></div></div>
