@@ -5,7 +5,7 @@
 import { Game, GameError } from "./game.js";
 const { DEF_TASKS } = globalThis.STRELA;
 
-const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
+const OWNERS = ["PODONOK_UC_1", "Sdelka_ton"];          // владельцы админки (username без @)
 const SUPPORT = "@PODONOK_UC_1";
 const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
 // TON-кошелёк для пополнений (можно поменять в мини-аппе: Админ → 💎 Оплата)
