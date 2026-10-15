@@ -480,7 +480,8 @@ cases(){sheet(`<h2>Кейсы</h2><div class="cgrid">${CASES().map((c,i)=>caseCa
 free(){const d=FREE('daily'),t=FREE('tick');sheet(`<h2>Бесплатно</h2><div class="cgrid">${caseCard(d,"freeCase('daily')")}${caseCard(t,"freeCase('tick')").replace('бесплатно','🎫 10')}</div>`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:'бесплатно'}</p><div class="roul"><div class="ptr"></div><div class="strip" id="strip"></div></div>
  <div class="row" style="margin-bottom:12px"><button class="btn ghost" onclick="toast('Скоро')">⚙️ Настройки</button><button class="btn ghost" onclick="casePrizes()">🎁 Призы</button></div>
- <button class="btn sand" id="spinBtn" onclick="spinCase()">${c.p?`Крутить за ★ ${fmt(c.p)}`:'Крутить бесплатно'}</button>`},
+ <button class="btn sand" id="spinBtn" onclick="spinCase()">${c.p?`Крутить за ★ ${fmt(c.p)}`:'Крутить бесплатно'}</button>
+ <h2 style="margin:20px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(c)}`},
 upgrade(){const a=S.upA!=null?giftBy(U().inv[S.upA]):null,b=S.upB?giftBy(S.upB):null;
  const ch=a&&b?Math.min(95,a.price/b.price*R('upgrade')*100):0;
  return `<h1>Апгрейд</h1><p class="sub">Преобразуйте свои подарки в более ценные!</p>
@@ -604,13 +605,15 @@ try{const m=localStorage.getItem('strela_ton');if(m&&tg&&tg.initData)setTimeout(
 function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(i===1){$('#dep').innerHTML=`<div class="card" style="text-align:center;margin-top:20px"><h2 style="font-size:20px">Внесите подарок</h2><p class="sub">Затем продайте его за звёзды на баланс или используйте для апгрейда</p><button class="btn" onclick="open_('addgift')">Добавить</button></div>`}else if(i===2){tonOpen()}else{S.stack.pop();open_('deposit')}}
 
 /* кейсы */
-function openCase(i){S.curCase=CASES()[i];closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip()}
+function openCase(i){S.curCase=CASES()[i];closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
+function armSpin(){S.openAt=Date.now();const b=$('#spinBtn');if(b){b.disabled=true;setTimeout(()=>{if(b.isConnected)b.disabled=false},800)}}
 function freeCase(k){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫');U().tick-=10;upd()}else{const l=+(localStorage.getItem('strela_daily')||0);if(Date.now()-l<864e5)return toast('Кейс доступен раз в 24 часа');try{localStorage.setItem('strela_daily',Date.now())}catch(e){}}
  S.curCase=FREE(k);closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 function fillStrip(){const s=$('#strip');if(!s)return;const c=S.curCase,cost=c.p||100;S.items=Array.from({length:60},()=>caseGift(c));s.style.transition='none';s.style.transform='translateX(0)';s.innerHTML=S.items.map(g=>`<div class="cell">${gi(g)}<small><span class="star">★</span> ${fmt(g.price)}</small></div>`).join('')}
-function spinCase(){const c=S.curCase;if(c.p&&!pay(c.p))return;fillStrip();const s=$('#strip');const idx=50,off=idx*106+48-s.parentNode.clientWidth/2+(Math.random()*60-30);requestAnimationFrame(()=>{s.style.transition='transform 5s cubic-bezier(.1,.8,.15,1)';s.style.transform=`translateX(${-off}px)`});const prize=S.items[idx];giveGift(prize);S.spinTok=(S.spinTok||0)+1;const tok=S.spinTok;$('#spinBtn').disabled=true;setTimeout(()=>{const b=$('#spinBtn');if(b&&S.spinTok===tok&&S.stack[S.stack.length-1]==='caseOpen'){winSheet(prize);b.disabled=false}else toast(isStar(prize)?`+${fmt(prize.price)} ★ на балансе`:`${prize.name} — в профиле 🎁`)},5200)}
-function casePrizes(){const c=S.curCase;const D=caseDist(c).filter(([s])=>giftBy(s));const W=D.reduce((a,[,w])=>a+w,0);
- sheet(`<h2>Призы · ${c.n}</h2><div class="inv">${D.map(([s,w])=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small><small style="color:var(--lagoon)">${(w/W*100).toFixed(w/W<.01?2:1)}%</small></div>`}).join('')}</div>`)}
+function spinCase(){const c=S.curCase;if(c.p&&Date.now()-(S.openAt||0)<800)return;if(c.p&&!pay(c.p))return;fillStrip();const s=$('#strip');const idx=50,off=idx*106+48-s.parentNode.clientWidth/2+(Math.random()*60-30);requestAnimationFrame(()=>{s.style.transition='transform 5s cubic-bezier(.1,.8,.15,1)';s.style.transform=`translateX(${-off}px)`});const prize=S.items[idx];giveGift(prize);S.spinTok=(S.spinTok||0)+1;const tok=S.spinTok;$('#spinBtn').disabled=true;setTimeout(()=>{const b=$('#spinBtn');if(b&&S.spinTok===tok&&S.stack[S.stack.length-1]==='caseOpen'){winSheet(prize);b.disabled=false}else toast(isStar(prize)?`+${fmt(prize.price)} ★ на балансе`:`${prize.name} — в профиле 🎁`)},5200)}
+function caseItemsHtml(c){const D=caseDist(c).filter(([s])=>giftBy(s)).sort((a,b)=>giftBy(b[0]).price-giftBy(a[0]).price);const W=D.reduce((a,[,w])=>a+w,0)||1;
+ return `<div class="inv">${D.map(([s,w])=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small><small style="color:var(--lagoon)">${(w/W*100).toFixed(w/W<.01?2:1)}%</small></div>`}).join('')}</div>`}
+function casePrizes(){const c=S.curCase;sheet(`<h2>Призы · ${c.n}</h2>${caseItemsHtml(c)}`)}
 function showPrizes(cost){const P=GIFTS().filter(g=>g.price>=cost*.15&&g.price<=cost*40).sort((a,b)=>b.price-a.price);sheet(`<h2>Призы</h2><div class="inv">${P.map(g=>`<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`).join('')}</div>`)}
 /* апгрейд */
 function pickOwn(){if(!U().inv.length)return toast('Нет подарков');sheet(`<h2>Ваши подарки</h2><div class="inv">${U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case" onclick="S.upA=${i};closeSheet();rerender()">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`}).join('')}</div>`)}
