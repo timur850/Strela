@@ -302,11 +302,11 @@ const isStar=g=>g&&g.slug.startsWith('stars');
 const OWNERS=['PODONOK_UC_1']; // владельцы админки (username без @)
 const OWNER=OWNERS.join(', @');
 const isOwnerName=u=>OWNERS.some(o=>o.toLowerCase()===(u||'').toLowerCase());
-const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,
+const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['tonWallet','tonRate','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -463,8 +463,8 @@ function sellLast(slug){const inv=U().inv;const k=inv.lastIndexOf(slug);if(k<0)r
 function winSheet(g){sheet(`<div class="winbox"><h2>Поздравляем! 🌴</h2>${gi(g)}<h2 style="margin:4px 0">${esc(g.name)}</h2><p class="sub">Стоимость: <span class="star">★</span> ${fmt(g.price)}</p>
  ${isStar(g)?`<p class="sub">Звёзды уже на балансе ✅</p><button class="btn sand" onclick="closeSheet()">Отлично</button>`:`<p class="sub">Подарок уже в вашем профиле ✅</p><div class="row"><button class="btn sand" onclick="closeSheet()">Оставить</button><button class="btn ghost" onclick="sellLast('${g.slug}')">Продать за ★ ${fmt(g.price)}</button></div>`}</div>`)}
 const G={
-deposit(){return `<h1>Пополнение баланса</h1><div class="seg" style="margin:14px 0"><button class="on" onclick="depTab(this,0)">⭐ Звёздами</button><button onclick="depTab(this,1)">🎁 Подарками</button></div>
-  <div id="dep"><div class="big" id="damt">200 <span class="star">★</span></div><p class="sub">≈ 2,6$</p>
+deposit(){return `<h1>Пополнение баланса</h1><div class="seg" style="margin:14px 0"><button class="on" onclick="depTab(this,0)">⭐ Звёзды</button><button onclick="depTab(this,2)">💎 TON</button><button onclick="depTab(this,1)">🎁 Подарки</button></div>
+  <div id="dep"><div class="big" id="damt">${fmt(dAmt)} <span class="star">★</span></div><p class="sub" id="dusd">≈ ${usd(dAmt)}$</p>
   <div class="row" style="margin:30px 0 12px">${[500,2000,5000].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="addAmt(${v})">+ ${fmt(v)}</button>`).join('')}</div>
   <button class="btn sand" onclick="deposit()">Пополнить</button></div>`},
 cases(){sheet(`<h2>Кейсы</h2><div class="cgrid">${CASES().map((c,i)=>caseCard(c,`openCase(${i})`)).join('')}</div>`);return null},
@@ -538,9 +538,61 @@ function doTask(id){const t=ADM.tasks.find(x=>x.id===id);if(!t)return;const u=U(
   setTimeout(()=>{if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')},400);return}
  u.done[id]=1;u.tick+=+t.r||0;upd();toast(`+${t.r} 🎫`);setTab('tasks');navBadge()}
 function navBadge(){const d=(U().done)||{};const n=TASKS().filter(t=>!d[t.id]).length;const b=document.querySelector('.nav .badge');if(b){b.textContent=n;b.style.display=n?'':'none'}}
-let dAmt=200;function addAmt(v){dAmt+=v;$('#damt').innerHTML=fmt(dAmt)+' <span class="star">★</span>'}
-function deposit(){U().bal+=dAmt;ADM.stats.dep+=dAmt;upd();toast(`+${fmt(dAmt)} ★ зачислено`)}
-function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(i===1){$('#dep').innerHTML=`<div class="card" style="text-align:center;margin-top:20px"><h2 style="font-size:20px">Внесите подарок</h2><p class="sub">Затем продайте его за звёзды на баланс или используйте для апгрейда</p><button class="btn" onclick="open_('addgift')">Добавить</button></div>`}else if(i===2){$('#dep').innerHTML=`<div class="big">200 <span class="star">★</span></div><p class="sub">≈ 1,88 TON (-10%)</p><button class="btn" style="margin-top:40px" onclick="toast('TON Connect…')">💎 Подключить кошелёк</button>`}else{S.stack.pop();open_('deposit')}}
+/* ================== ПОПОЛНЕНИЕ: ЗВЁЗДЫ (настоящий счёт Telegram) ================== */
+let dAmt=200;const usd=n=>(n*0.013).toFixed(1).replace('.',',');
+function addAmt(v){dAmt=Math.min(10000,dAmt+v);$('#damt').innerHTML=fmt(dAmt)+' <span class="star">★</span>';const u=$('#dusd');if(u)u.textContent='≈ '+usd(dAmt)+'$'}
+function credit(a,src){a=Math.round(a);if(!(a>0))return;U().bal+=a;ADM.stats.dep+=a;upd();toast(`+${fmt(a)} ★ зачислено (${src})`);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}
+const API=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:tg&&tg.initData},b))}).then(r=>r.json());
+let depBusy=false;
+async function deposit(){
+ if(!(tg&&tg.initData&&tg.openInvoice))return toast('Открой игру через бота в Telegram');
+ if(depBusy)return;depBusy=true;
+ try{const j=await API('api/stars/invoice',{amount:dAmt});
+  if(!j.ok){depBusy=false;return toast(j.err||'Не удалось создать счёт')}
+  tg.openInvoice(j.link,st=>{depBusy=false;
+   if(st==='paid'){toast('Оплачено, зачисляем…');claimStars(j.payload,0)}
+   else if(st==='failed')toast('Оплата не прошла');})
+ }catch(e){depBusy=false;toast('Нет связи с сервером')}}
+function claimStars(payload,n){API('api/stars/claim',{payload}).then(j=>{
+  if(j.ok)credit(j.a,'Stars');else if(j.wait&&n<30)setTimeout(()=>claimStars(payload,n+1),1500);else if(j.err)toast(j.err)}).catch(()=>n<30&&setTimeout(()=>claimStars(payload,n+1),2000))}
+
+/* ================== ПОПОЛНЕНИЕ: TON (TON Connect → твой кошелёк) ================== */
+const TON={info:null,ui:null,amt:1};
+function tonInfo(){return TON.info?Promise.resolve(TON.info):fetch('api/ton/info',{cache:'no-store'}).then(r=>r.json()).then(j=>TON.info=j)}
+function tonUI(){if(TON.ui)return Promise.resolve(TON.ui);return new Promise((ok,no)=>{const sc=document.createElement('script');
+ sc.src='https://unpkg.com/@tonconnect/ui@2/dist/tonconnect-ui.min.js';sc.onerror=()=>no(new Error('TON Connect не загрузился'));
+ sc.onload=()=>{try{TON.ui=new TON_CONNECT_UI.TonConnectUI({manifestUrl:location.origin+'/tonconnect-manifest.json'});
+  TON.ui.uiOptions={twaReturnUrl:'https://t.me/StrelaCaseBot'};TON.ui.onStatusChange(()=>{if($('#tonBox'))tonRender()});ok(TON.ui)}catch(e){no(e)}};document.head.appendChild(sc)})}
+/* комментарий к переводу → BOC (одна ячейка: op=0 + текст), с CRC32C */
+function crc32c(b){let c=~0;for(const x of b){c^=x;for(let k=0;k<8;k++)c=c&1?(c>>>1)^0x82F63B78:c>>>1}return ~c>>>0}
+function commentBoc(t){const d=[0,0,0,0,...new TextEncoder().encode(t)];if(d.length>127)throw new Error('long');
+ const cell=[0,d.length*2,...d];const b=[0xb5,0xee,0x9c,0x72,0x41,1,1,1,0,cell.length,0,...cell];const c=crc32c(b);
+ b.push(c&255,c>>>8&255,c>>>16&255,c>>>24&255);return btoa(String.fromCharCode(...b))}
+function tonRender(){const box=$('#tonBox');if(!box)return;const i=TON.info||{rate:150,wallet:''};const w=TON.ui&&TON.ui.wallet;
+ box.innerHTML=`<div class="card" style="text-align:center"><div class="row" style="align-items:center;justify-content:center;gap:8px">
+  <input id="tonAmt" type="number" min="0.1" step="0.1" value="${TON.amt}" oninput="TON.amt=+this.value||0;$('#tonSt').textContent=fmt(Math.floor(TON.amt*${i.rate}))" style="width:110px;background:none;border:0;color:#fff;font:900 40px Nunito,sans-serif;text-align:right"><span style="font:900 30px Nunito,sans-serif">TON</span></div>
+  <p class="sub">≈ <b id="tonSt">${fmt(Math.floor(TON.amt*i.rate))}</b> <span class="star">★</span> · 1 TON = ${i.rate} ★</p>
+  <div class="row" style="margin:14px 0">${[1,5,10].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="TON.amt=${v};tonRender()">${v} TON</button>`).join('')}</div>
+  ${w?`<p class="sub" style="margin-bottom:10px">Кошелёк: ${esc(TON_CONNECT_UI.toUserFriendlyAddress?TON_CONNECT_UI.toUserFriendlyAddress(w.account.address).slice(0,6)+'…'+TON_CONNECT_UI.toUserFriendlyAddress(w.account.address).slice(-4):'подключён')} · <a style="color:var(--sun)" onclick="TON.ui.disconnect()">отключить</a></p>
+  <button class="btn sand" onclick="tonPay()">💎 Оплатить ${TON.amt} TON</button>`
+  :`<button class="btn sand" onclick="tonConnect()">💎 Подключить кошелёк</button>`}</div>`}
+async function tonOpen(){$('#dep').innerHTML='<div id="tonBox"><div class="card"><p class="sub" style="text-align:center">Загрузка…</p></div></div>';
+ try{await tonInfo();await tonUI();if(TON.ui.connectionRestored)await TON.ui.connectionRestored}catch(e){}tonRender()}
+async function tonConnect(){try{await tonUI();await TON.ui.openModal()}catch(e){toast(e.message||'Ошибка TON Connect')}}
+async function tonPay(){const i=await tonInfo();
+ if(!/^[UEk0]Q[A-Za-z0-9_-]{46}$/.test(i.wallet||''))return toast('Кошелёк для оплаты ещё не настроен (Админ → 💎 Оплата)');
+ if(!(TON.amt>=0.1))return toast('Минимум 0.1 TON');
+ if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');
+ const memo='S'+ME.id+'-'+Date.now().toString(36);
+ try{await TON.ui.sendTransaction({validUntil:Math.floor(Date.now()/1e3)+600,messages:[{address:i.wallet,amount:String(Math.round(TON.amt*1e9)),payload:commentBoc(memo)}]});
+  try{localStorage.setItem('strela_ton',memo)}catch(_){}toast('Перевод отправлен, ждём подтверждения сети…');checkTon(memo,0)}
+ catch(e){toast('Платёж отменён')}}
+function checkTon(memo,n){API('api/ton/check',{memo}).then(j=>{
+  if(j.ok){try{localStorage.removeItem('strela_ton')}catch(_){}credit(j.a,j.ton+' TON')}
+  else if(j.wait&&n<60)setTimeout(()=>checkTon(memo,n+1),5000);
+  else{try{localStorage.removeItem('strela_ton')}catch(_){}if(j.err)toast(j.err);else toast('TON не найден — напиши в поддержку')}}).catch(()=>n<60&&setTimeout(()=>checkTon(memo,n+1),5000))}
+try{const m=localStorage.getItem('strela_ton');if(m&&tg&&tg.initData)setTimeout(()=>checkTon(m,0),1500)}catch(_){}
+function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(i===1){$('#dep').innerHTML=`<div class="card" style="text-align:center;margin-top:20px"><h2 style="font-size:20px">Внесите подарок</h2><p class="sub">Затем продайте его за звёзды на баланс или используйте для апгрейда</p><button class="btn" onclick="open_('addgift')">Добавить</button></div>`}else if(i===2){tonOpen()}else{S.stack.pop();open_('deposit')}}
 
 /* кейсы */
 function openCase(i){S.curCase=CASES()[i];closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip()}
@@ -618,11 +670,17 @@ S.adTab='stats';
 const GNAMES={cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
-  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки']];
+  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки']];
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
   <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
 const AD={
+pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
+ <p class="sub" style="text-align:left">Все TON от игроков приходят сюда. Звёзды зачисляются автоматически, когда перевод виден в сети.</p>
+ <div class="field"><input id="pW" placeholder="UQ… адрес кошелька" value="${esc(ADM.tonWallet||'')}"></div>
+ <div class="field"><input id="pR" type="number" placeholder="★ за 1 TON" value="${ADM.tonRate||150}"><span class="sub" style="align-self:center">★ за 1 TON</span></div>
+ <button class="btn sand" onclick="paySave()">Сохранить</button></div>
+ <div class="card"><div class="ad-h">⭐ Звёзды</div><p class="sub" style="text-align:left">Оплата звёздами идёт через счёт Telegram прямо в бота. Звёзды копятся на балансе бота: @BotFather → бот → Bot Settings → Balance (вывод через Fragment).</p></div>`},
 tasks(){return `<div class="card"><div class="ad-h">📜 Задания <small style="background:var(--sea)">${ADM.tasks.length}</small></div><p class="sub" style="text-align:left;margin:0">Что делать игроку, куда вести и сколько билетов давать. Изменения сохраняются сразу.</p></div>
  ${ADM.tasks.map((t,i)=>`<div class="card" style="opacity:${t.on?1:.55}">
   <div class="field"><input value="${esc(t.e)}" style="max-width:56px;text-align:center;font-size:20px" oninput="ADM.tasks[${i}].e=this.value;saveAdm()"><input value="${esc(t.t)}" placeholder="Название задания" oninput="ADM.tasks[${i}].t=this.value;saveAdm()"></div>
@@ -716,6 +774,9 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
+function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);
+ if(w&&!/^[UEk0]Q[A-Za-z0-9_-]{46}$/.test(w))return toast('Это не похоже на адрес TON');if(!(r>0))return toast('Укажите курс');
+ ADM.tonWallet=w;ADM.tonRate=r;TON.info=null;saveAdm();setTab('admin')}
 function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.filter(([s,w])=>giftBy(s)&&w>0);if(!L.length)return toast('Добавьте хотя бы 1 подарок с весом > 0');
  cfg.items=L.map(x=>[x[0],x[1]]);cfg.cover=$('#ceC').value;if(!c.free){cfg.p=Math.max(1,Math.round(+$('#ceP').value||c.p));cfg.lim=$('#ceL').classList.contains('on');cfg.hidden=$('#ceH').classList.contains('on')}
  saveAdm();closeSheet();setTab('admin');toast('Кейс сохранён ✅')}

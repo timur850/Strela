@@ -5,6 +5,11 @@
 const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
 const SUPPORT = "@PODONOK_UC_1";
 const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
+// TON-кошелёк для пополнений (можно поменять в мини-аппе: Админ → 💎 Оплата)
+const TON_WALLET = "ВСТАВЬ_СЮДА_АДРЕС_TON_КОШЕЛЬКА";
+const TON_STARS = 150;                 // сколько ★ даём за 1 TON (тоже меняется в админке)
+const UPDATES = ["message", "pre_checkout_query"];
+const hookBad = (r, origin) => r.url !== origin + "/webhook" || !(r.allowed_updates || []).includes("pre_checkout_query");
 const BUTTON_TEXT = "🏝 Играть";
 const WELCOME = "🏹 <b>STRELA CASE</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
 
@@ -54,13 +59,30 @@ async function loadSettings(env) { try { return JSON.parse(await (await store(en
 
 async function setupBot(env, origin, hookKey, dropPending) {
   await store(env).fetch("https://s/origin", { method: "POST", body: origin });
-  const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: !!dropPending, allowed_updates: ["message"] });
+  const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: !!dropPending, allowed_updates: UPDATES });
   const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
   await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
   return { a, b };
 }
 
+const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
+const putKey = (env, k, v) => store(env).fetch("https://s/" + k, { method: "POST", body: typeof v === "string" ? v : JSON.stringify(v) });
+
 async function handleUpdate(env, origin, upd) {
+  // оплата звёздами: Telegram спрашивает «можно?» — отвечаем да (иначе платёж не пройдёт)
+  if (upd.pre_checkout_query) {
+    const q = upd.pre_checkout_query, ok = String(q.invoice_payload || "").startsWith("dep:");
+    await tg(env, "answerPreCheckoutQuery", ok ? { pre_checkout_query_id: q.id, ok: true }
+      : { pre_checkout_query_id: q.id, ok: false, error_message: "Платёж устарел, попробуй ещё раз" });
+    return;
+  }
+  const sp = upd.message && upd.message.successful_payment;
+  if (sp && sp.currency === "XTR" && String(sp.invoice_payload).startsWith("dep:")) {
+    const uid = String(upd.message.from.id), puid = sp.invoice_payload.split(":")[1];
+    if (puid === uid && !(await getKey(env, "pay:" + sp.invoice_payload)))
+      await putKey(env, "pay:" + sp.invoice_payload, { uid, a: sp.total_amount, charge: sp.telegram_payment_charge_id, claimed: false, t: Date.now() });
+    return;
+  }
   const msg = upd.message; if (!msg || !msg.text) return;
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const kb = { inline_keyboard: [[{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }],
@@ -91,7 +113,7 @@ export default {
     const origin = (await (await store(env).fetch("https://s/origin")).text()) || DEFAULT_ORIGIN;
     if (!origin) return;
     const w = await tg(env, "getWebhookInfo", {});
-    if (w.ok && w.result.url !== origin + "/webhook") {
+    if (w.ok && hookBad(w.result, origin)) {
       const hookKey = (await sha256hex("hook:" + env.BOT_TOKEN)).slice(0, 32);
       await setupBot(env, origin, hookKey, false);
       console.log("webhook restored");
@@ -120,10 +142,10 @@ export default {
     // диагностика: куда Telegram шлёт апдейты и последняя ошибка
     if (path === "/status") {
       let w = await tg(env, "getWebhookInfo", {}), repaired = false;
-      if (w.ok && w.result.url !== origin + "/webhook") { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
+      if (w.ok && hookBad(w.result, origin)) { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
       const r = w.result || {};
       const me = await tg(env, "getMe", {});
-      const out = { version: "v6", token_ok: !!me.ok, telegram_error: me.ok ? null : (env.BOT_TOKEN ? me.error_code + " " + me.description : "BOT_TOKEN не задан — добавь его как Secret"), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+      const out = { version: "v7", token_ok: !!me.ok, telegram_error: me.ok ? null : (env.BOT_TOKEN ? me.error_code + " " + me.description : "BOT_TOKEN не задан — добавь его как Secret"), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
         last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
       return json(out);
     }
@@ -151,6 +173,59 @@ export default {
         await store(env).fetch("https://s/", { method: "POST", body });
         return json({ ok: true });
       }
+    }
+
+    // манифест для TON Connect
+    if (path === "/tonconnect-manifest.json")
+      return new Response(JSON.stringify({ url: origin, name: "STRELA CASE", iconUrl: "https://telegram.org/img/t_logo.png" }),
+        { headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
+
+    // ===== ПОПОЛНЕНИЕ ЗВЁЗДАМИ =====
+    if (path === "/api/stars/invoice" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
+      const a = Math.round(Number(d.amount));
+      if (!(a >= 1 && a <= 10000)) return json({ ok: false, err: "От 1 до 10 000 ★ за раз" }, 400);
+      const payload = `dep:${u.id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+      const r = await tg(env, "createInvoiceLink", { title: `Пополнение ${a} ⭐`, description: "Звёзды на баланс STRELA CASE",
+        payload, currency: "XTR", prices: [{ label: `${a} ⭐`, amount: a }] });
+      if (!r.ok) return json({ ok: false, err: r.description || "Telegram не создал счёт" });
+      return json({ ok: true, link: r.result, payload });
+    }
+    if (path === "/api/stars/claim" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false }, 403);
+      const key = "pay:" + String(d.payload || ""), raw = await getKey(env, key);
+      if (!raw) return json({ ok: false, wait: true });
+      const p = JSON.parse(raw);
+      if (p.uid !== String(u.id)) return json({ ok: false }, 403);
+      if (p.claimed) return json({ ok: false, err: "Уже зачислено" });
+      p.claimed = true; await putKey(env, key, p);
+      return json({ ok: true, a: p.a });
+    }
+
+    // ===== ПОПОЛНЕНИЕ TON =====
+    if (path === "/api/ton/info") {
+      const st = await loadSettings(env);
+      return json({ wallet: (st.tonWallet || TON_WALLET).trim(), rate: Number(st.tonRate) || TON_STARS });
+    }
+    if (path === "/api/ton/check" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false }, 403);
+      const memo = String(d.memo || "");
+      if (!memo.startsWith(`S${u.id}-`) || memo.length > 60) return json({ ok: false }, 400);
+      if (await getKey(env, "ton:" + memo)) return json({ ok: false, err: "Уже зачислено" });
+      const st = await loadSettings(env), wallet = (st.tonWallet || TON_WALLET).trim(), rate = Number(st.tonRate) || TON_STARS;
+      const r = await fetch(`https://toncenter.com/api/v2/getTransactions?address=${encodeURIComponent(wallet)}&limit=40&archival=true`).then(x => x.json()).catch(() => null);
+      if (!r || !r.ok) return json({ ok: false, wait: true });
+      const tx = r.result.find(t => t.in_msg && t.in_msg.message === memo && Number(t.in_msg.value) > 0);
+      if (!tx) return json({ ok: false, wait: true });
+      const ton = Number(tx.in_msg.value) / 1e9, a = Math.floor(ton * rate);
+      await putKey(env, "ton:" + memo, { uid: String(u.id), ton, a, hash: tx.transaction_id && tx.transaction_id.hash, t: Date.now() });
+      return json({ ok: true, a, ton });
     }
 
     // лента выигрышей: кто что выиграл
