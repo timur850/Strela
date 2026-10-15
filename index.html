@@ -494,9 +494,15 @@ plinko(){return `<canvas id="pc" width="400" height="380"></canvas>
  <div class="seg" style="margin:12px 0"><button class="on" onclick="pRisk(this,0)">Легко</button><button onclick="pRisk(this,1)">Средне</button><button onclick="pRisk(this,2)">Сложно</button></div>
  <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="pbet" type="number" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="pbet.value=+pbet.value+100">+100</button><button class="btn ghost sm" onclick="pbet.value=+pbet.value+500">+500</button></div></div>
  <button class="btn sand" onclick="dropBall()">Отправить</button>`},
-contracts(){return `<h1>Контракты</h1><div class="card steps" style="margin-top:14px"><p class="sub" style="margin-top:0">Как все работает</p>
- ${[['Выберите несколько своих подарков','Чем больше подарков, тем выше суммарная стоимость'],['Выберите режим контракта','Чем рискованнее режим, тем выше возможный множитель'],['Суммарная стоимость подарков определяет диапазон выигрыша',''],['Создайте контракт и получите один подарок из диапазона','']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
- <button class="btn sand" onclick="contract()">${U().inv.length>=2?`Создать контракт (${U().inv.length} подарков)`:'Нужно минимум 2 подарка'}</button>`},
+contracts(){const inv=U().inv;S.ctSel=(S.ctSel||[]).filter(i=>i<inv.length);const sel=S.ctSel,sum=sel.reduce((t,i)=>t+((giftBy(inv[i])||{}).price||0),0);
+ const pool=sum?GIFTS().filter(g=>(isStar(g)?g.price<sum:g.price>=sum*.15)&&g.price<=sum*40):[];const lo=pool.length?Math.min(...pool.map(g=>g.price)):0,hi=pool.length?Math.max(...pool.map(g=>g.price)):0;
+ return `<h1>Контракты</h1><p class="sub">Выбери свои подарки — получишь один случайный подарок из диапазона их общей стоимости</p>
+ ${inv.length?`<div class="row" style="align-items:center;margin:12px 0 8px"><b style="flex:1">Выбрано: ${sel.length} · <span class="star">★</span> ${fmt(sum)}</b>
+  <button class="btn sm ghost" onclick="S.ctSel=${sel.length===inv.length?'[]':'U().inv.map((_,i)=>i)'};rerender()">${sel.length===inv.length?'Сбросить':'Все'}</button></div>
+  <div class="inv">${inv.map((s,i)=>{const g=giftBy(s);if(!g)return'';const on=sel.includes(i);return `<div class="case" style="${on?'border-color:var(--sun);box-shadow:0 0 0 2px var(--sun) inset;background:rgba(255,210,63,.18)':''}" onclick="ctToggle(${i})">${on?'<span style="position:absolute;top:6px;right:8px;font-size:16px">✅</span>':''}${gi(g)}<small>${esc(g.name)}</small><small class="star">★ ${fmt(g.price)}</small></div>`}).join('')}</div>
+  ${sel.length>=2?`<div class="card" style="margin-top:12px;text-align:center"><p class="sub" style="margin:0">Можно получить подарок от <span class="star">★</span> ${fmt(lo)} до <span class="star">★</span> ${fmt(hi)}</p><button class="btn sm ghost" style="margin-top:8px" onclick="showPrizes(${sum})">🎁 Возможные призы</button></div>`:''}
+  <button class="btn sand" style="margin-top:12px" ${sel.length<2?'disabled':''} onclick="contract()">${sel.length>=2?`Создать контракт (${sel.length} подарков)`:'Выбери минимум 2 подарка'}</button>`
+ :`<div class="card"><div class="empty">У вас пока нет подарков<br><br><button class="btn sm ghost" onclick="goBack();open_('cases')">Открыть кейсы</button></div></div>`}`},
 eggs(){const e=EGGS;
  sheet(`<h2>Яйца</h2><div class="cgrid">${e.map(([s,n,p])=>`<div class="case" onclick="eggOpen(${p})">${gi(giftBy(s))}<div class="f"><span>${n}</span><span><span class="star">★</span> ${p}</span></div></div>`).join('')}</div>`);return null},
 egg(){return `<div class="egg" id="egg" onclick="crack()">🥥</div><p class="sub">Разбей кокос и получи подарок!</p>
@@ -630,8 +636,9 @@ function doUpgrade(){const s=U().inv[S.upA],b=giftBy(S.upB);if(!s||!b||S.upSpin)
   const fin=()=>{S.upSpin=0;S.upA=null;S.upB=null;toast(j.won?`Успех! ${b.name} 🎉`:'Не повезло 🌊');if(j.won)loadFeed();if(S.stack[S.stack.length-1]==='upgrade')rerender()};
   const n=$('#upNeedle');if(!n)return fin();n.offsetWidth;n.style.transition='transform 4s cubic-bezier(.12,.8,.18,1)';n.style.transform=`rotate(${360*5+j.roll*3.6}deg)`;
   setTimeout(()=>{const w=$('#upWheel');if(w)w.classList.add(j.won?'win':'lose');try{tg&&tg.HapticFeedback.notificationOccurred(j.won?'success':'error')}catch(_){}setTimeout(fin,1500)},4100)})}
-function contract(){if(U().inv.length<2)return toast('Нужно минимум 2 подарка');
- srv('contract',{},{lock:1}).then(j=>{if(!j)return;if(S.stack[S.stack.length-1]==='contracts')rerender();winSheet(giftBy(j.prize))})}
+function ctToggle(i){S.ctSel=S.ctSel||[];const k=S.ctSel.indexOf(i);k<0?S.ctSel.push(i):S.ctSel.splice(k,1);const y=view.scrollTop;rerender();view.scrollTop=y}
+function contract(){const inv=U().inv,items=(S.ctSel||[]).filter(i=>i<inv.length).map(i=>inv[i]);if(items.length<2)return toast('Выбери минимум 2 подарка');
+ srv('contract',{items},{lock:1}).then(j=>{if(!j)return;S.ctSel=[];if(S.stack[S.stack.length-1]==='contracts')rerender();winSheet(giftBy(j.prize));loadFeed()})}
 /* краш */
 let C={st:'idle'};
 function crashIdle(){C={st:'idle',bet:C.bet,srv:C.srv};C.runAt=Date.now()+5000;let n=5;const f=()=>{const m=$('#cm');if(!m)return;if(n>0)m.textContent=n--;else{clearInterval(t);crashRun()}};const t=setInterval(f,1000);timers.push(t);f()}

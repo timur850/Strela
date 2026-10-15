@@ -165,11 +165,14 @@ export class Game {
   }
 
   // ---- контракты ----
-  async op_contract(u, uid) {
-    const L = this.L;
-    if (u.inv.length < 2) fail("Нужно минимум 2 подарка");
-    const sum = u.inv.reduce((s, x) => s + ((L.giftBy(x) || {}).price || 0), 0);
-    u.inv = []; await this.stat("bets", sum);
+  async op_contract(u, uid, d) {
+    const L = this.L, items = Array.isArray(d.items) ? d.items.map(String) : [];
+    if (items.length < 2) fail("Выбери минимум 2 подарка");
+    if (items.length > 30) fail("Максимум 30 подарков за раз");
+    const inv = [...u.inv];
+    for (const s of items) { const k = inv.indexOf(s); if (k < 0) fail("Подарок не найден, обнови страницу"); inv.splice(k, 1); }
+    const sum = items.reduce((s, x) => s + ((L.giftBy(x) || {}).price || 0), 0);
+    u.inv = inv; await this.stat("bets", sum);
     const g = L.pickGift(sum, L.R("upgrade"));
     await this.giveGift(u, uid, g, GAME_NAMES.contract);
     return { prize: g.slug };
