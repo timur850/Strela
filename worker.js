@@ -84,6 +84,8 @@ async function handleUpdate(env, origin, upd) {
     return;
   }
   const msg = upd.message; if (!msg || !msg.text) return;
+  // запоминаем чат владельца, чтобы присылать ему заявки на вывод
+  if (msg.from && isOwner(msg.from.username) && msg.chat.type === "private") await putKey(env, "ownerchat:" + msg.from.username.toLowerCase(), String(msg.chat.id));
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const kb = { inline_keyboard: [[{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }],
     [{ text: "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
@@ -226,6 +228,34 @@ export default {
       const ton = Number(tx.in_msg.value) / 1e9, a = Math.floor(ton * rate);
       await putKey(env, "ton:" + memo, { uid: String(u.id), ton, a, hash: tx.transaction_id && tx.transaction_id.hash, t: Date.now() });
       return json({ ok: true, a, ton });
+    }
+
+    // ===== ЗАЯВКА НА ВЫВОД ПОДАРКА → сообщение владельцу =====
+    if (path === "/api/withdraw" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
+      const st = await loadSettings(env);
+      if ((st.banned || []).map(String).includes(String(u.id))) return json({ ok: false, err: "Аккаунт заблокирован" }, 403);
+      const last = Number(await getKey(env, "wd:" + u.id)) || 0;
+      if (Date.now() - last < 10000) return json({ ok: false, err: "Подожди пару секунд" });
+      await putKey(env, "wd:" + u.id, String(Date.now()));
+      const e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const slug = String(d.slug || "").replace(/[^a-z0-9_]/gi, "").slice(0, 40);
+      const who = u.username ? "@" + u.username : e([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
+      const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(String(d.name || slug).slice(0, 60))}</b>\n⭐ Цена: ${Math.round(Number(d.price)) || 0} ★\n` +
+        `👤 Игрок: ${who}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
+        (slug && !slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${slug}` : "");
+      const kb = { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] };
+      let sent = 0;
+      for (const o of OWNERS) {
+        const chat = await getKey(env, "ownerchat:" + o.toLowerCase());
+        if (!chat) continue;
+        const r = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true });
+        if (r.ok) sent++;
+      }
+      if (!sent) return json({ ok: false, err: "Вывод временно недоступен, напиши в поддержку " + SUPPORT });
+      return json({ ok: true });
     }
 
     // лента выигрышей: кто что выиграл
