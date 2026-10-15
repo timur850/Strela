@@ -178,20 +178,41 @@ export class Game {
     return { prize: g.slug };
   }
 
-  // ---- краш ----
-  // У игрока со ставкой точка краша известна только серверу; клиент спрашивает «упало?» через crash_peek.
+  // ---- краш: один общий раунд для всех («онлайн») ----
+  // Точку краша знает только сервер; игроки узнают её, когда раунд закончился.
+  crashEnd(r) { return r.start + Math.log(r.at) / CRASH_K * 1000; }
+  async crashRound() {
+    const now = Date.now(); let r = await this.s.get("crash:cur");
+    if (!r || now >= this.crashEnd(r) + 3000) {                  // 3 секунды паузы после краша
+      if (r) { const h = (await this.s.get("crash:hist")) || []; h.unshift(r.at); await this.s.put("crash:hist", h.slice(0, 20)); }
+      r = { id: now.toString(36) + randInt(1e4).toString(36), start: now + 6000, at: this.L.crashPoint(), players: [] };   // 6 секунд на ставки
+      await this.s.put("crash:cur", r);
+    }
+    return r;
+  }
+  async op_crash_state(u, uid) {
+    const r = await this.crashRound(), now = Date.now(), done = now >= this.crashEnd(r);
+    const g = await this.s.get("g:crash:" + uid);
+    const my = g && g.id === r.id ? { bet: g.bet } : null;
+    const meP = r.players.find(p => p.id === uid);
+    return { id: r.id, now, start: r.start, crashed: done ? r.at : null, hist: (await this.s.get("crash:hist")) || [],
+      players: r.players.slice(-30).reverse().map(p => ({ n: p.n, v: p.v, m: p.m || 0, me: p.id === uid ? 1 : 0 })),
+      my: my || (meP ? { bet: meP.v, out: meP.m || 0 } : null) };
+  }
   async op_crash_bet(u, uid, d) {
-    const k = "g:crash:" + uid, cur = await this.s.get(k), now = Date.now();
-    if (cur && now < cur.t0 + Math.log(cur.at) / CRASH_K * 1000 + 500) fail("Ставка уже сделана");
+    if ((this.st.off || {}).crash) fail("Игра выключена");
+    const r = await this.crashRound(), now = Date.now();
+    if (now > r.start - 300) fail("Ставки на этот раунд закрыты — подожди следующий");
+    if (r.players.some(p => p.id === uid)) fail("Ставка уже сделана");
     const v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
-    const delay = Math.max(0, Math.min(6000, Math.round(+d.delay || 0)));
-    await this.s.put(k, { bet: v, t0: now + delay, at: this.L.crashPoint() });
-    return { t0: now + delay, now };
+    await this.s.put("g:crash:" + uid, { id: r.id, bet: v, t0: r.start, at: r.at });
+    r.players.push({ id: uid, n: u.name, v }); await this.s.put("crash:cur", r);
+    return { id: r.id };
   }
   async op_crash_cash(u, uid, d) {
-    const k = "g:crash:" + uid, g = await this.s.get(k), now = Date.now();
-    if (!g) fail("Нет активной ставки");
+    const k = "g:crash:" + uid, g = await this.s.get(k), r = await this.s.get("crash:cur"), now = Date.now();
+    if (!g || !r || g.id !== r.id) fail("Нет активной ставки");
     if (now < g.t0) fail("Раунд ещё не начался");
     const m = this.L.crashMult((now - g.t0) / 1000);
     await this.s.delete(k);
@@ -199,14 +220,8 @@ export class Game {
     const shown = Number(d.m);
     const x = Math.max(1, shown >= 1 && shown < m ? shown : m);
     await this.payout(u, uid, g.bet * x, GAME_NAMES.crash);
+    const p = r.players.find(p => p.id === uid); if (p) { p.m = +x.toFixed(2); await this.s.put("crash:cur", r); }
     return { crashed: false, m: x, win: Math.round(g.bet * x) };
-  }
-  async op_crash_peek(u, uid) {
-    const k = "g:crash:" + uid, g = await this.s.get(k), now = Date.now();
-    if (!g) return { crashed: true, gone: true };
-    const end = g.t0 + Math.log(g.at) / CRASH_K * 1000;
-    if (now >= end) { await this.s.delete(k); return { crashed: true, at: g.at }; }
-    return { crashed: false };
   }
 
   // ---- мины ----

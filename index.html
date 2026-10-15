@@ -481,9 +481,10 @@ upgrade(){const a=S.upA!=null?giftBy(U().inv[S.upA]):null,b=S.upB?giftBy(S.upB):
  <div class="card" style="text-align:center"><p class="sub" style="margin:0 0 10px">Ваши подарки</p><div class="up-slot" onclick="pickOwn()">${a?gi(a):'⊕<br>Добавить'}</div>${a?`<small>${a.name} · ★ ${fmt(a.price)}</small>`:''}</div>
  <div class="card" style="text-align:center"><p class="sub" style="margin:0 0 10px">Желаемый подарок</p><div class="up-slot" onclick="pickTarget()">${b?gi(b):'⊕<br>Выбрать'}</div>${b?`<small>${b.name} · ★ ${fmt(b.price)}</small>`:''}</div>
  ${a&&b?`<div class="upw" id="upWheel" style="background:conic-gradient(#22c55e 0 ${ch}%,#ff5a5f ${ch}% 100%)"><div class="needle" id="upNeedle"></div><div class="hubc"><div>${ch.toFixed(1)}%<small>шанс</small></div></div></div><p class="sub">🟢 зелёное — выигрыш · 🔴 красное — проигрыш</p><button class="btn sand" id="upBtn" onclick="doUpgrade()">Апгрейд</button>`:`<button class="btn" onclick="${U().inv.length?'pickOwn()':"open_('cases')"}">${U().inv.length?'Выбрать свой подарок':'Сначала выиграйте подарок в кейсах'}</button>`}`},
-crash(){return `<div class="crash-box"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path id="cpath" fill="none" stroke="#ffd23f" stroke-width="1.2"/></svg><div class="mult" id="cm">Ожидание</div><div class="surfer" id="surf">🏄</div><div class="sea"></div></div>
- <div class="chips" id="hist">${['x1.23','x128.22','x1.01','x2.50','x1.67','x3.40','x1.12'].map(x=>{const v=parseFloat(x.slice(1));return `<span class="chip ${v>10?'r':v>2?'b':''}">${x}</span>`}).join('')}</div>
+crash(){return `<div class="crash-box"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path id="cpath" fill="none" stroke="#ffd23f" stroke-width="1.2"/></svg><div class="mult" id="cm">…</div><div class="surfer" id="surf">🏄</div><div class="sea"></div></div>
+ <div class="chips" id="hist"></div>
  <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="cbet" type="number" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="cbet.value=+cbet.value+100">+100</button><button class="btn ghost sm" onclick="cbet.value=+cbet.value+500">+500</button></div></div>
+ <p class="sub" style="margin:0 0 8px">Общий раунд для всех игроков · ставки за 6 секунд до старта</p>
  <div class="card list" id="cbets"><div class="empty">Ставок еще нет</div></div>
  <button class="btn sand" id="cbtn" onclick="crashAct()">Сделать ставку</button>`},
 mines(){return `<div class="mgrid" id="mg"></div>
@@ -534,7 +535,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setTab(b.datas
 if(IS_ADMIN)document.querySelector('.nav .adm').classList.add('vis');
 function sheet(h){$('#sheet').innerHTML='<button class="x" onclick="closeSheet()">✕</button>'+h;$('#sheetBg').classList.add('show')}
 function closeSheet(){$('#sheetBg').classList.remove('show')}
-function init(id){({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashIdle,pvp:pvpInit})[id]?.()}
+function init(id){({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashInit,pvp:pvpInit})[id]?.()}
 let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelAnimationFrame(S.raf)}
 
 function tick(){const end=Date.now()+5*864e5+11*36e5+28*6e4+54e3;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
@@ -639,28 +640,46 @@ function doUpgrade(){const s=U().inv[S.upA],b=giftBy(S.upB);if(!s||!b||S.upSpin)
 function ctToggle(i){S.ctSel=S.ctSel||[];const k=S.ctSel.indexOf(i);k<0?S.ctSel.push(i):S.ctSel.splice(k,1);const y=view.scrollTop;rerender();view.scrollTop=y}
 function contract(){const inv=U().inv,items=(S.ctSel||[]).filter(i=>i<inv.length).map(i=>inv[i]);if(items.length<2)return toast('Выбери минимум 2 подарка');
  srv('contract',{items},{lock:1}).then(j=>{if(!j)return;S.ctSel=[];if(S.stack[S.stack.length-1]==='contracts')rerender();winSheet(giftBy(j.prize));loadFeed()})}
-/* краш */
-let C={st:'idle'};
-function crashIdle(){C={st:'idle',bet:C.bet,srv:C.srv};C.runAt=Date.now()+5000;let n=5;const f=()=>{const m=$('#cm');if(!m)return;if(n>0)m.textContent=n--;else{clearInterval(t);crashRun()}};const t=setInterval(f,1000);timers.push(t);f()}
-function crashRun(){C.st='run';C.t0=performance.now();C.crashAt=C.bet?Infinity:LG.crashPoint();if(C.bet)crashPoll();const pts=[];
- const step=now=>{const t=(now-C.t0)/1000,m=Math.pow(Math.E,.12*t);const el=$('#cm');if(!el)return;
-  if(m>=C.crashAt){el.textContent='x'+C.crashAt.toFixed(2);el.style.color='#ff5a5f';$('#surf').textContent='🌊';if(C.bet&&!C.out)toast('Волна накрыла 🌊');clearInterval(C.poll);C.bet=0;C.out=0;C.st='end';setBtn();addHist(C.crashAt);setTimeout(()=>{if(!$('#cm'))return;el.style.color='';$('#surf').textContent='🏄';$('#cpath').setAttribute('d','');crashIdle()},2500);return}
-  el.textContent='x'+m.toFixed(2);const x=Math.min(85,10+t*7),y=Math.max(10,85-(m-1)*22);pts.push(`${x},${y}`);$('#cpath').setAttribute('d','M'+pts.join(' L'));const s=$('#surf');s.style.left=x+'%';s.style.bottom=(100-y)*2.6+'px';s.style.transform=`translateX(-50%) rotate(${-Math.min(25,t*3)}deg)`;C.m=m;setBtn();S.raf=requestAnimationFrame(step)};S.raf=requestAnimationFrame(step)}
-function addHist(v){const h=$('#hist');if(h)h.insertAdjacentHTML('afterbegin',`<span class="chip ${v>10?'r':v>2?'b':''}">x${v.toFixed(2)}</span>`)}
-function setBtn(){const b=$('#cbtn');if(!b)return;if(C.bet&&C.st==='run'&&!C.out){b.textContent=`Забрать ★ ${fmt(C.bet*C.m)}`;b.className='btn'}else{b.textContent=C.bet?'Ставка принята':'Сделать ставку';b.className='btn sand'}}
-function crashPoll(){clearInterval(C.poll);const P=setInterval(()=>{if(C.st!=='run'||!$('#cm')){clearInterval(P);return}
-  srv('crash_peek',{},{quiet:1}).then(j=>{if(!j||C.st!=='run')return;if(j.crashed){clearInterval(P);if(j.gone){if(C.crashAt===Infinity)C.crashAt=C.m*LG.crashPoint();return}C.crashAt=Math.max(1,j.at)}})},700);C.poll=P;timers.push(P)}
-async function crashAct(){
- if(C.bet&&C.st==='run'&&!C.out){C.out=1;const m=C.m;const j=await srv('crash_cash',{m},{lock:1});
+/* краш: один общий раунд на сервере, все видят одно и то же */
+let C={};
+function crashInit(){C={round:null,off:0,bet:0,out:0,pts:[],polling:0,toastAt:null};crashPoll();crashLoop()}
+function crashPhase(){const r=C.round;if(!r)return 'wait';const now=Date.now()+C.off;if(now<r.start)return 'bet';if(r.crashAt&&C.m>=r.crashAt-1e-9)return 'end';return 'run'}
+function crashPoll(){if(!$('#cm'))return;if(C.polling)return;C.polling=1;const t0=Date.now();
+ srv('crash_state',{},{quiet:1}).then(j=>{C.polling=0;if(j){C.off=j.now-(t0+Date.now())/2;crashApply(j)}}).catch(()=>{C.polling=0})
+ .finally(()=>{clearTimeout(C.timer);if(!$('#cm'))return;const ph=crashPhase();C.timer=setTimeout(crashPoll,ph==='run'?450:1200);timers.push(C.timer)})}
+function crashApply(j){
+ if(!C.round||C.round.id!==j.id){C.round={id:j.id,start:j.start,crashAt:null};C.bet=0;C.out=0;C.pts=[];C.m=1;C.toastAt=null;
+  const el=$('#cm');if(el)el.style.color='';const sf=$('#surf');if(sf){sf.textContent='🏄';sf.style.left='10%';sf.style.bottom='0px';sf.style.transform='translateX(-50%)'}const cp=$('#cpath');if(cp)cp.setAttribute('d','')}
+ if(j.my){C.bet=j.my.bet;if(j.my.out)C.out=j.my.out}
+ if(j.crashed&&!C.round.crashAt)C.round.crashAt=j.crashed;
+ const h=$('#hist');if(h)h.innerHTML=j.hist.slice(0,12).map(v=>`<span class="chip ${v>10?'r':v>2?'b':''}">x${v.toFixed(2)}</span>`).join('');
+ const L=$('#cbets');if(L)L.innerHTML=j.players.length?j.players.map(p=>`<div class="it ${p.me?'me':''}"><div class="av" style="background:hsl(${hue(p.n)},65%,50%)">${esc((p.n.replace('@','')[0]||'?').toUpperCase())}</div><div class="nm">${esc(p.n)}${p.me?' (вы)':''}<small><span class="star">★</span> ${fmt(p.v)}${p.m?` · x${p.m.toFixed(2)} ✓ +${fmt(p.v*p.m)}`:''}</small></div><span>${p.m?'💰':'🏄'}</span></div>`).join(''):'<div class="empty">Ставок пока нет</div>';
+ setBtn()}
+function crashLoop(){const step=()=>{const el=$('#cm');if(!el)return;const r=C.round,now=Date.now()+C.off;
+  if(!r){el.textContent='…'}
+  else if(now<r.start){el.textContent=Math.ceil((r.start-now)/1000);el.style.fontSize='';C.m=1}
+  else{const t=(now-r.start)/1000;let m=Math.pow(Math.E,.12*t);
+   if(r.crashAt&&m>=r.crashAt){m=r.crashAt;C.m=m;el.textContent='x'+m.toFixed(2);el.style.color='#ff5a5f';$('#surf').textContent='🌊';
+    if(C.toastAt!==r.id){C.toastAt=r.id;if(C.bet&&!C.out)toast('Волна накрыла 🌊');srv('me',{},{quiet:1})}}
+   else{C.m=m;el.textContent='x'+m.toFixed(2);el.style.color='';const x=Math.min(85,10+t*7),y=Math.max(10,85-(m-1)*22);
+    const last=C.pts[C.pts.length-1];if(!last||Math.abs(last[0]-x)>.4)C.pts.push([x,y]);$('#cpath').setAttribute('d','M'+C.pts.map(p=>p.join(',')).join(' L'));
+    const s=$('#surf');s.style.left=x+'%';s.style.bottom=(100-y)*2.6+'px';s.style.transform=`translateX(-50%) rotate(${-Math.min(25,t*3)}deg)`}}
+  setBtn();S.raf=requestAnimationFrame(step)};S.raf=requestAnimationFrame(step)}
+function setBtn(){const b=$('#cbtn');if(!b)return;const ph=crashPhase();let t,c='btn sand';
+ if(ph==='run'&&C.bet&&!C.out){t=`Забрать ★ ${fmt(C.bet*C.m)}`;c='btn'}
+ else if(ph==='bet')t=C.bet?'Ставка принята ✓':'Сделать ставку';
+ else if(C.out)t=`Забрано x${C.out.toFixed(2)} ✓`;
+ else t=ph==='run'?'Ставка в следующий раунд':'Ожидание раунда…';
+ if(b.textContent!==t)b.textContent=t;if(b.className!==c)b.className=c}
+async function crashAct(){const ph=crashPhase();
+ if(ph==='run'&&C.bet&&!C.out){C.out=-1;const m=C.m;const j=await srv('crash_cash',{m},{lock:1});
   if(!j){C.out=0;return}
-  if(j.crashed){C.crashAt=Math.max(1,j.at);return}
-  clearInterval(C.poll);if(C.crashAt===Infinity)C.crashAt=Math.max(C.m+.01,m*LG.crashPoint());
-  toast(`+${fmt(j.win)} ★ x${j.m.toFixed(2)}`);loadFeed();$('#cbets').innerHTML=`<div class="it"><div class="av" style="background:var(--sea)">Вы</div><div class="nm">Вы<small><span class="star">★</span> ${C.bet} · x${j.m.toFixed(2)} ✓</small></div></div>`;setBtn();return}
- if(C.bet||C.st!=='idle')return toast(C.st==='idle'?'Ставка уже принята':'Дождитесь следующего раунда');
+  if(j.crashed){C.out=0;C.round.crashAt=Math.max(1,j.at);return}
+  C.out=j.m;toast(`+${fmt(j.win)} ★ x${j.m.toFixed(2)}`);loadFeed();crashPoll();return}
+ if(ph!=='bet')return toast(ph==='run'?'Раунд уже идёт — ставка в следующем':'Подожди начала раунда');
+ if(C.bet)return toast('Ставка уже принята');
  const v=Math.round(+$('#cbet').value);if(!(v>0))return toast('Введите ставку');
- const j=await srv('crash_bet',{bet:v,delay:Math.max(0,C.runAt-Date.now())},{lock:1});if(!j)return;
- if(C.st!=='idle'){toast('Ставка в следующем раунде не прошла');return}
- C.bet=v;$('#cbets').innerHTML=`<div class="it"><div class="av" style="background:var(--sea)">Вы</div><div class="nm">Вы<small><span class="star">★</span> ${v}</small></div><span>🏄</span></div>`;setBtn()}
+ const j=await srv('crash_bet',{bet:v},{lock:1});if(!j)return;C.bet=v;toast(`Ставка ★ ${fmt(v)} принята`);crashPoll()}
 /* мины */
 let M={n:5};
 function mBuild(n){M={n,on:0,open:0};const g=$('#mg');g.style.gridTemplateColumns=`repeat(${n},minmax(0,1fr))`;g.innerHTML=Array.from({length:n*n},(_,i)=>`<div class="mcell" onclick="mClick(${i},this)">?</div>`).join('');$('#mx').textContent='x1.00'}
