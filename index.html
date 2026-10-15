@@ -789,7 +789,7 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="field"><input id="pW" placeholder="UQ… адрес кошелька" value="${esc(ADM.tonWallet||'')}"></div>
  <div class="field"><input id="pR" type="number" placeholder="★ за 1 TON" value="${ADM.tonRate||150}"><span class="sub" style="align-self:center">★ за 1 TON</span></div>
  <div class="ad-h" style="margin-top:14px">📤 Минимальный вывод</div>
- <div class="field"><input id="pMW" type="number" placeholder="★" value="${MIN_WD()}"><span class="sub" style="align-self:center">★ — подарки дешевле можно только продать</span></div>
+ <div class="field"><input id="pMW" type="number" min="0" max="100000" placeholder="★" value="${MIN_WD()}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — подарки дешевле можно только продать</span></div>
  <div class="ad-h" style="margin-top:14px">🎁 Бонус новым игрокам</div>
  <div class="field"><input id="pSB" type="number" placeholder="★ при входе" value="${ADM.startBal||0}"><span class="sub" style="align-self:center">★</span><input id="pST" type="number" placeholder="🎫" value="${ADM.startTick||0}" style="max-width:80px"><span class="sub" style="align-self:center">🎫</span></div>
  <button class="btn sand" onclick="paySave()">Сохранить</button></div>
@@ -925,7 +925,7 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
-function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);let warn='';
+function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);let warn='';const mw=Math.round(+$('#pMW').value||0);if(mw>10000&&!confirm('Минимальный вывод '+fmt(mw)+' ★ — точно? (обычно 50–500)'))return;
  /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
  if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';
  if(r>0)ADM.tonRate=r;else warn=warn||'курс TON не указан — оставил прежний';

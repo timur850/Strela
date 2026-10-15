@@ -50,7 +50,19 @@ async function tg(env, method, params) {
 
 // ---- хранилище общих настроек админки (Durable Object, SQLite — бесплатно) ----
 export class Store {
-  constructor(state, env) { this.state = state; this.env = env; }
+  constructor(state, env) {
+    this.state = state; this.env = env;
+    // разовая починка: минимальный вывод случайно сохранили как 50100 вместо 50
+    state.blockConcurrencyWhile(async () => {
+      if (await state.storage.get("mig:minwd50")) return;
+      try {
+        const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (+st.minWd === 50100) { st.minWd = 50; await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); } }
+      } catch (e) { console.log("mig minwd", e); }
+      await state.storage.put("mig:minwd50", 1);
+    });
+  }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
     // игровые операции: всё считается здесь, атомарно, в одном месте
