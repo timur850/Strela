@@ -554,8 +554,10 @@ function doTask(id){const t=TASKS().find(x=>x.id===id);if(!t)return;const u=U();
   else openUrl(t.url);
   setTimeout(()=>{if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')},400);return}
  if(t.type==='home'){if(!(tg&&tg.checkHomeScreenStatus))return toast('Обнови Telegram — эта проверка не поддерживается');
-  try{return tg.checkHomeScreenStatus(st=>{if(st==='added')claimTask(id);else if(st==='unsupported')toast('На этом устройстве нельзя добавить на рабочий стол');else{toast('Сначала добавь игру на рабочий стол');try{tg.addToHomeScreen()}catch(e){}}})}catch(e){return toast('Не удалось проверить')}}
+  try{return tg.checkHomeScreenStatus(st=>{/* iPhone не умеет проверять ярлык и отвечает 'unknown' — засчитываем */if(st==='added'||st==='unknown')claimTask(id);else if(st==='unsupported')toast('На этом устройстве нельзя добавить на рабочий стол');else{toast('Сначала добавь игру на рабочий стол');try{tg.addToHomeScreen()}catch(e){}}})}catch(e){return toast('Не удалось проверить')}}
  claimTask(id)}
+/* Telegram сообщил, что ярлык добавлен — сразу засчитываем задание */
+try{tg&&tg.onEvent&&tg.onEvent('homeScreenAdded',()=>{const t=TASKS().find(x=>x.type==='home');if(t&&!(U().done||{})[t.id]){U().started=U().started||{};U().started[t.id]=1;claimTask(t.id)}})}catch(e){}
 function navBadge(){const d=(U().done)||{};const n=TASKS().filter(t=>!d[t.id]).length;const b=document.querySelector('.nav .badge');if(b){b.textContent=n;b.style.display=n?'':'none'}}
 /* ================== ПОПОЛНЕНИЕ: ЗВЁЗДЫ (настоящий счёт Telegram) ================== */
 let dAmt=200;const usd=n=>(n*0.013).toFixed(1).replace('.',',');
