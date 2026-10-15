@@ -443,7 +443,7 @@ profile(){
 },
 admin(){return adminView()}
 };
-const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
+const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??50));
 function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);
  sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p><button class="btn sand" style="margin-top:14px" onclick="withdraw(${i})">📤 Вывести</button>`)}
 let wdBusy=false;
