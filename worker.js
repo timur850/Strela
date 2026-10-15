@@ -149,12 +149,12 @@ async function bizTransfer(env, slug, toId) {
     .sort((a, b) => (a.transfer_star_count || 0) - (b.transfer_star_count || 0));
   if (!cand.length) return { err: "такого подарка нет на складе" };
   let last = "";
-  for (const g of cand.slice(0, 3)) {
+  for (const g of cand.slice(0, 10)) {   // выставленный на продажу/заблокированный экземпляр пропускаем и пробуем следующий
     const r = await tg(env, "transferGift", { business_connection_id: conn.id, owned_gift_id: g.owned_gift_id, new_owner_chat_id: Number(toId),
       ...(g.transfer_star_count > 0 ? { star_count: g.transfer_star_count } : {}) });
     if (r.ok) return { ok: true, name: g.gift.name || g.gift.base_name };
     last = r.description || "ошибка";
-    if (!/TRANSFER|UNAVAILABLE|not found/i.test(last)) break;
+    if (BIZ_HINTS.some(([re]) => re.test(last))) break;   // права/звёзды/чат — другие экземпляры тоже не пройдут
   }
   const h = BIZ_HINTS.find(([re]) => re.test(last));
   return { err: last + (h ? " — " + h[1] : "") };
