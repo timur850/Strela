@@ -43,12 +43,21 @@ async function tg(env, method, params) {
 export class Store {
   constructor(state) { this.state = state; }
   async fetch(req) {
-    if (req.method === "POST") { await this.state.storage.put("settings", await req.text()); return new Response("ok"); }
-    return new Response((await this.state.storage.get("settings")) || "{}");
+    const key = new URL(req.url).pathname.slice(1) || "settings";
+    if (req.method === "POST") { await this.state.storage.put(key, await req.text()); return new Response("ok"); }
+    return new Response((await this.state.storage.get(key)) || (key === "settings" ? "{}" : ""));
   }
 }
 const store = env => env.STORE.get(env.STORE.idFromName("main"));
 async function loadSettings(env) { try { return JSON.parse(await (await store(env).fetch("https://s/")).text()); } catch { return {}; } }
+
+async function setupBot(env, origin, hookKey, dropPending) {
+  await store(env).fetch("https://s/origin", { method: "POST", body: origin });
+  const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: !!dropPending, allowed_updates: ["message"] });
+  const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
+  await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
+  return { a, b };
+}
 
 async function handleUpdate(env, origin, upd) {
   const msg = upd.message; if (!msg || !msg.text) return;
@@ -75,6 +84,19 @@ async function handleUpdate(env, origin, upd) {
 }
 
 export default {
+  // каждые 5 минут: если вебхук кто-то снял (например, запустили бота на ПК) — возвращаем
+  async scheduled(event, env, ctx) {
+    if (!env.BOT_TOKEN) return;
+    const origin = await (await store(env).fetch("https://s/origin")).text();
+    if (!origin) return;
+    const w = await tg(env, "getWebhookInfo", {});
+    if (w.ok && w.result.url !== origin + "/webhook") {
+      const hookKey = (await sha256hex("hook:" + env.BOT_TOKEN)).slice(0, 32);
+      await setupBot(env, origin, hookKey, false);
+      console.log("webhook restored");
+    }
+  },
+
   async fetch(req, env) {
     const url = new URL(req.url), origin = url.origin, path = url.pathname;
     if (!env.BOT_TOKEN && (path === "/setup" || path.startsWith("/webhook")))
@@ -85,9 +107,7 @@ export default {
     if (path === "/setup") {
       const me = await tg(env, "getMe", {});
       if (!me.ok) return new Response("Токен не подходит: " + JSON.stringify(me), { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
-      const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: true, allowed_updates: ["message"] });
-      const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
-      await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
+      const { a, b } = await setupBot(env, origin, hookKey, true);
       const ok = a.ok && b.ok;
       return new Response(`<meta name=viewport content="width=device-width"><body style="font:18px system-ui;padding:24px;background:#06345a;color:#fff">
         <h2>${ok ? "✅ Готово!" : "⚠️ Что-то не так"}</h2><p>Бот: <b>@${me.result.username}</b></p>
