@@ -358,6 +358,8 @@ export class Game {
     if (Date.now() - Number(last) < 10000) fail("Подожди пару секунд");
     const i = this.invIndex(u, d.i, d.slug), g = this.L.giftBy(u.inv[i]);
     if (!g || isStar(g)) fail("Этот подарок нельзя вывести");
+    const minWd = Math.max(0, Math.round(this.st.minWd ?? 100));
+    if (g.price < minWd) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     u.inv.splice(i, 1);
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, t: Date.now(), st: "new" });
