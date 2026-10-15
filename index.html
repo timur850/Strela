@@ -923,9 +923,11 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
-function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);
- if(w&&!/^[UEk0]Q[A-Za-z0-9_-]{46}$/.test(w))return toast('Это не похоже на адрес TON');if(!(r>0))return toast('Укажите курс');
- ADM.tonWallet=w;ADM.tonRate=r;ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));TON.info=null;saveAdm();setTab('admin')}
+function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);let warn='';
+ /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
+ if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';
+ if(r>0)ADM.tonRate=r;else warn=warn||'курс TON не указан — оставил прежний';
+ ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
 function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.filter(([s,w])=>giftBy(s)&&w>0);if(!L.length)return toast('Добавьте хотя бы 1 подарок с весом > 0');
  cfg.items=L.map(x=>[x[0],x[1]]);cfg.cover=$('#ceC').value;if(!c.free){cfg.p=Math.max(1,Math.round(+$('#ceP').value||c.p));cfg.lim=$('#ceL').classList.contains('on');cfg.hidden=$('#ceH').classList.contains('on')}
  saveAdm();closeSheet();setTab('admin');toast('Кейс сохранён ✅')}
