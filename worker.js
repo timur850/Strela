@@ -96,6 +96,14 @@ export default {
         <p>Открой бота в Telegram и нажми /start 🏝</p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
 
+    // диагностика: куда Telegram шлёт апдейты и последняя ошибка
+    if (path === "/status") {
+      const w = await tg(env, "getWebhookInfo", {}), r = w.result || {};
+      const out = { webhook_ok: r.url === origin + "/webhook", url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+        last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
+      return json(out);
+    }
+
     // апдейты от Telegram
     if (path === "/webhook" && req.method === "POST") {
       if (req.headers.get("x-telegram-bot-api-secret-token") !== hookKey) return new Response("forbidden", { status: 403 });
