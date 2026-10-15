@@ -317,7 +317,7 @@ function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.js
   if(j&&typeof j==='object'&&Object.keys(j).length){G_KEYS.forEach(k=>{if(j[k]!==undefined)ADM[k]=j[k]});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
   SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
-  if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
+  if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
 const R=g=>(ADM.rtp[g]??90)/100;
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TASK_TYPES={channel:'📢 Подписка на канал',chat:'💬 Вступить в чат',link:'🔗 Открыть ссылку',story:'📸 История',bio:'🧾 Ссылка в био',home:'🏖️ На рабочий стол'};
@@ -708,7 +708,7 @@ function ceCreate(){const n=($('#ncN').value||'').trim().replace(/['"<>`]/g,'');
  ADM.customCases.push([n,p,autoDist(p,R('cases'))[0][0]]);saveAdm();setTab('admin');ceOpen('c:'+n)}
 function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n];saveAdm();closeSheet();setTab('admin');toast('Кейс удалён')}
 
-upd();setTab('games');navBadge();loadShared();
+upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();
 </script>
 </body>
 </html>

@@ -62,6 +62,14 @@ async function handleUpdate(env, origin, upd) {
       text: `Твой ID: <code>${u.id}</code>\nЮзернейм: @${u.username || "—"}\n` +
         (isOwner(u.username) ? "✅ Ты владелец — вкладка «Админ» в мини-аппе доступна." : "Админка доступна только владельцу и тем, кому он выдал доступ по ID.") });
   }
+  else if (cmd === "/admin") {
+    const u = msg.from || {}, st = await loadSettings(env);
+    const ok = isOwner(u.username) || (st.admins || []).map(String).includes(String(u.id));
+    if (ok) await tg(env, "sendMessage", { chat_id: chat, text: "🛠 Админ-панель STRELA CASE",
+      reply_markup: { inline_keyboard: [[{ text: "🛠 Открыть админку", web_app: { url: origin + "/#admin" } }]] } });
+    else await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
+      text: `⛔ Нет доступа.\nТвой юзернейм: @${u.username || "—"}, ID: <code>${u.id}</code>\nАдминка доступна владельцу (@${OWNERS.join(", @")}) и тем, кому он выдал доступ по ID.` });
+  }
   else if (cmd === "/help") await tg(env, "sendMessage", { chat_id: chat, text: "Поддержка: " + SUPPORT });
   else await tg(env, "sendMessage", { chat_id: chat, text: "Открой игру кнопкой ниже 👇", reply_markup: kb });
 }
@@ -79,7 +87,7 @@ export default {
       if (!me.ok) return new Response("Токен не подходит: " + JSON.stringify(me), { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
       const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: true, allowed_updates: ["message"] });
       const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
-      await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
+      await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
       const ok = a.ok && b.ok;
       return new Response(`<meta name=viewport content="width=device-width"><body style="font:18px system-ui;padding:24px;background:#06345a;color:#fff">
         <h2>${ok ? "✅ Готово!" : "⚠️ Что-то не так"}</h2><p>Бот: <b>@${me.result.username}</b></p>
