@@ -15,6 +15,7 @@ const EGGS=[['jellybunny','3 кокоса',249],['ionicdryer','3 кокоса',2
 const PM0=[[5.6,2.1,1.1,1,.5,1,1.1,2.1,5.6],[13,3,1.3,.7,.4,.7,1.3,3,13],[29,4,1.5,.3,.2,.3,1.5,4,29]];
 const BIN=[1,8,28,56,70,56,28,8,1].map(x=>x/256);   // шансы лунок plinko (8 рядов)
 const SLOT_SYMS=['🍉','🥥','🐚','🌺','🍹','💎'];
+const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90}; // как в админке по умолчанию
 const PVP_BETS=[100,500,2500], SLOT_BET=100, CRASH_K=.12;
 /* задания по умолчанию (пока админ не сохранил свои) */
 const DEF_TASKS=[
@@ -30,7 +31,7 @@ const isStar=g=>!!g&&g.slug.startsWith('stars');
 function makeLogic(getADM,rand){
  rand=rand||Math.random;
  const A=()=>getADM()||{};
- const R=g=>((A().rtp||{})[g]??90)/100;
+ const R=g=>((A().rtp||{})[g]??DEF_RTP[g]??90)/100;
  const mkG=([slug,name,p,e,tgid])=>({slug,name,price:(A().prices||{})[slug]??p,e,tgid,reg:!!tgid});
  let _GC=null,_GK='';
  const GIFTS=()=>{const a=A();const k=JSON.stringify([a.prices,a.giftOff]);if(k!==_GK||!_GC){_GK=k;_GC=GIFT_LIST.filter(g=>!(a.giftOff||{})[g[0]]).map(mkG)}return _GC};

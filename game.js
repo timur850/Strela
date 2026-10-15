@@ -2,10 +2,9 @@
 // Здесь хранятся баланс, билеты и подарки игроков, и здесь же решается результат каждой игры.
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
-const { makeLogic, DEF_TASKS, EGGS, PVP_BETS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
+const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
 
 const MAX_BET = 1_000_000;
-const BOTS = ["moana_sun", "kai.surf", "aloha_x", "ciloxik", "parfem1kh", "meawxxx09", "Darkol", "nemo777", "semmu", "vlad_ton"];
 const GAME_NAMES = { case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
 
 // честный случайный генератор (криптостойкий)
@@ -101,10 +100,12 @@ export class Game {
   }
 
   // ===== главная точка входа =====
+  async init() { this.st = await this.settings(); this.L = makeLogic(() => this.st, rand); }
+
   async run(op, uid, name, d, isAdmin) {
-    this.st = await this.settings();
-    this.L = makeLogic(() => this.st, rand);
+    await this.init();
     uid = String(uid);
+    if (op.startsWith("pvp")) await this.pvpTick();   // до загрузки игрока: тик может начислить ему выигрыш
     if (op.startsWith("admin/")) {
       const ok = isAdmin === true || (isAdmin === "check" && (this.st.admins || []).map(String).includes(uid));
       if (!ok) fail("Нет доступа");
@@ -158,9 +159,9 @@ export class Game {
     if (!a || !b || isStar(b) || !(b.price > a.price)) fail("Выбери подарок дороже своего");
     const ch = L.upChance(a.price, b.price);
     u.inv.splice(i, 1); await this.stat("bets", a.price);
-    const won = rand() * 100 < ch;
+    const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
     if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
-    return { won, chance: ch };
+    return { won, chance: ch, roll };
   }
 
   // ---- контракты ----
@@ -263,19 +264,58 @@ export class Game {
     return { res, mult, win: Math.round(SLOT_BET * mult) };
   }
 
-  // ---- PvP (колесо с соперниками) ----
+  // ---- PvP: настоящие игроки в одном общем раунде ----
+  // Раунд стартует, когда ставку делает второй игрок: 20 секунд на ставки, потом колесо.
+  // Шанс победы = доля ставки в банке. Если соперник не пришёл за 3 минуты — ставка возвращается.
+  async creditUser(id, n, game) {
+    const w = await this.s.get("u:" + id); if (!w) return;
+    n = Math.round(n); w.bal += n; await this.stat("wins", n);
+    await this.s.put("u:" + id, w); await this.feed(w, id, game, null, n);
+  }
+  async pvpTick() {
+    const now = Date.now(), cur = await this.s.get("pvp:cur");
+    if (!cur || !cur.players.length) return;
+    if (cur.endAt && now >= cur.endAt) {
+      const bank = cur.players.reduce((a, p) => a + p.v, 0);
+      let r = rand() * bank, w = cur.players.findIndex(p => (r -= p.v) < 0); if (w < 0) w = 0;
+      const prize = Math.round(bank * (1 - (+this.st.pvpFee || 0) / 100));
+      await this.creditUser(cur.players[w].id, prize, GAME_NAMES.pvp);
+      await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: w, prize, bank, at: now });
+      await this.s.delete("pvp:cur");
+    } else if (!cur.endAt && now - cur.t0 > 180000) {        // никто не пришёл — возврат
+      for (const p of cur.players) { const w = await this.s.get("u:" + p.id); if (w) { w.bal += p.v; await this.s.put("u:" + p.id, w); } await this.stat("bets", -p.v); }
+      await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: -1, refund: true, at: now });
+      await this.s.delete("pvp:cur");
+    }
+  }
+  // когда разбудить сервер: конец раунда или срок возврата
+  async pvpDue() {
+    const cur = await this.s.get("pvp:cur");
+    if (!cur || !cur.players.length) return null;
+    return cur.endAt || cur.t0 + 180000 + 500;
+  }
+  pvpView(r, uid) {
+    if (!r) return null;
+    return { id: r.id, players: r.players.map(p => ({ n: p.n, v: p.v, me: p.id === uid ? 1 : 0 })), winner: r.winner, prize: r.prize, refund: !!r.refund, at: r.at,
+      endsIn: r.endAt ? Math.max(0, r.endAt - Date.now()) : null, waitLeft: !r.endAt && r.t0 ? Math.max(0, r.t0 + 180000 - Date.now()) : null };
+  }
+  async op_pvp_state(u, uid) {
+    return { cur: this.pvpView(await this.s.get("pvp:cur"), uid), last: this.pvpView(await this.s.get("pvp:last"), uid), due: await this.pvpDue() };
+  }
   async op_pvp(u, uid, d) {
-    const v = Math.round(+d.bet); if (!PVP_BETS.includes(v)) fail("Неверная ставка");
+    if ((this.st.off || {}).pvp) fail("Игра выключена");
+    const v = bet(d.bet); if (!v || v < 10) fail("Минимальная ставка 10 ★");
+    const now = Date.now();
+    let cur = await this.s.get("pvp:cur");
+    if (!cur) cur = { id: now.toString(36) + randInt(1e4).toString(36), t0: now, endAt: null, players: [] };
+    if (cur.endAt && now > cur.endAt - 2000) fail("Колесо уже крутится — ставка в следующий раунд через пару секунд");
+    if (cur.players.length >= 20 && !cur.players.some(p => p.id === uid)) fail("Раунд заполнен, подожди следующий");
     await this.charge(u, v);
-    const names = [...BOTS].sort(() => rand() - .5), k = 1 + randInt(4);
-    const players = [{ n: u.name, v, me: 1 }];
-    for (let i = 0; i < k; i++) players.push({ n: names[i], v: [100, 250, 500, 1000, 2500][randInt(5)] });
-    players.sort(() => rand() - .5);
-    const bank = players.reduce((s, p) => s + p.v, 0);
-    let r = rand() * bank, w = players.findIndex(p => (r -= p.v) < 0); if (w < 0) w = 0;
-    const prize = Math.round(bank * (1 - (+this.st.pvpFee || 0) / 100));
-    if (players[w].me) await this.payout(u, uid, prize, GAME_NAMES.pvp);
-    return { players, winner: w, prize };
+    const me = cur.players.find(p => p.id === uid);
+    if (me) { me.v += v; me.n = u.name; } else cur.players.push({ id: uid, n: u.name, v });
+    if (!cur.endAt && cur.players.length >= 2) cur.endAt = now + 20000;
+    await this.s.put("pvp:cur", cur);
+    return { cur: this.pvpView(cur, uid), last: this.pvpView(await this.s.get("pvp:last"), uid), due: await this.pvpDue() };
   }
 
   // ---- продажа подарков ----
@@ -372,8 +412,26 @@ export class Game {
       const users = [...all.entries()].map(([k, u]) => ({ id: k.slice(2), name: u.name, bal: u.bal, tick: u.tick, inv: u.inv.length }));
       users.sort((a, b) => b.bal - a.bal);
       const wq = await this.s.list({ prefix: "wdq:", limit: 200 });
-      return { ok: true, stats, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t) };
+      const j = await this.s.get("bc:job");
+      const bc = j ? { total: j.ids.length, sent: j.sent, failed: j.failed, done: j.done, stopped: !!j.stopped, text: j.text.slice(0, 80), t: j.t } : null;
+      const aud = new Set(users.map(u => u.id));
+      for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
+      return { ok: true, stats, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
+    if (op === "bc_start") {
+      const text = String(d.text || "").trim().slice(0, 4000);
+      if (!text) fail("Напиши текст рассылки");
+      const cur = await this.s.get("bc:job");
+      if (cur && !cur.done) fail("Предыдущая рассылка ещё идёт");
+      const ids = new Set();
+      for (const p of ["u:", "bu:"]) for (const k of (await this.s.list({ prefix: p, limit: 50000 })).keys()) { const id = k.slice(p.length); if (/^\d+$/.test(id)) ids.add(id); }
+      let btnUrl = String(d.btnUrl || "").trim();
+      if (btnUrl && !/^https?:\/\//i.test(btnUrl)) btnUrl = "https://" + btnUrl;
+      const job = { text, btnText: String(d.btnText || "").trim().slice(0, 40), btnUrl, play: !!d.play, ids: [...ids], pos: 0, sent: 0, failed: 0, done: false, t: Date.now(), next: Date.now() };
+      await this.s.put("bc:job", job);
+      return { ok: true, total: job.ids.length };
+    }
+    if (op === "bc_stop") { const j = await this.s.get("bc:job"); if (j && !j.done) { j.done = true; j.stopped = true; j.finished = Date.now(); await this.s.put("bc:job", j); } return { ok: true }; }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
     fail("Неизвестное действие");

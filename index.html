@@ -251,6 +251,12 @@ canvas{display:block;width:100%;border-radius:22px}
 .socials{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:2px 0 12px}
 .soc{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:var(--glass);color:#fff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
 .soc i{font-style:normal;font-size:16px}
+.upw{position:relative;width:210px;height:210px;margin:8px auto 14px;border-radius:50%;border:6px solid #fff;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:box-shadow .4s}
+.upw.win{box-shadow:0 0 0 6px #22c55e,0 0 40px #22c55e}.upw.lose{box-shadow:0 0 0 6px #ff5a5f,0 0 40px #ff5a5f}
+.upw .needle{position:absolute;inset:0;transform:rotate(0deg)}
+.upw .needle:before{content:'';position:absolute;left:50%;top:-14px;transform:translateX(-50%);border:12px solid transparent;border-top:22px solid #fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.upw .hubc{position:absolute;inset:28%;border-radius:50%;background:var(--deep);border:4px solid #fff;display:grid;place-items:center;text-align:center;font:900 22px Nunito,sans-serif;line-height:1.05}
+.upw .hubc small{display:block;font-size:11px;color:var(--muted);font-weight:800}
 </style>
 </head>
 <body>
@@ -472,7 +478,7 @@ upgrade(){const a=S.upA!=null?giftBy(U().inv[S.upA]):null,b=S.upB?giftBy(S.upB):
  return `<h1>Апгрейд</h1><p class="sub">Преобразуйте свои подарки в более ценные!</p>
  <div class="card" style="text-align:center"><p class="sub" style="margin:0 0 10px">Ваши подарки</p><div class="up-slot" onclick="pickOwn()">${a?gi(a):'⊕<br>Добавить'}</div>${a?`<small>${a.name} · ★ ${fmt(a.price)}</small>`:''}</div>
  <div class="card" style="text-align:center"><p class="sub" style="margin:0 0 10px">Желаемый подарок</p><div class="up-slot" onclick="pickTarget()">${b?gi(b):'⊕<br>Выбрать'}</div>${b?`<small>${b.name} · ★ ${fmt(b.price)}</small>`:''}</div>
- ${a&&b?`<div class="big" style="font-size:40px;margin:6px 0">${ch.toFixed(1)}%</div><p class="sub">Шанс апгрейда</p><button class="btn sand" onclick="doUpgrade(${ch})">Апгрейд</button>`:`<button class="btn" onclick="${U().inv.length?'pickOwn()':"open_('cases')"}">${U().inv.length?'Выбрать свой подарок':'Сначала выиграйте подарок в кейсах'}</button>`}`},
+ ${a&&b?`<div class="upw" id="upWheel" style="background:conic-gradient(#22c55e 0 ${ch}%,#ff5a5f ${ch}% 100%)"><div class="needle" id="upNeedle"></div><div class="hubc"><div>${ch.toFixed(1)}%<small>шанс</small></div></div></div><p class="sub">🟢 зелёное — выигрыш · 🔴 красное — проигрыш</p><button class="btn sand" id="upBtn" onclick="doUpgrade()">Апгрейд</button>`:`<button class="btn" onclick="${U().inv.length?'pickOwn()':"open_('cases')"}">${U().inv.length?'Выбрать свой подарок':'Сначала выиграйте подарок в кейсах'}</button>`}`},
 crash(){return `<div class="crash-box"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path id="cpath" fill="none" stroke="#ffd23f" stroke-width="1.2"/></svg><div class="mult" id="cm">Ожидание</div><div class="surfer" id="surf">🏄</div><div class="sea"></div></div>
  <div class="chips" id="hist">${['x1.23','x128.22','x1.01','x2.50','x1.67','x3.40','x1.12'].map(x=>{const v=parseFloat(x.slice(1));return `<span class="chip ${v>10?'r':v>2?'b':''}">${x}</span>`}).join('')}</div>
  <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="cbet" type="number" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="cbet.value=+cbet.value+100">+100</button><button class="btn ghost sm" onclick="cbet.value=+cbet.value+500">+500</button></div></div>
@@ -494,11 +500,12 @@ eggs(){const e=EGGS;
 egg(){return `<div class="egg" id="egg" onclick="crack()">🥥</div><p class="sub">Разбей кокос и получи подарок!</p>
  <div class="row" style="margin-bottom:12px"><button class="btn ghost" onclick="toast('Скоро')">⚙️ Настройки</button><button class="btn ghost" onclick="showPrizes(${S.eggPrice})">🎁 Призы</button></div>
  <button class="btn sand" onclick="crack()">Разбить за ★ ${S.eggPrice}</button>`},
-pvp(){return `<div class="wheel-wrap"><div class="pin">🔻</div><div class="wheel" id="wh" style="background:conic-gradient(#0ea5e9 0 90deg,#14c8c8 90deg 180deg,#0369a1 180deg 270deg,#22d3ee 270deg)"></div><div class="hub" id="hub">Ожидание</div></div>
+pvp(){return `<div class="wheel-wrap"><div class="pin">🔻</div><div class="wheel" id="wh" style="background:conic-gradient(#0ea5e9 0 90deg,#14c8c8 90deg 180deg,#0369a1 180deg 270deg,#22d3ee 270deg)"></div><div class="hub" id="hub">…</div></div>
  <div class="row" style="justify-content:center;margin-bottom:12px"><span class="pill" style="padding:6px 14px">Банк <span class="star">★</span> <b id="bank">0</b></span></div>
+ <p class="sub" style="margin:-4px 0 10px">Только живые игроки. Раунд стартует, когда ставит второй игрок — 20 секунд на ставки. Шанс = доля в банке.</p>
  <div class="card list" id="pl"><div class="empty">Сделайте первую ставку!</div></div>
- <div class="row" style="margin-bottom:12px">${[100,500,2500].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="pvpBet(${v})">★ ${v}</button>`).join('')}</div>
- <button class="btn sand" onclick="pvpBet(100)">Сделать ставку</button>`},
+ <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="pvbet" type="number" inputmode="numeric" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none">${[100,500,2500].map(v=>`<button class="btn ghost sm" onclick="pvbet.value=${v}">${fmt(v)}</button>`).join('')}</div></div>
+ <button class="btn sand" onclick="pvpBet()">Сделать ставку</button>`},
 slots(){return `<h1>Слоты</h1><div class="card" style="margin-top:14px"><div class="reels">${[0,1,2].map(i=>`<div class="reel" id="r${i}">🍉</div>`).join('')}</div><p class="sub" style="margin:0">3 одинаковых — x${(10*R('slots')/.9).toFixed(1)} · 2 одинаковых — x${(2*R('slots')/.9).toFixed(1)}</p></div>
  <button class="btn sand" onclick="spinSlots()">Крутить за ★ 100</button>`},
 raffle(){return `<h1>Розыгрыш</h1><p class="sub">Участники</p><div class="card list">${['semmu','nup','Darkol','Женя','vlad','chxtvxrg','Светлана','Herry','malbag','Hunter'].map((n,i)=>`<div class="it"><div class="av" style="background:hsl(${i*37},70%,50%)">${n[0].toUpperCase()}</div><div class="nm">${n}<small>Candy Cane</small></div><span style="width:34px;height:34px;display:inline-block">${gi(giftBy('candycane'))}</span></div>`).join('')}</div>
@@ -519,7 +526,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setTab(b.datas
 if(IS_ADMIN)document.querySelector('.nav .adm').classList.add('vis');
 function sheet(h){$('#sheet').innerHTML='<button class="x" onclick="closeSheet()">✕</button>'+h;$('#sheetBg').classList.add('show')}
 function closeSheet(){$('#sheetBg').classList.remove('show')}
-function init(id){({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashIdle})[id]?.()}
+function init(id){({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashIdle,pvp:pvpInit})[id]?.()}
 let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelAnimationFrame(S.raf)}
 
 function tick(){const end=Date.now()+5*864e5+11*36e5+28*6e4+54e3;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
@@ -616,8 +623,11 @@ function showPrizes(cost){const P=GIFTS().filter(g=>g.price>=cost*.15&&g.price<=
 /* апгрейд */
 function pickOwn(){if(!U().inv.length)return toast('Нет подарков');sheet(`<h2>Ваши подарки</h2><div class="inv">${U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case" onclick="S.upA=${i};closeSheet();rerender()">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`}).join('')}</div>`)}
 function pickTarget(){const a=S.upA!=null?giftBy(U().inv[S.upA]).price:0;const P=GIFTS().filter(g=>!isStar(g)&&g.price>a).sort((x,y)=>x.price-y.price);sheet(`<h2>Желаемый подарок</h2><div class="inv">${P.map(g=>`<div class="case" onclick="S.upB='${g.slug}';closeSheet();rerender()">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`).join('')}</div>`)}
-function doUpgrade(){const s=U().inv[S.upA],b=giftBy(S.upB);if(!s||!b)return;
- srv('upgrade',{i:S.upA,slug:s,target:S.upB},{lock:1}).then(j=>{S.upA=null;S.upB=null;if(j)toast(j.won?`Успех! ${b.name} 🎉`:'Не повезло 🌊');rerender()})}
+function doUpgrade(){const s=U().inv[S.upA],b=giftBy(S.upB);if(!s||!b||S.upSpin)return;S.upSpin=1;const bt=$('#upBtn');if(bt)bt.disabled=true;
+ srv('upgrade',{i:S.upA,slug:s,target:S.upB},{lock:1}).then(j=>{if(!j){S.upSpin=0;if(bt)bt.disabled=false;return}
+  const fin=()=>{S.upSpin=0;S.upA=null;S.upB=null;toast(j.won?`Успех! ${b.name} 🎉`:'Не повезло 🌊');if(j.won)loadFeed();if(S.stack[S.stack.length-1]==='upgrade')rerender()};
+  const n=$('#upNeedle');if(!n)return fin();n.offsetWidth;n.style.transition='transform 4s cubic-bezier(.12,.8,.18,1)';n.style.transform=`rotate(${360*5+j.roll*3.6}deg)`;
+  setTimeout(()=>{const w=$('#upWheel');if(w)w.classList.add(j.won?'win':'lose');try{tg&&tg.HapticFeedback.notificationOccurred(j.won?'success':'error')}catch(_){}setTimeout(fin,1500)},4100)})}
 function contract(){if(U().inv.length<2)return toast('Нужно минимум 2 подарка');
  srv('contract',{},{lock:1}).then(j=>{if(!j)return;if(S.stack[S.stack.length-1]==='contracts')rerender();winSheet(giftBy(j.prize))})}
 /* краш */
@@ -685,22 +695,37 @@ async function crack(){const e=$('#egg');if(e.dataset.b)return;e.dataset.b=1;
  const g=giftBy(j.prize);e.classList.add('shake');
  setTimeout(()=>{sync(j.me);loadFeed();if(!e.isConnected)return toast(isStar(g)?`+${fmt(g.price)} ★ на балансе`:`${g.name} — в профиле 🎁`);e.classList.remove('shake');e.innerHTML=gi(g);e.querySelector('.gi').style.cssText='width:150px;height:150px';winSheet(g);setTimeout(()=>{if(e.isConnected){e.textContent='🥥';delete e.dataset.b}},1500)},600)}
 /* pvp */
-let V={spinning:0};
+let V={spinning:0,players:[]};
 const PCOL=['#ffd23f','#ff5a5f','#14c8c8','#a855f7','#ff8a2a','#22c55e','#ff3d8b','#0ea5e9'];
-const BOTS=['moana_sun','kai.surf','aloha_x','ciloxik','parfem1kh','meawxxx09','Darkol','nemo777','semmu','vlad_ton'];
-function pvpDraw(){const P=V.players,bank=P.reduce((s,p)=>s+p.v,0);let a=0;const segs=[],labels=[];
+function pvpDraw(){const P=V.players||[],bank=P.reduce((s,p)=>s+p.v,0);let a=0;const segs=[],labels=[];const w=$('#wh');if(!w)return;
+ if(!P.length){w.style.background='conic-gradient(#0ea5e9 0 90deg,#14c8c8 90deg 180deg,#0369a1 180deg 270deg,#22d3ee 270deg)';w.innerHTML='';$('#bank').textContent='0';$('#pl').innerHTML='<div class="empty">Сделайте первую ставку!</div>';return}
  P.forEach((p,i)=>{const d=p.v/bank*360;p.a0=a;p.a1=a+d;p.c=PCOL[i%PCOL.length];segs.push(`${p.c} ${a}deg ${a+d}deg`);
-  if(d>=14){const m=a+d/2;labels.push(`<span class="wl" style="transform:rotate(${m}deg) translateY(-92px) rotate(${m>90&&m<270?180:0}deg) translate(-50%,-50%);transform-origin:0 0">${(p.me?'⭐ ':'')+p.n.slice(0,10)}</span>`)}a+=d});
- const w=$('#wh');w.style.background=`conic-gradient(${segs.join(',')})`;w.innerHTML=labels.join('');$('#bank').textContent=fmt(bank);
- $('#pl').innerHTML=P.map(p=>`<div class="it ${p.me?'me':''}"><div class="av" style="background:${p.c};color:#062c4a">${p.n.replace('@','')[0].toUpperCase()}</div><div class="nm">${p.n}${p.me?' <small style="display:inline;color:var(--sun)">(вы)</small>':''}<small><span class="star">★</span> ${fmt(p.v)} · ${(p.v/bank*100).toFixed(1)}%</small></div></div>`).join('')}
-async function pvpBet(v){if(V.spinning)return toast('Раунд уже идёт');V.spinning=1;
- const j=await srv('pvp',{bet:v},{hold:j=>j.players[j.winner].me?j.prize:0});if(!j){V.spinning=0;return}
- const w=$('#wh');if(!w){V.spinning=0;sync(j.me);return}w.style.transition='none';w.style.transform='rotate(0deg)';
- V.players=j.players.map(p=>p.me?{...p,n:ME.name}:p);pvpDraw();
- let n=3;const h=$('#hub');const t=setInterval(()=>{if(!$('#hub')){clearInterval(t);V.spinning=0;sync(j.me);return}if(n>0){h.textContent=n--;return}clearInterval(t);h.textContent='';{
-  const wn=V.players[j.winner];const th=wn.a0+(wn.a1-wn.a0)*(.15+Math.random()*.7);
-  w.offsetWidth;w.style.transition='transform 5s cubic-bezier(.15,.85,.2,1)';w.style.transform=`rotate(${360*6-th}deg)`;
-  setTimeout(()=>{sync(j.me);V.spinning=0;if(!$('#hub'))return;h.innerHTML=`<span style="font-size:12px;line-height:1.1">🏆<br>${esc(wn.n.slice(0,12))}</span>`;if(wn.me){toast(`Победа! +${fmt(j.prize)} ★`);loadFeed()}else toast(`Победил ${wn.n}`)},5100)}},1000);timers.push(t)}
+  if(d>=14){const m=a+d/2;labels.push(`<span class="wl" style="transform:rotate(${m}deg) translateY(-92px) rotate(${m>90&&m<270?180:0}deg) translate(-50%,-50%);transform-origin:0 0">${(p.me?'⭐ ':'')+esc(p.n.slice(0,10))}</span>`)}a+=d});
+ w.style.background=`conic-gradient(${segs.join(',')})`;w.innerHTML=labels.join('');$('#bank').textContent=fmt(bank);
+ $('#pl').innerHTML=P.map(p=>`<div class="it ${p.me?'me':''}"><div class="av" style="background:${p.c};color:#062c4a">${esc((p.n.replace('@','')[0]||'?').toUpperCase())}</div><div class="nm">${esc(p.n)}${p.me?' <small style="display:inline;color:var(--sun)">(вы)</small>':''}<small><span class="star">★</span> ${fmt(p.v)} · ${(p.v/bank*100).toFixed(1)}%</small></div></div>`).join('')}
+function pvpInit(){V={spinning:0,last:null,inited:0,cur:null,endAt:0,queue:null,polling:0};pvpPoll();const t=setInterval(pvpPoll,1000);timers.push(t)}
+function pvpPoll(){if(!$('#hub')||V.polling)return;V.polling=1;srv('pvp_state',{},{quiet:1}).then(j=>{V.polling=0;if(j)pvpApply(j)}).catch(()=>{V.polling=0})}
+function pvpApply(j){
+ if(!V.inited){V.inited=1;V.last=j.last?j.last.id:null}
+ else if(j.last&&j.last.id!==V.last){V.last=j.last.id;V.queue=j.last}
+ V.cur=j.cur;V.endAt=j.cur&&j.cur.endsIn!=null?Date.now()+j.cur.endsIn:0;
+ if(V.queue&&!V.spinning){const r=V.queue;V.queue=null;return pvpSpin(r)}
+ if(!V.spinning)pvpShowCur()}
+function pvpShowCur(){const c=V.cur,h=$('#hub'),w=$('#wh');if(!h||!w)return;w.style.transition='none';w.style.transform='rotate(0deg)';
+ V.players=c?c.players:[];pvpDraw();
+ if(!c||!c.players.length)h.innerHTML='<span style="font-size:12px">Ставь<br>первым</span>';
+ else if(!V.endAt)h.innerHTML='<span style="font-size:12px">Ждём<br>соперника</span>';
+ else h.innerHTML=`<span style="font-size:22px">${Math.ceil(Math.max(0,V.endAt-Date.now())/1000)}</span>`}
+function pvpSpin(r){
+ if(r.refund){if(r.players.some(p=>p.me)){toast('Соперник не нашёлся — ставка возвращена');srv('me',{},{quiet:1})}return pvpShowCur()}
+ V.spinning=1;V.players=r.players;pvpDraw();const w=$('#wh'),h=$('#hub');if(!w||!h){V.spinning=0;return}
+ const wn=V.players[r.winner];const th=wn.a0+(wn.a1-wn.a0)*(.15+Math.random()*.7);
+ h.textContent='';w.style.transition='none';w.style.transform='rotate(0deg)';w.offsetWidth;w.style.transition='transform 5s cubic-bezier(.15,.85,.2,1)';w.style.transform=`rotate(${360*6-th}deg)`;
+ setTimeout(()=>{if(!$('#hub')){V.spinning=0;return}h.innerHTML=`<span style="font-size:12px;line-height:1.1">🏆<br>${esc(wn.n.slice(0,12))}</span>`;
+  const mine=r.players.some(p=>p.me);if(wn.me){toast(`Победа! +${fmt(r.prize)} ★`);loadFeed()}else if(mine)toast(`Победил ${wn.n}`);if(mine)srv('me',{},{quiet:1});
+  setTimeout(()=>{V.spinning=0;if(V.queue){const q=V.queue;V.queue=null;pvpSpin(q)}else pvpShowCur()},3000)},5100)}
+async function pvpBet(v){if(v==null)v=Math.round(+(($('#pvbet')||{}).value)||0);if(!(v>=10))return toast('Минимальная ставка 10 ★');
+ const j=await srv('pvp',{bet:v},{lock:1});if(!j)return;toast(`Ставка ★ ${fmt(v)} принята`);pvpApply(j)}
 /* слоты */
 async function spinSlots(){if(S.sl)return;S.sl=1;const j=await srv('slots',{},{hold:j=>j.win});if(!j){S.sl=0;return}
  const sy=STRELA.SLOT_SYMS,res=j.res;[0,1,2].forEach(i=>{const r=$('#r'+i);if(!r)return;r.classList.add('spin');const t=setInterval(()=>r.textContent=rnd(sy),70);
@@ -712,9 +737,9 @@ S.adTab='stats';
 const GNAMES={cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
-  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети']];
+  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users')adLoad();setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users'||k==='bc')adLoad();setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
@@ -785,6 +810,17 @@ soc(){if(!ADM.socials)ADM.socials=structuredClone(DEF_SOCIALS);
    <button class="btn sm ghost" style="padding:6px 10px;background:rgba(255,90,95,.35)" onclick="ADM.socials.splice(${i},1);saveAdm();setTab('admin')">✕</button></div>
   <div class="field" style="margin:0"><input placeholder="Ссылка, напр. https://tiktok.com/@ник" value="${esc(x.url)}" onchange="socUrl(${i},this.value)"><input placeholder="Подпись" value="${esc(x.name||'')}" onchange="ADM.socials[${i}].name=this.value.trim().slice(0,20);saveAdm()" style="max-width:110px"></div></div>`}).join('')}
  <button class="btn sand" style="margin-top:10px" onclick="ADM.socials.push({id:'s'+Date.now(),type:'other',url:'',on:1});saveAdm();setTab('admin')">➕ Добавить ссылку</button></div>`},
+bc(){const A=S.adm;const st=A&&A.bc;const run=st&&!st.done;if(run)setTimeout(()=>{if(S.tab==='admin'&&S.adTab==='bc')adLoad(1)},2500);
+ const d=S.bcDraft||(S.bcDraft={text:'',btnText:'',btnUrl:'',play:1});
+ return `<div class="card"><div class="ad-h">📣 Рассылка всем игрокам</div><p class="sub" style="text-align:left;margin:0 0 10px">Получат все, кто открывал игру или нажимал /start${A?` — сейчас <b>${fmt(A.audience||0)}</b>`:''}. Кто заблокировал бота, не получит.</p>
+ <div class="field"><textarea id="bcT" rows="6" placeholder="Текст сообщения…" oninput="S.bcDraft.text=this.value" style="width:100%;background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:12px;color:#fff;font:600 15px Nunito,sans-serif;padding:10px;resize:vertical">${esc(d.text)}</textarea></div>
+ <div class="field"><input placeholder="Текст кнопки (необязательно)" value="${esc(d.btnText)}" oninput="S.bcDraft.btnText=this.value"><input placeholder="Ссылка кнопки" value="${esc(d.btnUrl)}" oninput="S.bcDraft.btnUrl=this.value"></div>
+ <div class="grow" style="border:0"><div class="nm">Кнопка «${esc(BUTTON_TEXT)}»</div><button class="sw ${d.play?'on':''}" onclick="S.bcDraft.play=S.bcDraft.play?0:1;this.classList.toggle('on')"></button></div>
+ <div class="row"><button class="btn ghost" onclick="bcSend(1)">🧪 Себе (тест)</button><button class="btn sand" ${run?'disabled':''} onclick="bcSend(0)">📣 Отправить всем</button></div></div>
+ ${st?`<div class="card"><div class="ad-h">${run?'⏳ Идёт рассылка':st.stopped?'⏹ Остановлена':'✅ Рассылка завершена'}</div>
+  <p class="sub" style="text-align:left;margin:0 0 8px">«${esc(st.text)}${st.text.length>=80?'…':''}»</p>
+  <div class="kpi"><div><b>${fmt(st.sent)}</b><small>Доставлено</small></div><div><b>${fmt(st.failed)}</b><small>Не доставлено</small></div><div><b>${fmt(Math.max(0,st.total-st.sent-st.failed))}</b><small>Осталось</small></div><div><b>${fmt(st.total)}</b><small>Всего</small></div></div>
+  ${run?`<button class="btn ghost" style="margin-top:10px" onclick="adApi('bc_stop',{}).then(j=>{if(j){toast('Остановлено');adLoad(1)}})">⏹ Остановить</button>`:''}</div>`:''}`},
 users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загрузка…</div>`}
  const q=(S.uq||'').toLowerCase();const L=A.users.filter(u=>!q||u.id.includes(q)||String(u.name).toLowerCase().includes(q));
  return `<div class="field"><input placeholder="Поиск по ID или имени" value="${esc(S.uq||'')}" onchange="S.uq=this.value;setTab('admin')"></div>
@@ -799,7 +835,12 @@ function socUrl(i,v){v=v.trim();if(v&&!/^https?:\/\//i.test(v))v=(v.startsWith('
 function socToggle(i){const x=ADM.socials[i];if(!x.on&&!x.url)return toast('Сначала вставь ссылку');x.on=x.on?0:1;saveAdm();setTab('admin')}
 function adLoad(force){if(adLoading||(!force&&S.adm&&Date.now()-adAt<8000))return;adLoading=1;
  adApi('stats',{}).then(j=>{adLoading=0;if(!j)return;adAt=Date.now();const same=S.adm&&JSON.stringify(S.adm)===JSON.stringify(j);S.adm=j;
-  if(!same&&S.tab==='admin'&&!S.stack.length&&(S.adTab==='stats'||S.adTab==='users')){const y=view.scrollTop;setTab('admin');view.scrollTop=y}}).catch(()=>{adLoading=0})}
+  if(!same&&S.tab==='admin'&&!S.stack.length&&(S.adTab==='stats'||S.adTab==='users'||S.adTab==='bc')){const y=view.scrollTop;setTab('admin');view.scrollTop=y}}).catch(()=>{adLoading=0})}
+const BUTTON_TEXT='🏝 Играть';
+function bcSend(test){const d=S.bcDraft||{};if(!(d.text||'').trim())return toast('Напиши текст');if(d.btnText&&!d.btnUrl)return toast('Укажи ссылку для кнопки');
+ if(test)return adApi('bc_test',d).then(j=>{if(j)toast('Отправлено тебе в бота ✅')});
+ const n=S.adm&&S.adm.audience,q=`Отправить рассылку ${n?n+' игрокам':'всем'}?`,go=()=>adApi('bc_start',d).then(j=>{if(j){toast(`Рассылка запущена: ${j.total} получателей`);adLoad(1)}});
+ try{if(tg&&tg.showConfirm)return tg.showConfirm(q,ok=>{if(ok)go()})}catch(e){}if(confirm(q))go()}
 function adWdDone(wid){if(S.adm)S.adm.withdrawals=S.adm.withdrawals.filter(w=>w.id!==wid);setTab('admin');adApi('wd_done',{wid}).then(j=>{if(j){toast('Отмечено ✅');adLoad(1)}})}
 function adGive(){const id=ensureUser($('#gId').value);const a=Math.round(+$('#gAmt').value);if(!id)return;if(!a)return toast('Укажите количество');adApi('give',{id,amount:a}).then(j=>{if(j)toast(`${a>0?'Выдано':'Списано'} ${fmt(Math.abs(a))} ★ → ${id} (баланс ${fmt(j.user.bal)})`)})}
 function adGiveGift(){const id=ensureUser($('#ggId').value);if(!id)return;const g=giftBy($('#ggS').value);adApi('gift',{id,slug:g.slug}).then(j=>{if(j)toast(`${g.name} → ${id}`)})}

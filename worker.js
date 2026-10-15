@@ -50,17 +50,51 @@ async function tg(env, method, params) {
 
 // ---- хранилище общих настроек админки (Durable Object, SQLite — бесплатно) ----
 export class Store {
-  constructor(state) { this.state = state; }
+  constructor(state, env) { this.state = state; this.env = env; }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
     // игровые операции: всё считается здесь, атомарно, в одном месте
     if (key.startsWith("op/") && req.method === "POST") {
-      const b = await req.json();
-      try { return json(await new Game(this.state.storage).run(key.slice(3), b.uid, b.name, b.d || {}, b.admin)); }
+      const b = await req.json(), name = key.slice(3);
+      try {
+        const res = await new Game(this.state.storage).run(name, b.uid, b.name, b.d || {}, b.admin);
+        if (name.startsWith("pvp") || name.startsWith("admin/bc")) await this.schedule();
+        return json(res);
+      }
       catch (e) { if (e instanceof GameError) return json({ ok: false, err: e.message }); console.log("op error", e); return json({ ok: false, err: "Ошибка сервера" }); }
     }
     if (req.method === "POST") { await this.state.storage.put(key, await req.text()); return new Response("ok"); }
     return new Response((await this.state.storage.get(key)) || (key === "settings" ? "{}" : ""));
+  }
+  // будильник: итог PvP-раунда и рассылка пачками
+  async alarm() {
+    const g = new Game(this.state.storage); await g.init();
+    try { await g.pvpTick(); } catch (e) { console.log("pvp tick", e); }
+    try { await this.bcStep(); } catch (e) { console.log("broadcast", e); }
+    await this.schedule();
+  }
+  async schedule() {
+    const s = this.state.storage, g = new Game(s);
+    const times = [await g.pvpDue()];
+    const job = await s.get("bc:job");
+    if (job && !job.done) times.push(job.next || Date.now());
+    const t = times.filter(Boolean);
+    if (t.length) await s.setAlarm(Math.max(Date.now() + 50, Math.min(...t)));
+  }
+  async bcStep() {
+    const s = this.state.storage, job = await s.get("bc:job");
+    if (!job || job.done || (job.next && Date.now() < job.next - 50)) return;
+    const origin = (await s.get("origin")) || DEFAULT_ORIGIN;
+    const kb = [];
+    if (job.btnText && job.btnUrl) kb.push([{ text: job.btnText, url: job.btnUrl }]);
+    if (job.play) kb.push([{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }]);
+    const end = Math.min(job.ids.length, job.pos + 25);        // ≤ 25 сообщений за раз — в лимитах Telegram и Cloudflare
+    for (; job.pos < end; job.pos++) {
+      const r = await tg(this.env, "sendMessage", { chat_id: job.ids[job.pos], text: job.text, disable_web_page_preview: true, ...(kb.length ? { reply_markup: { inline_keyboard: kb } } : {}) });
+      if (r.ok) job.sent++; else job.failed++;
+    }
+    if (job.pos >= job.ids.length) { job.done = true; job.finished = Date.now(); } else job.next = Date.now() + 1100;
+    await s.put("bc:job", job);
   }
 }
 const store = env => env.STORE.get(env.STORE.idFromName("main"));
@@ -77,8 +111,8 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["me", "case", "egg", "upgrade", "contract", "crash_bet", "crash_cash", "crash_peek", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start"]);
-const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "wd_done"]);
+const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_bet", "crash_cash", "crash_peek", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start"]);
+const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "wd_done", "bc_start", "bc_stop", "bc_test"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -109,6 +143,7 @@ async function handleUpdate(env, origin, upd) {
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const kb = { inline_keyboard: [[{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }],
     [{ text: "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
+  if (cmd === "/start" && msg.from && msg.chat.type === "private") await putKey(env, "bu:" + msg.from.id, "1");
   if (cmd === "/start") {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
     if (m && msg.from) await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
@@ -338,6 +373,15 @@ export default {
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
       if (!u) return json({ ok: false, err: "Нет доступа" }, 403);
       delete d.initData;
+      if (name === "bc_test") {      // пробное сообщение самому себе
+        const ok = isOwner(u.username) || (await isAdminUser(env, u));
+        if (!ok) return json({ ok: false, err: "Нет доступа" }, 403);
+        const origin = (await getKey(env, "origin")) || url.origin, kb = [];
+        if (d.btnText && d.btnUrl) kb.push([{ text: String(d.btnText).slice(0, 40), url: String(d.btnUrl) }]);
+        if (d.play) kb.push([{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }]);
+        const r = await tg(env, "sendMessage", { chat_id: u.id, text: String(d.text || "").slice(0, 4000), disable_web_page_preview: true, ...(kb.length ? { reply_markup: { inline_keyboard: kb } } : {}) });
+        return json(r.ok ? { ok: true } : { ok: false, err: "Telegram: " + (r.description || "ошибка") + (r.error_code === 403 ? " — сначала напиши боту /start" : "") });
+      }
       // владелец — сразу; остальных админов проверяет само хранилище (без лишнего запроса)
       return json(await op(env, "admin/" + name, u.id, uname(u), d, isOwner(u.username) ? true : "check"));
     }
