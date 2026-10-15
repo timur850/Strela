@@ -315,12 +315,14 @@ let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getIt
 const G_KEYS=['minWd','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
-function saveAdm(){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
- if(!SYNC.ready||!IS_ADMIN||!(tg&&tg.initData))return;const p=gPart();if(p===SYNC.last)return;clearTimeout(SYNC.t);
+function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
+ if(!SYNC.ready)return;const p=gPart();if(p===SYNC.last&&!now)return;
+ if(!IS_ADMIN||!(tg&&tg.initData)){toast('⚠️ Не сохранено: нет прав админа');return}
+ clearTimeout(SYNC.t);
  SYNC.t=setTimeout(()=>{fetch('api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,settings:JSON.parse(p)})})
-  .then(r=>r.json()).then(j=>{if(j.ok){SYNC.last=p;toast('Сохранено для всех ✅')}else toast('Не сохранено: '+(j.err||'ошибка'))}).catch(()=>{})},900)}
+  .then(r=>r.json()).then(j=>{if(j.ok){SYNC.last=p;SYNC.okAt=Date.now();toast('Сохранено для всех ✅')}else{SYNC.fail=j.err||'ошибка';toast('⚠️ Не сохранено: '+(j.err==='not admin'?'сервер не считает тебя админом':(j.err||'ошибка')))}}).catch(()=>toast('⚠️ Не сохранено: нет связи'))},now?0:900)}
 function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-  if(j&&typeof j==='object'&&Object.keys(j).length){G_KEYS.forEach(k=>{if(j[k]!==undefined)ADM[k]=j[k]});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
+  if(j&&typeof j==='object'){G_KEYS.forEach(k=>{ADM[k]=j[k]!==undefined?j[k]:(DEF[k]!==undefined?structuredClone(DEF[k]):undefined)});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
   SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
@@ -766,7 +768,7 @@ const GNAMES={cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мин�
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
   const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
-  return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
+  return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
   <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
 const AD={
@@ -807,7 +809,7 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]}%</b></div>`).join('')}
  <div class="rng"><span>PvP комиссия</span><input type="range" min="0" max="20" value="${ADM.pvpFee}" oninput="ADM.pvpFee=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.pvpFee}%</b></div></div>
- <button class="btn sand" onclick="toast('Сохранено ✅')">Сохранить</button>`},
+ <button class="btn sand" onclick="saveAdm(1)">Сохранить</button>`},
 give(){return `<div class="card"><div class="ad-h">⭐ Выдать звёзды по ID</div>
  <div class="field"><input id="gId" placeholder="Telegram ID игрока" inputmode="numeric"></div>
  <div class="field"><input id="gAmt" placeholder="Количество ★ (минус — списать)" type="number"></div>
