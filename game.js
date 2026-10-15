@@ -284,7 +284,12 @@ export class Game {
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, t: Date.now(), st: "new" });
     await this.s.put("wd:" + uid, Date.now());
-    return { wd: { id, slug: g.slug, name: g.name, price: g.price } };
+    return { wd: { id, slug: g.slug, name: g.name, price: g.price, tgid: g.tgid || null } };
+  }
+  async op_withdraw_done(u, uid, d) {           // бот сам отправил подарок — закрываем заявку
+    const k = "wdq:" + d.id, w = await this.s.get(k);
+    if (w && w.uid === uid) await this.s.delete(k);
+    return {};
   }
   async op_withdraw_undo(u, uid, d) {           // уведомление не ушло — возвращаем подарок
     const k = "wdq:" + d.id, w = await this.s.get(k);

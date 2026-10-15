@@ -252,9 +252,24 @@ export default {
       const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug });
       if (!r.ok) return json(r);
       const w = r.wd, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      // обычный подарок Telegram — бот отправляет сам, за звёзды со своего баланса
+      let autoErr = "";
+      if (w.tgid) {
+        const g = await tg(env, "sendGift", { user_id: u.id, gift_id: String(w.tgid), text: "🏹 Вывод из STRELA CASE" });
+        if (g.ok) {
+          await op(env, "withdraw_done", u.id, uname(u), { id: w.id });
+          for (const o of OWNERS) {
+            const chat = await getKey(env, "ownerchat:" + o.toLowerCase());
+            if (chat) await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: `🤖 Автовыдача: <b>${e(w.name)}</b> (${w.price} ★) → ${e(uname(u))}, ID <code>${u.id}</code>` });
+          }
+          return json({ ...r, auto: true });
+        }
+        autoErr = g.description || "ошибка";
+      }
       const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(w.name)}</b>\n⭐ Цена: ${w.price} ★\n` +
         `👤 Игрок: ${e(uname(u))}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
-        (!w.slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${w.slug}` : "");
+        (!w.slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${w.slug}` : "") +
+        (autoErr ? `\n\n⚠️ Автовыдача не сработала: ${e(autoErr)}\nПроверь баланс звёзд бота (@BotFather → бот → Balance) и отправь вручную.` : "");
       const kb = { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] };
       let sent = 0;
       for (const o of OWNERS) {

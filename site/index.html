@@ -424,14 +424,14 @@ profile(){
 admin(){return adminView()}
 };
 function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;
- sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">Заявка уйдёт администратору, подарок придёт вам в Telegram.</p><button class="btn sand" style="margin-top:14px" onclick="withdraw(${i})">📤 Вывести</button>`)}
+ sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p><button class="btn sand" style="margin-top:14px" onclick="withdraw(${i})">📤 Вывести</button>`)}
 let wdBusy=false;
 async function withdraw(i){const s=U().inv[i],g=giftBy(s);if(!g||wdBusy)return;
  if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');
  if(ADM.banned.includes(ME.id))return toast('Аккаунт заблокирован');
  wdBusy=true;try{const j=await API('api/withdraw',{i,slug:s});
   if(j.me)sync(j.me);
-  if(j.ok){closeSheet();setTab('profile');toast('Заявка на вывод отправлена ✅')}
+  if(j.ok){closeSheet();setTab('profile');toast(j.auto?'Подарок отправлен вам в Telegram 🎁':'Заявка на вывод отправлена ✅')}
   else toast(j.err||'Не удалось отправить заявку')}catch(e){toast('Нет связи с сервером')}wdBusy=false}
 function sellGift(i){srv('sell',{i,slug:U().inv[i]},{lock:1}).then(j=>{if(j){toast(`Продано +${fmt(j.got)} ★`);setTab('profile')}})}
 function sellAll(){srv('sellall',{},{lock:1}).then(j=>{if(j){toast(`Продано +${fmt(j.got)} ★`);setTab('profile')}})}
