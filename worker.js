@@ -3,6 +3,7 @@
 // После деплоя один раз открой https://<твой-воркер>.workers.dev/setup
 
 import { Game, GameError } from "./game.js";
+const { DEF_TASKS } = globalThis.STRELA;
 
 const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
 const SUPPORT = "@PODONOK_UC_1";
@@ -76,7 +77,7 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["me", "case", "egg", "upgrade", "contract", "crash_bet", "crash_cash", "crash_peek", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task"]);
+const PUBLIC_OPS = new Set(["me", "case", "egg", "upgrade", "contract", "crash_bet", "crash_cash", "crash_peek", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start"]);
 const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "wd_done"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
@@ -299,6 +300,37 @@ export default {
       delete d.initData;
       return json(await op(env, name, u.id, uname(u), d));
     }
+    // ===== ЗАДАНИЯ: подписку на канал/чат и ссылку в био проверяем через Telegram =====
+    if (path === "/api/task" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      const st = await loadSettings(env);
+      const t = (st.tasks || DEF_TASKS).find(x => x.id === d.id && x.on);
+      if (!t) return json({ ok: false, err: "Задание не найдено" });
+      let verified = false, why = "";
+      if (t.type === "channel" || t.type === "chat") {
+        const m = String(t.url || "").match(/(?:t\.me\/|@)([A-Za-z0-9_]{4,})\/?$/);
+        if (!m) why = "Админ: укажи в задании публичную ссылку вида t.me/канал";
+        else {
+          const r = await tg(env, "getChatMember", { chat_id: "@" + m[1], user_id: u.id });
+          if (!r.ok) why = "Бот не может проверить подписку — админ, добавь бота админом в @" + m[1];
+          else {
+            const s = r.result.status;
+            verified = ["creator", "administrator", "member"].includes(s) || (s === "restricted" && r.result.is_member);
+            if (!verified) why = t.type === "chat" ? "Ты ещё не вступил в чат" : "Ты ещё не подписан на канал";
+          }
+        }
+      } else if (t.type === "bio") {
+        const r = await tg(env, "getChat", { chat_id: u.id });
+        const bio = String((r.ok && r.result.bio) || "").toLowerCase().replace(/^https?:\/\//, "");
+        const need = String(t.url || "").toLowerCase().replace(/^https?:\/\//, "").trim();
+        verified = !!need && bio.includes(need);
+        if (!verified) why = `В описании профиля (био) нет «${t.url}». Если только что добавил — подожди минуту и проверь снова`;
+      }
+      return json(await op(env, "task", u.id, uname(u), { id: t.id, verified, why }));
+    }
+
     if (path.startsWith("/api/admin/") && req.method === "POST") {
       const name = path.slice(11);
       if (!ADMIN_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
@@ -315,6 +347,9 @@ export default {
       return json(raw ? JSON.parse(raw).slice(0, 100) : []);
     }
     // всё остальное — сайт игры
-    return env.ASSETS.fetch(req);
+    const res = await env.ASSETS.fetch(req);
+    const out = new Response(res.body, res);
+    out.headers.set("cache-control", "no-cache");
+    return out;
   }
 };

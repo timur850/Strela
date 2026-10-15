@@ -319,14 +319,7 @@ const GIFT_ACC='PODONOK_UC_1'; // аккаунт, куда игроки отпр
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TASK_TYPES={channel:'📢 Подписка на канал',chat:'💬 Вступить в чат',link:'🔗 Открыть ссылку',story:'📸 История',bio:'🧾 Ссылка в био',home:'🏖️ На рабочий стол'};
 const TASK_HINT={channel:'https://t.me/твой_канал',chat:'https://t.me/твой_чат',link:'https://youtube.com/@канал',story:'Ссылка на картинку/видео для истории (https://...)',bio:'Текст для био, напр. t.me/StrelaCase_bot',home:'— ссылка не нужна'};
-const DEF_TASKS=[
- {id:'t1',e:'🏖️',t:'Добавить на рабочий стол',type:'home',url:'',r:1,on:1},
- {id:'t2',e:'🔗',t:'Ссылка в био',type:'bio',url:'t.me/StrelaCase_bot',r:1,on:1},
- {id:'t3',e:'📸',t:'Опубликовать историю',type:'story',url:'',r:1,on:1},
- {id:'t4',e:'📢',t:'Подпишитесь на наш канал',type:'channel',url:'https://t.me/',r:1,on:1},
- {id:'t5',e:'▶️',t:'Подпишитесь на YouTube',type:'link',url:'https://youtube.com/',r:1,on:1},
- {id:'t6',e:'💬',t:'Вступите в наш чат',type:'chat',url:'https://t.me/',r:1,on:1},
- {id:'t7',e:'🌴',t:'Подпишитесь в Instagram',type:'link',url:'https://instagram.com/',r:1,on:1}];
+const DEF_TASKS=STRELA.DEF_TASKS;
 if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS);
 const TASKS=()=>ADM.tasks.filter(t=>t.on);
 const ini=n=>n.split(/[\s'-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -523,14 +516,18 @@ let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelA
 
 function tick(){const end=Date.now()+5*864e5+11*36e5+28*6e4+54e3;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
 function openUrl(u){if(!u)return;if(!/^https?:\/\//.test(u))u='https://'+u;try{if(tg&&/^https:\/\/t\.me\//.test(u))return tg.openTelegramLink(u);if(tg)return tg.openLink(u)}catch(e){}window.open(u,'_blank')}
-function doTask(id){const t=ADM.tasks.find(x=>x.id===id);if(!t)return;const u=U();u.done=u.done||{};u.started=u.started||{};if(u.done[id])return;
- if(!u.started[id]){u.started[id]=1;saveAdm();
+function claimTask(id){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');if(busy)return;busy=true;
+ API('api/task',{id}).then(j=>{busy=false;if(j.me)sync(j.me);if(!j.ok){if(/Начать/.test(j.err||'')){const u=U();if(u.started)delete u.started[id];saveAdm();if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')}return toast(j.err||'Задание не выполнено')}toast(j.got?`+${j.got} 🎫`:'Уже выполнено');if(S.tab==='tasks'&&!S.stack.length)setTab('tasks');navBadge()}).catch(()=>{busy=false;toast('Нет связи с сервером')})}
+function doTask(id){const t=TASKS().find(x=>x.id===id);if(!t)return;const u=U();u.done=u.done||{};u.started=u.started||{};if(u.done[id])return;
+ if(!u.started[id]){u.started[id]=1;saveAdm();srv('task_start',{id},{quiet:1});
   if(t.type==='home'){try{tg&&tg.addToHomeScreen?tg.addToHomeScreen():toast('Добавьте приложение на главный экран через меню ⋮')}catch(e){}}
   else if(t.type==='story'){try{if(tg&&tg.shareToStory&&t.url)tg.shareToStory(t.url,{text:'Играю в STRELA CASE 🏹',widget_link:{url:'https://t.me/StrelaCase_bot',name:'STRELA CASE'}});else toast('Опубликуйте историю с нашим ботом')}catch(e){toast('Опубликуйте историю с нашим ботом')}}
   else if(t.type==='bio'){try{navigator.clipboard.writeText(t.url)}catch(e){}toast('Скопировано — вставьте в био: '+t.url)}
   else openUrl(t.url);
   setTimeout(()=>{if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')},400);return}
- srv('task',{id},{lock:1}).then(j=>{if(!j)return;toast(j.got?`+${j.got} 🎫`:'Уже выполнено');if(S.tab==='tasks'&&!S.stack.length)setTab('tasks');navBadge()})}
+ if(t.type==='home'){if(!(tg&&tg.checkHomeScreenStatus))return toast('Обнови Telegram — эта проверка не поддерживается');
+  try{return tg.checkHomeScreenStatus(st=>{if(st==='added')claimTask(id);else if(st==='unsupported')toast('На этом устройстве нельзя добавить на рабочий стол');else{toast('Сначала добавь игру на рабочий стол');try{tg.addToHomeScreen()}catch(e){}}})}catch(e){return toast('Не удалось проверить')}}
+ claimTask(id)}
 function navBadge(){const d=(U().done)||{};const n=TASKS().filter(t=>!d[t.id]).length;const b=document.querySelector('.nav .badge');if(b){b.textContent=n;b.style.display=n?'':'none'}}
 /* ================== ПОПОЛНЕНИЕ: ЗВЁЗДЫ (настоящий счёт Telegram) ================== */
 let dAmt=200;const usd=n=>(n*0.013).toFixed(1).replace('.',',');

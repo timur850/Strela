@@ -2,7 +2,7 @@
 // Здесь хранятся баланс, билеты и подарки игроков, и здесь же решается результат каждой игры.
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
-const { makeLogic, EGGS, PVP_BETS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
+const { makeLogic, DEF_TASKS, EGGS, PVP_BETS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
 
 const MAX_BET = 1_000_000;
 const BOTS = ["moana_sun", "kai.surf", "aloha_x", "ciloxik", "parfem1kh", "meawxxx09", "Darkol", "nemo777", "semmu", "vlad_ton"];
@@ -289,11 +289,24 @@ export class Game {
   }
 
   // ---- задания → билеты ----
+  task(id) { return (this.st.tasks || DEF_TASKS).find(x => x.id === id && x.on); }
+  async op_task_start(u, uid, d) {
+    const t = this.task(d.id); if (!t) return {};
+    u.tstart = u.tstart || {}; if (!u.tstart[t.id]) u.tstart[t.id] = Date.now();
+    return {};
+  }
+  // зовёт только сервер: подписку и био он уже проверил через Telegram
   async op_task(u, uid, d) {
-    const t = (this.st.tasks || []).find(x => x.id === d.id && x.on);
+    const t = this.task(d.id);
     if (!t) fail("Задание не найдено");
     u.done = u.done || {};
     if (u.done[t.id]) return { got: 0 };
+    if (["channel", "chat", "bio"].includes(t.type) && d.verified !== true) fail(d.why || "Задание не выполнено");
+    if (["story", "link"].includes(t.type)) {
+      const st = (u.tstart || {})[t.id];
+      if (!st) fail("Сначала нажми «Начать»");
+      if (Date.now() - st < 15000) fail("Выполни задание и вернись через пару секунд");
+    }
     u.done[t.id] = 1; const r = Math.max(0, Math.min(100, Math.round(+t.r || 0))); u.tick += r;
     return { got: r };
   }

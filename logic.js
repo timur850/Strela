@@ -16,6 +16,15 @@ const PM0=[[5.6,2.1,1.1,1,.5,1,1.1,2.1,5.6],[13,3,1.3,.7,.4,.7,1.3,3,13],[29,4,1
 const BIN=[1,8,28,56,70,56,28,8,1].map(x=>x/256);   // шансы лунок plinko (8 рядов)
 const SLOT_SYMS=['🍉','🥥','🐚','🌺','🍹','💎'];
 const PVP_BETS=[100,500,2500], SLOT_BET=100, CRASH_K=.12;
+/* задания по умолчанию (пока админ не сохранил свои) */
+const DEF_TASKS=[
+ {id:'t1',e:'🏖️',t:'Добавить на рабочий стол',type:'home',url:'',r:1,on:1},
+ {id:'t2',e:'🔗',t:'Ссылка в био',type:'bio',url:'t.me/StrelaCase_bot',r:1,on:1},
+ {id:'t3',e:'📸',t:'Опубликовать историю',type:'story',url:'',r:1,on:1},
+ {id:'t4',e:'📢',t:'Подпишитесь на наш канал',type:'channel',url:'https://t.me/',r:1,on:1},
+ {id:'t5',e:'▶️',t:'Подпишитесь на YouTube',type:'link',url:'https://youtube.com/',r:1,on:1},
+ {id:'t6',e:'💬',t:'Вступите в наш чат',type:'chat',url:'https://t.me/',r:1,on:1},
+ {id:'t7',e:'🌴',t:'Подпишитесь в Instagram',type:'link',url:'https://instagram.com/',r:1,on:1}];
 const isStar=g=>!!g&&g.slug.startsWith('stars');
 
 function makeLogic(getADM,rand){
@@ -69,5 +78,5 @@ function makeLogic(getADM,rand){
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
  return {R,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,itemsPick,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
 }
-G.STRELA={makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar};
+G.STRELA={makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar};
 })(globalThis);
