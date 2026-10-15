@@ -123,7 +123,7 @@ export default {
       if (w.ok && w.result.url !== origin + "/webhook") { await setupBot(env, origin, hookKey, false); repaired = true; w = await tg(env, "getWebhookInfo", {}); }
       const r = w.result || {};
       const me = await tg(env, "getMe", {});
-      const out = { version: "v6", token_ok: !!me.ok, telegram_error: me.ok ? null : (me.error_code + " " + me.description), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
+      const out = { version: "v6", token_ok: !!me.ok, telegram_error: me.ok ? null : (env.BOT_TOKEN ? me.error_code + " " + me.description : "BOT_TOKEN не задан — добавь его как Secret"), bot: me.ok ? "@" + me.result.username : null, webhook_ok: r.url === origin + "/webhook", repaired, setup_error: repaired && r.url !== origin + "/webhook" ? "setWebhook не сработал" : null, url: r.url || "(пусто — вебхук снят)", pending: r.pending_update_count,
         last_error: r.last_error_message || null, last_error_at: r.last_error_date ? new Date(r.last_error_date * 1000).toISOString() : null };
       return json(out);
     }
