@@ -3,7 +3,8 @@
 // После деплоя один раз открой https://<твой-воркер>.workers.dev/setup
 
 const OWNERS = ["PODONOK_UC_1"];          // владельцы админки (username без @)
-const SUPPORT = "@Sdelka_ton";            // контакт поддержки
+const SUPPORT = "@Sdelka_ton";
+const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
 const BUTTON_TEXT = "🏝 Играть";
 const WELCOME = "🏹 <b>STRELA CASE</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
 
@@ -87,7 +88,7 @@ export default {
   // каждые 5 минут: если вебхук кто-то снял (например, запустили бота на ПК) — возвращаем
   async scheduled(event, env, ctx) {
     if (!env.BOT_TOKEN) return;
-    const origin = await (await store(env).fetch("https://s/origin")).text();
+    const origin = (await (await store(env).fetch("https://s/origin")).text()) || DEFAULT_ORIGIN;
     if (!origin) return;
     const w = await tg(env, "getWebhookInfo", {});
     if (w.ok && w.result.url !== origin + "/webhook") {
