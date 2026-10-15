@@ -248,6 +248,9 @@ canvas{display:block;width:100%;border-radius:22px}
 .wheel{position:relative;overflow:hidden}
 .wheel .wl{position:absolute;left:50%;top:50%;font-weight:900;font-size:12px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;pointer-events:none}
 #damt::-webkit-inner-spin-button,#damt::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}#damt{-moz-appearance:textfield;appearance:textfield}
+.socials{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:2px 0 12px}
+.soc{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:var(--glass);color:#fff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
+.soc i{font-style:normal;font-size:16px}
 </style>
 </head>
 <body>
@@ -303,7 +306,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -320,6 +323,11 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const TASK_TYPES={channel:'📢 Подписка на канал',chat:'💬 Вступить в чат',link:'🔗 Открыть ссылку',story:'📸 История',bio:'🧾 Ссылка в био',home:'🏖️ На рабочий стол'};
 const TASK_HINT={channel:'https://t.me/твой_канал',chat:'https://t.me/твой_чат',link:'https://youtube.com/@канал',story:'Ссылка на картинку/видео для истории (https://...)',bio:'Текст для био, напр. t.me/StrelaCase_bot',home:'— ссылка не нужна'};
 const DEF_TASKS=STRELA.DEF_TASKS;
+/* соцсети проекта: ссылки и вкл/выкл — в админке → 🔗 Соцсети */
+const SOC_TYPES={tg:['✈️','Канал'],chat:['💬','Чат'],tiktok:['🎵','TikTok'],youtube:['▶️','YouTube'],instagram:['📸','Instagram'],x:['𝕏','X'],discord:['🎮','Discord'],site:['🌐','Сайт'],other:['🔗','Ссылка']};
+const DEF_SOCIALS=[{id:'s1',type:'tg',url:'',on:0},{id:'s2',type:'chat',url:'',on:0},{id:'s3',type:'tiktok',url:'',on:0},{id:'s4',type:'youtube',url:'',on:0},{id:'s5',type:'instagram',url:'',on:0}];
+const SOCIALS=()=>(ADM.socials||DEF_SOCIALS).filter(x=>x.on&&x.url);
+function socialsRow(){const L=SOCIALS();return L.length?`<div class="socials">${L.map(x=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<span class="soc" onclick="openUrl(${esc(JSON.stringify(x.url))})"><i>${t[0]}</i>${esc(x.name||t[1])}</span>`}).join('')}</div>`:''}
 if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS);
 const TASKS=()=>ADM.tasks.filter(t=>t.on);
 const ini=n=>n.split(/[\s'-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -385,7 +393,7 @@ const T={
 games(){
   const g=liveIcons();
   return `<div class="brand"><div class="lg"><svg viewBox="0 0 32 32" fill="none" stroke="#5a2600" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 27 L25 7"/><path d="M17 7 H25 V15"/><path d="M8 24 L4 23 M8 24 L9 28 M11 21 L7 20 M11 21 L12 25" stroke-width="2.4"/></svg></div><h1>STRELA<span>CASE</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
-  GAMES.filter(x=>!ADM.off[x[0]]).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('');
+  socialsRow()+GAMES.filter(x=>!ADM.off[x[0]]).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('');
 },
 contests(){
   const box=(p,a,b)=>`<div class="card"><div class="grid3">${p.map(s=>{const g=giftBy(s);return `<div class="prize">${gi(g)}<div><b class="star">★</b> <b>${fmt(g.price)}</b></div></div>`}).join('')}</div>
@@ -704,7 +712,7 @@ S.adTab='stats';
 const GNAMES={cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
-  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки']];
+  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети']];
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>
   <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';if(k==='stats'||k==='users')adLoad();setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
 }
@@ -768,6 +776,15 @@ cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hi
  <div class="card"><div class="ad-h">➕ Новый кейс</div><div class="field"><input id="ncN" placeholder="Название"><input id="ncP" type="number" placeholder="Цена ★" style="max-width:110px"></div><button class="btn sand" onclick="ceCreate()">Создать кейс</button></div>`},
 games(){return `<div class="card"><div class="ad-h">🕹 Включение игр</div>
  ${GAMES.map(([id,,ic,t])=>`<div class="grow"><span style="font-size:28px">${ic}</span><div class="nm">${t}</div><button class="sw ${ADM.off[id]?'':'on'}" onclick="ADM.off['${id}']=!ADM.off['${id}'];this.classList.toggle('on');saveAdm()"></button></div>`).join('')}</div>`},
+soc(){if(!ADM.socials)ADM.socials=structuredClone(DEF_SOCIALS);
+ return `<div class="card"><div class="ad-h">🔗 Соцсети проекта</div><p class="sub" style="text-align:left;margin:0 0 10px">Включённые ссылки видны игрокам кнопками на главной. Пустые и выключенные — скрыты.</p>
+ ${ADM.socials.map((x,i)=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<div style="border-top:1px solid var(--line);padding:10px 0">
+  <div class="grow" style="border:0;padding:0 0 6px"><span style="font-size:24px">${t[0]}</span>
+   <select onchange="ADM.socials[${i}].type=this.value;saveAdm();setTab('admin')" style="flex:1">${Object.entries(SOC_TYPES).map(([k,v])=>`<option value="${k}" ${k===x.type?'selected':''}>${v[1]}</option>`).join('')}</select>
+   <button class="sw ${x.on?'on':''}" onclick="socToggle(${i})"></button>
+   <button class="btn sm ghost" style="padding:6px 10px;background:rgba(255,90,95,.35)" onclick="ADM.socials.splice(${i},1);saveAdm();setTab('admin')">✕</button></div>
+  <div class="field" style="margin:0"><input placeholder="Ссылка, напр. https://tiktok.com/@ник" value="${esc(x.url)}" onchange="socUrl(${i},this.value)"><input placeholder="Подпись" value="${esc(x.name||'')}" onchange="ADM.socials[${i}].name=this.value.trim().slice(0,20);saveAdm()" style="max-width:110px"></div></div>`}).join('')}
+ <button class="btn sand" style="margin-top:10px" onclick="ADM.socials.push({id:'s'+Date.now(),type:'other',url:'',on:1});saveAdm();setTab('admin')">➕ Добавить ссылку</button></div>`},
 users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загрузка…</div>`}
  const q=(S.uq||'').toLowerCase();const L=A.users.filter(u=>!q||u.id.includes(q)||String(u.name).toLowerCase().includes(q));
  return `<div class="field"><input placeholder="Поиск по ID или имени" value="${esc(S.uq||'')}" onchange="S.uq=this.value;setTab('admin')"></div>
@@ -778,6 +795,8 @@ async function adApi(op,body){if(!(tg&&tg.initData)){toast('Открой чер�
  try{const j=await API('api/admin/'+op,body);if(!j.ok){toast(j.err||'Ошибка');return null}
   if(j.user&&j.user.id===ME.id)sync(j.user);return j}catch(e){toast('Нет связи с сервером');return null}}
 let adLoading=0,adAt=0;
+function socUrl(i,v){v=v.trim();if(v&&!/^https?:\/\//i.test(v))v=(v.startsWith('@')?'https://t.me/'+v.slice(1):'https://'+v);ADM.socials[i].url=v;if(v)ADM.socials[i].on=1;saveAdm();setTab('admin')}
+function socToggle(i){const x=ADM.socials[i];if(!x.on&&!x.url)return toast('Сначала вставь ссылку');x.on=x.on?0:1;saveAdm();setTab('admin')}
 function adLoad(force){if(adLoading||(!force&&S.adm&&Date.now()-adAt<8000))return;adLoading=1;
  adApi('stats',{}).then(j=>{adLoading=0;if(!j)return;adAt=Date.now();const same=S.adm&&JSON.stringify(S.adm)===JSON.stringify(j);S.adm=j;
   if(!same&&S.tab==='admin'&&!S.stack.length&&(S.adTab==='stats'||S.adTab==='users')){const y=view.scrollTop;setTab('admin');view.scrollTop=y}}).catch(()=>{adLoading=0})}
