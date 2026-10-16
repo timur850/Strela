@@ -432,7 +432,7 @@ tour(){
 profile(){
   const inv=U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
   return `<div class="card" style="text-align:center"><h1 style="font-size:22px">Приглашай друзей и получай <span style="background:var(--sea);padding:0 8px;border-radius:8px">10%</span> от их пополнений!</h1>
-  <p class="sub">А так же по 🎫 5 за каждого, но не более 30 в день</p>
+  <p class="sub">А так же 🎫 5 за каждого друга, пополнившего от 50 ★ (не более 30 в день)</p>
   <div class="row" style="margin-bottom:12px"><div class="card stat" style="margin:0"><b>${fmt(U().refCount||0)}</b><small>Приглашено</small></div><div class="card stat" style="margin:0"><b>${fmt(U().refEarn||0)} ★</b><small>Заработано</small></div></div>
   <div class="card" style="margin:0 0 12px;padding:10px 12px;font:700 13px Nunito,sans-serif;word-break:break-all;user-select:all;-webkit-user-select:all" onclick="copyRef()">${refLink()}</div>
   <div class="row"><button class="btn" onclick="shareRef()">Пригласить</button><button class="btn ghost" style="width:60px" onclick="copyRef()">⧉</button></div></div>

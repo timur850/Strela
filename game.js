@@ -3,6 +3,7 @@
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
+const REF_MIN_DEP = 50;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
 
 const MAX_BET = 1_000_000;
 const GAME_NAMES = { case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
@@ -35,16 +36,13 @@ export class Game {
 
   view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
 
-  // рефералы: новый игрок пришёл по ссылке → пригласившему 5 🎫 (не больше 30 в день)
+  // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
+  // (защита от накрутки фейк-аккаунтами)
   async op_ref_bind(u, uid, d) {
     const ref = String(d.ref || "");
     if (!this.isNew || u.ref || !/^\d{3,15}$/.test(ref) || ref === uid) return {};
     const r = await this.s.get("u:" + ref); if (!r) return {};
     u.ref = ref;
-    const day = new Date().toISOString().slice(0, 10);
-    if (r.refDay !== day) { r.refDay = day; r.refDayTick = 0; }
-    const t = Math.min(5, 30 - (r.refDayTick || 0));
-    if (t > 0) { r.tick += t; r.refDayTick = (r.refDayTick || 0) + t; }
     r.refCount = (r.refCount || 0) + 1;
     await this.s.put("u:" + ref, r);
     return { bound: true };
@@ -52,9 +50,17 @@ export class Game {
   // 10% от пополнений приглашённого — пригласившему
   async refBonus(u, amount) {
     if (!u.ref || !(amount > 0)) return;
-    const b = Math.floor(amount * 0.1); if (!b) return;
+    u.depSum = (u.depSum || 0) + Math.round(amount);
     const r = await this.s.get("u:" + u.ref); if (!r) return;
-    r.bal += b; r.refEarn = (r.refEarn || 0) + b;
+    const b = Math.floor(amount * 0.1);
+    if (b) { r.bal += b; r.refEarn = (r.refEarn || 0) + b; }
+    if (!u.refPaid && u.depSum >= REF_MIN_DEP) {          // друг реально пополнил → 5 🎫 (не больше 30 в день)
+      u.refPaid = 1;
+      const day = new Date().toISOString().slice(0, 10);
+      if (r.refDay !== day) { r.refDay = day; r.refDayTick = 0; }
+      const t = Math.min(5, 30 - (r.refDayTick || 0));
+      if (t > 0) { r.tick += t; r.refDayTick = (r.refDayTick || 0) + t; }
+    }
     await this.s.put("u:" + u.ref, r);
   }
 
