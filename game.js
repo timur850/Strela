@@ -3,7 +3,7 @@
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
-const REF_MIN_DEP = 50;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
+const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
 
 const MAX_BET = 1_000_000;
 const GAME_NAMES = { case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
