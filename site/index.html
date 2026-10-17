@@ -41,7 +41,7 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 @keyframes blink{50%{opacity:.3}}
 .live .tw{flex:1;overflow:hidden;min-width:0}
 .live b{flex-shrink:0}
-.live .track{width:max-content;display:flex;gap:12px;font-size:26px;white-space:nowrap;animation:marq 18s linear infinite}
+.live .track{width:max-content;display:flex;gap:10px;font-size:26px;white-space:nowrap;align-items:flex-end}.ld{position:relative;flex-shrink:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:38px}.ld small{font:900 10px Nunito,sans-serif;color:var(--sun);margin-top:1px;line-height:1}.ld .st{width:34px;height:34px;display:grid;place-items:center;font-size:24px}.ld.new{animation:ldrop .7s cubic-bezier(.2,1.5,.4,1)}.ld.new::before{content:'';position:absolute;inset:-4px -2px 8px;border-radius:12px;background:radial-gradient(circle,rgba(255,210,63,.55),transparent 70%);animation:lglow 1.6s ease-out forwards;pointer-events:none}@keyframes ldrop{0%{transform:translateY(-46px) scale(.3);opacity:0}100%{transform:none;opacity:1}}@keyframes lglow{to{opacity:0}}.live .wait{font:800 12px Nunito,sans-serif;color:var(--muted)}
 @keyframes marq{to{transform:translateX(-50%)}}
 
 /* game tiles */
@@ -382,10 +382,17 @@ function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.c
 function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);return;
  if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
 function loadTour(){fetch('api/tour',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok){const first=!S.tour;S.tour=j;if(S.tab==='tour'&&!S.stack.length&&first){stopAll();render(T.tour());tick()}}}).catch(()=>{})}
-function loadFeed(){fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(!S.stack.length&&(S.tab==='tour'))setTab('tour');const t=document.querySelector('.live .track');if(t&&S.tab==='games'&&!S.stack.length)t.innerHTML=liveIcons()}}).catch(()=>{})}
+function loadFeed(){S.feedAt=Date.now();fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(!S.stack.length&&(S.tab==='tour'))setTab('tour');if(S.tab==='games'&&!S.stack.length)liveUpdate()}}).catch(()=>{})}
 function ago(t){const d=(Date.now()-t)/1e3;return d<60?'только что':d<3600?Math.floor(d/60)+' мин':d<86400?Math.floor(d/3600)+' ч':Math.floor(d/86400)+' д'}
 function feedRow(e){const g=e.s?giftBy(e.s):null;return `<div class="it"><div class="av" style="background:hsl(${hue(e.n||'?')},65%,50%)">${esc((e.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(e.n)}<small>${esc(e.g)} · ${ago(e.t)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}<b class="star" style="margin-left:6px;white-space:nowrap">+${fmt(e.a)} ★</b></div>`}
-function liveIcons(){const fromFeed=S.feed.filter(e=>e.s).map(e=>giftBy(e.s)).filter(Boolean).slice(0,14);const L=fromFeed;return [...L,...L].map(x=>gi(x)).join('')}
+const LIVE_N=20;const liveKey=e=>e.t+'_'+e.id+'_'+e.a;
+function liveItem(e,isNew){const g=e.s?giftBy(e.s):null;const k=liveKey(e);return `<div class="ld${isNew?' new':''}" data-k="${esc(k)}" onclick="liveInfo('${esc(k)}')">${g?gi(g):'<span class="st">⭐</span>'}<small>${fmt(e.a)}</small></div>`}
+function liveIcons(){const L=S.feed.slice(0,LIVE_N);S.liveSeen=new Set(L.map(liveKey));return L.length?L.map(e=>liveItem(e)).join(''):'<span class="wait">Ждём первые выигрыши…</span>'}
+function liveUpdate(){const t=document.querySelector('.live .track');if(!t)return;S.liveSeen=S.liveSeen||new Set();
+ const fresh=S.feed.slice(0,LIVE_N).filter(e=>!S.liveSeen.has(liveKey(e)));if(!fresh.length)return;
+ if(!t.querySelector('.ld'))t.innerHTML='';
+ fresh.slice().reverse().forEach((e,i)=>setTimeout(()=>{if(!t.isConnected)return;S.liveSeen.add(liveKey(e));t.insertAdjacentHTML('afterbegin',liveItem(e,1));const all=t.querySelectorAll('.ld');for(let j=LIVE_N;j<all.length;j++)all[j].remove()},i*450))}
+function liveInfo(k){const e=S.feed.find(x=>liveKey(x)===k);if(!e)return;const g=e.s?giftBy(e.s):null;toast(`${e.n||'Игрок'} — ${g?g.name+' ':''}+${fmt(e.a)} ★ · ${e.g||''} · ${ago(e.t)}`)}
 
 function bubbles(){let h='';for(let i=0;i<3;i++){const s=6+Math.random()*10;h+=`<i class="bubble" style="width:${s}px;height:${s}px;right:${20+Math.random()*90}px;bottom:${Math.random()*10}px;animation-delay:${Math.random()*6}s"></i>`}return h}
 
@@ -938,7 +945,7 @@ function ceCreate(){const n=($('#ncN').value||'').trim().replace(/['"<>`]/g,'');
  ADM.customCases.push([n,p,autoDist(p,R('cases'))[0][0]]);saveAdm();setTab('admin');ceOpen('c:'+n)}
 function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n];saveAdm();closeSheet();setTab('admin');toast('Кейс удалён')}
 
-upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(loadFeed,20000);
+upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(()=>{if(document.hidden)return;const fast=!S.stack.length&&(S.tab==='games'||S.tab==='tour');if(fast||Date.now()-(S.feedAt||0)>20000)loadFeed()},5000);
 </script>
 </body>
 </html>
