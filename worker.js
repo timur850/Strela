@@ -349,6 +349,8 @@ export default {
     }
 
     // общие настройки админки
+    // настройки этой копии для мини-аппа: юзернейм бота, владельцы, куда слать подарки
+    if (path === "/api/cfg") return json({ bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT });
     if (path === "/api/settings") {
       if (req.method === "GET") return json(await loadSettings(env));
       if (req.method === "POST") {
