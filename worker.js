@@ -238,6 +238,16 @@ async function handleUpdate(env, origin, upd) {
     else await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
       text: `⛔ Нет доступа.\nТвой юзернейм: @${u.username || "—"}, ID: <code>${u.id}</code>\nАдминка доступна владельцу (@${OWNERS.join(", @")}) и тем, кому он выдал доступ по ID.` });
   }
+  else if (cmd === "/wdtest" && msg.from && isOwner(msg.from.username)) {
+    const st = await loadSettings(env), lines = [];
+    for (const o of OWNERS) lines.push(`@${o}: чат ${(await getKey(env, "ownerchat:" + o.toLowerCase())) || "❌ не сохранён"}`);
+    lines.push(`Админы из настроек: ${(st.admins || []).join(", ") || "—"}`);
+    let last = ""; try { last = JSON.parse(await getKey(env, "wd:lastnotify") || "null"); } catch {}
+    const t = await tg(env, "sendMessage", { chat_id: chat, text: "🧪 Тестовая заявка: если ты это видишь — уведомления сюда доходят." });
+    await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: "🧪 <b>Проверка заявок на вывод</b>\n\n" + lines.join("\n") +
+      `\nТест в этот чат: ${t.ok ? "✅" : "❌ " + (t.description || "")}` +
+      (last ? `\n\nПоследняя заявка (${new Date(last.t).toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}):\nкому: ${(last.to || []).join(", ") || "никому"}\nдоставлено: ${last.sent}\nошибки: ${(last.errs || []).join("; ") || "нет"}\nавтовыдача: ${last.auto || "—"}` : "\n\nЗаявок после обновления ещё не было.") });
+  }
   else if (cmd === "/biz" && msg.from && isOwner(msg.from.username)) {
     const conn = await bizConn(env);
     let t = "🏪 <b>Склад подарков (Telegram Business)</b>\n\n";
@@ -417,11 +427,12 @@ export default {
       const st = await loadSettings(env), to = new Set();
       for (const o of OWNERS) { const c = await getKey(env, "ownerchat:" + o.toLowerCase()); if (c) to.add(String(c)); }
       for (const a of st.admins || []) to.add(String(a));
-      let sent = 0;
+      let sent = 0; const errs = [];
       for (const chat of to) {
-        const x = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true });
-        if (x.ok) sent++;
+        let x; try { x = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true }); } catch (er) { x = { ok: false, description: String(er) }; }
+        if (x.ok) sent++; else errs.push(chat + ": " + (x.description || "?"));
       }
+      await putKey(env, "wd:lastnotify", { t: Date.now(), to: [...to], sent, errs, auto: autoErr });
       // даже если сообщение не ушло — заявка остаётся в админке (Статистика → Заявки на вывод), подарок не возвращаем
       if (!sent) console.log("withdraw notify failed", w.id);
       return json({ ...r, queued: !sent });
