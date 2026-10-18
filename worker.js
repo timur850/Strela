@@ -22,7 +22,7 @@ async function botName(env) {
   return _botName;
 }
 // TON-кошелёк для пополнений (можно поменять в мини-аппе: Админ → 💎 Оплата)
-const TON_WALLET = "ВСТАВЬ_СЮДА_АДРЕС_TON_КОШЕЛЬКА";
+const TON_WALLET = CONFIG.TON_WALLET || "ВСТАВЬ_СЮДА_АДРЕС_TON_КОШЕЛЬКА";   // по умолчанию — из config.js
 const TON_STARS = 150;                 // сколько ★ даём за 1 TON (тоже меняется в админке)
 const UPDATES = ["message", "pre_checkout_query", "business_connection"];
 const hookBad = (r, origin) => r.url !== origin + "/webhook" || UPDATES.some(x => !(r.allowed_updates || []).includes(x));
