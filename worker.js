@@ -3,11 +3,24 @@
 // После деплоя один раз открой https://<твой-воркер>.workers.dev/setup
 
 import { Game, GameError } from "./game.js";
+import { CONFIG } from "./config.js";
 const { DEF_TASKS } = globalThis.STRELA;
 
-const OWNERS = ["PODONOK_UC_1", "Sdelka_ton"];          // владельцы админки (username без @)
-const SUPPORT = "@PODONOK_UC_1";
-const DEFAULT_ORIGIN = "https://strela.timalukyang.workers.dev"; // адрес воркера (для автопочинки вебхука)            // контакт поддержки
+const OWNERS = CONFIG.OWNERS;                 // владельцы админки — меняются в config.js
+const SUPPORT = CONFIG.SUPPORT;               // контакт поддержки
+const DEFAULT_ORIGIN = CONFIG.DEFAULT_ORIGIN || ""; // адрес воркера (для автопочинки вебхука)
+// токен: секрет BOT_TOKEN в Cloudflare, а если его нет — из config.js
+const withCfg = env => env.BOT_TOKEN || !CONFIG.BOT_TOKEN ? env : { ...env, BOT_TOKEN: CONFIG.BOT_TOKEN };
+// юзернейм бота узнаём сами (getMe) — чтобы копии работали без правки кода
+let _botName = "";
+async function botName(env) {
+  if (_botName) return _botName;
+  let n = await getKey(env, "botname");
+  if (!n && env.BOT_TOKEN) { const me = await tg(env, "getMe", {}); if (me.ok) { n = me.result.username; await putKey(env, "botname", n); } }
+  if (n) for (const t of DEF_TASKS) if (t.url && t.url.includes("StrelaCase_bot")) t.url = t.url.replace("StrelaCase_bot", n);
+  _botName = n || "";
+  return _botName;
+}
 // TON-кошелёк для пополнений (можно поменять в мини-аппе: Админ → 💎 Оплата)
 const TON_WALLET = "ВСТАВЬ_СЮДА_АДРЕС_TON_КОШЕЛЬКА";
 const TON_STARS = 150;                 // сколько ★ даём за 1 TON (тоже меняется в админке)
@@ -270,6 +283,7 @@ async function handleUpdate(env, origin, upd) {
 export default {
   // каждые 5 минут: если вебхук кто-то снял (например, запустили бота на ПК) — возвращаем
   async scheduled(event, env, ctx) {
+    env = withCfg(env);
     if (!env.BOT_TOKEN) return;
     const origin = (await (await store(env).fetch("https://s/origin")).text()) || DEFAULT_ORIGIN;
     if (!origin) return;
@@ -282,7 +296,9 @@ export default {
   },
 
   async fetch(req, env) {
+    env = withCfg(env);
     const url = new URL(req.url), origin = url.origin, path = url.pathname;
+    await botName(env).catch(() => "");
     if (!env.BOT_TOKEN && (path === "/setup" || path.startsWith("/webhook")))
       return new Response("Нет секрета BOT_TOKEN. Добавь его в Cloudflare: Settings → Variables and Secrets, потом снова открой /setup", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
     const hookKey = env.BOT_TOKEN ? (await sha256hex("hook:" + env.BOT_TOKEN)).slice(0, 32) : "";
@@ -290,6 +306,7 @@ export default {
     // первичная настройка: вебхук + кнопка меню + команды
     if (path === "/setup") {
       const me = await tg(env, "getMe", {});
+      if (me.ok) { await putKey(env, "botname", me.result.username); _botName = me.result.username; }
       if (!me.ok) return new Response("Токен не подходит: " + JSON.stringify(me), { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
       const { a, b } = await setupBot(env, origin, hookKey, true);
       const ok = a.ok && b.ok;
@@ -509,6 +526,17 @@ export default {
     }
     // всё остальное — сайт игры
     const res = await env.ASSETS.fetch(req);
+    // подставляем настройки этой копии (владельцы, аккаунт для подарков, юзернейм бота) прямо в страницу
+    const ct = res.headers.get("content-type") || "";
+    if (res.ok && (ct.includes("text/html") || path.endsWith("logic.js"))) {
+      let t = await res.text();
+      const bn = await botName(env).catch(() => "");
+      t = t.replace(/const OWNERS=\[[^\]]*\];/, "const OWNERS=" + JSON.stringify(OWNERS) + ";")
+           .replace(/const GIFT_ACC='[^']*';/, "const GIFT_ACC=" + JSON.stringify(CONFIG.GIFT_ACC) + ";");
+      if (bn) t = t.split("StrelaCase_bot").join(bn);
+      const h = new Headers(res.headers); h.delete("content-length"); h.delete("etag"); h.set("cache-control", "no-cache");
+      return new Response(t, { status: res.status, headers: h });
+    }
     const out = new Response(res.body, res);
     out.headers.set("cache-control", "no-cache");
     return out;

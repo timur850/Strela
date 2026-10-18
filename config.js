@@ -1,0 +1,8 @@
+// ⚙️ Настройки ЭТОЙ копии STRELA CASE. Остальные файлы во всех копиях одинаковые.
+export const CONFIG = {
+  OWNERS: ["PODONOK_UC_1", "Sdelka_ton"],   // владельцы админки (username без @)
+  SUPPORT: "@PODONOK_UC_1",                 // контакт поддержки
+  GIFT_ACC: "Sdelka_ton",                   // аккаунт, куда игроки отправляют подарки (без @)
+  BOT_TOKEN: "",                            // пусто = берётся секрет BOT_TOKEN из Cloudflare
+  DEFAULT_ORIGIN: "https://strela.timalukyang.workers.dev", // адрес воркера (можно оставить пустым)
+};
