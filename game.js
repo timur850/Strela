@@ -168,7 +168,7 @@ export class Game {
           if ((u.shares || 0) < gate.shares) fail(`Сначала поделись ссылкой в ${gate.shares} чата (${u.shares || 0}/${gate.shares})`);
           if (gate.channel && d.subOk !== true) fail(d.subWhy || "Подпишись на канал " + gate.channel);
         }
-        u.daily = Date.now(); u.shares = 0;
+        u.daily = Date.now();                    // отправка в чаты нужна один раз — счётчик не сбрасываем
       }
     } else {
       c = L.CASES().find(x => x.n === d.name);

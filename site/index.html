@@ -638,7 +638,7 @@ function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g
 async function gateShare(){const txt='Забирай бесплатный кейс с подарками в STRELA CASE 🏝';
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
-function freeCase(k,ok){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok)return gateSheet()}
+function freeCase(k,ok){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 function fillStrip(prize){const s=$('#strip');if(!s)return;const c=S.curCase;S.items=Array.from({length:60},()=>caseGift(c));if(prize)S.items[50]=prize;s.style.transition='none';s.style.transform='translateX(0)';s.innerHTML=S.items.map(g=>`<div class="cell">${gi(g)}<small><span class="star">★</span> ${fmt(g.price)}</small></div>`).join('')}
 async function spinCase(){const c=S.curCase;if(S.spinning)return;if(c.p&&Date.now()-(S.openAt||0)<800)return;
