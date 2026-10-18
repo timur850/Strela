@@ -358,13 +358,14 @@ function upd(){$('#bal').textContent=fmt(U().bal);$('#tick').textContent=U().tic
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}
 /* ===== баланс и подарки хранит сервер; здесь только кэш для показа ===== */
 let BOT_USERNAME='StrelaCase_bot';
+let APP_NAME='STRELA CASE'; /* название — у каждой копии своё (приходит с сервера) */
 /* настройки копии берём у своего сервера — у каждой копии свой бот и свой аккаунт для подарков */
-fetch('api/cfg',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>{if(!c)return;if(c.bot){BOT_USERNAME=c.bot;try{for(const t of [...(globalThis.STRELA.DEF_TASKS||[]),...(ADM.tasks||[])])if(t.url&&t.url.includes('StrelaCase_bot'))t.url=t.url.replace('StrelaCase_bot',c.bot)}catch(e){}}if(Array.isArray(c.owners)&&c.owners.length)OWNERS=c.owners;if(c.giftAcc)GIFT_ACC=String(c.giftAcc).replace('@','');try{IS_ADMIN=calcAdmin();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN)}catch(e){}}).catch(()=>{});
+fetch('api/cfg',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>{if(!c)return;if(c.bot){BOT_USERNAME=c.bot;try{for(const t of [...(globalThis.STRELA.DEF_TASKS||[]),...(ADM.tasks||[])])if(t.url&&t.url.includes('StrelaCase_bot'))t.url=t.url.replace('StrelaCase_bot',c.bot)}catch(e){}}if(Array.isArray(c.owners)&&c.owners.length)OWNERS=c.owners;if(c.name&&c.name!==APP_NAME){APP_NAME=c.name;document.title=c.name;if(S.tab==='games'&&!S.stack.length)setTab('games')}if(c.giftAcc)GIFT_ACC=String(c.giftAcc).replace('@','');try{IS_ADMIN=calcAdmin();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN)}catch(e){}}).catch(()=>{});
 const refLink=()=>`https://t.me/${BOT_USERNAME}?start=ref_${ME.id}`;
 function copyText(t){const done=()=>toast('Ссылка скопирована 🌴'),old=()=>{try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(a);a.focus();a.select();a.setSelectionRange(0,t.length);const ok=document.execCommand('copy');a.remove();ok?done():toast('Не удалось скопировать — зажми ссылку и скопируй')}catch(e){toast('Не удалось скопировать — зажми ссылку и скопируй')}};
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
-function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в STRELA CASE — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
+function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
 function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
@@ -413,7 +414,7 @@ const GAMES=[
 const T={
 games(){
   const g=liveIcons();
-  return `<div class="brand"><div class="lg lgimg"><img src="img/gift.webp" alt=""></div><h1>STRELA<span>CASE</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
+  return `<div class="brand"><div class="lg lgimg"><img src="img/gift.webp" alt=""></div><h1>${esc(APP_NAME.split(' ')[0].toUpperCase())}<span>${esc(APP_NAME.split(' ').slice(1).join(' ').toUpperCase())}</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
   socialsRow()+GAMES.filter(x=>!ADM.off[x[0]]).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('');
 },
 contests(){
@@ -558,7 +559,7 @@ function claimTask(id){if(!(tg&&tg.initData))return toast('Открой игру
 function doTask(id){const t=TASKS().find(x=>x.id===id);if(!t)return;const u=U();u.done=u.done||{};u.started=u.started||{};if(u.done[id])return;
  if(!u.started[id]){u.started[id]=1;saveAdm();srv('task_start',{id},{quiet:1});
   if(t.type==='home'){try{tg&&tg.addToHomeScreen?tg.addToHomeScreen():toast('Добавьте приложение на главный экран через меню ⋮')}catch(e){}}
-  else if(t.type==='story'){try{if(tg&&tg.shareToStory&&t.url)tg.shareToStory(t.url,{text:'Играю в STRELA CASE 🏹',widget_link:{url:'https://t.me/'+BOT_USERNAME,name:'STRELA CASE'}});else toast('Опубликуйте историю с нашим ботом')}catch(e){toast('Опубликуйте историю с нашим ботом')}}
+  else if(t.type==='story'){try{if(tg&&tg.shareToStory&&t.url)tg.shareToStory(t.url,{text:'Играю в '+APP_NAME+' 🏹',widget_link:{url:'https://t.me/'+BOT_USERNAME,name:APP_NAME}});else toast('Опубликуйте историю с нашим ботом')}catch(e){toast('Опубликуйте историю с нашим ботом')}}
   else if(t.type==='bio'){try{navigator.clipboard.writeText(t.url)}catch(e){}toast('Скопировано — вставьте в био: '+t.url)}
   else openUrl(t.url);
   setTimeout(()=>{if(S.tab==='tasks'&&!S.stack.length)setTab('tasks')},400);return}
@@ -635,7 +636,7 @@ function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g
   ${g.shares?`<div class="st"><div class="n">${done?'✓':1}</div><div style="flex:1"><b>Поделись ссылкой в ${g.shares} чата</b><small>Отправлено: ${n}/${g.shares}</small></div>${done?'':'<button class="btn sm sand" onclick="gateShare()">Отправить</button>'}</div>`:''}
   ${g.channel?`<div class="st"><div class="n">${g.shares?2:1}</div><div style="flex:1"><b>Подпишись на канал</b><small>@${esc(g.channel)}</small></div><button class="btn sm ghost" onclick="openUrl('https://t.me/${esc(g.channel)}')">Перейти</button></div>`:''}
  </div><button class="btn sand" ${done||!g.shares?'':'disabled'} onclick="closeSheet();freeCase('daily',1)">🎁 Открыть кейс</button>`)}
-async function gateShare(){const txt='Забирай бесплатный кейс с подарками в STRELA CASE 🏝';
+async function gateShare(){const txt='Забирай бесплатный кейс с подарками в '+APP_NAME+' 🏝';
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
 function freeCase(k,ok){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}

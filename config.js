@@ -1,5 +1,6 @@
 // ⚙️ Настройки ЭТОЙ копии STRELA CASE. Остальные файлы во всех копиях одинаковые.
 export const CONFIG = {
+  NAME: "STRELA CASE",                      // название в боте и мини-аппе
   OWNERS: ["PODONOK_UC_1", "Sdelka_ton"],   // владельцы админки (username без @)
   SUPPORT: "@PODONOK_UC_1",                 // контакт поддержки
   GIFT_ACC: "Sdelka_ton",                   // аккаунт, куда игроки отправляют подарки (без @)

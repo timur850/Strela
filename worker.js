@@ -7,7 +7,8 @@ import { CONFIG } from "./config.js";
 const { DEF_TASKS } = globalThis.STRELA;
 
 const OWNERS = CONFIG.OWNERS;                 // владельцы админки — меняются в config.js
-const SUPPORT = CONFIG.SUPPORT;               // контакт поддержки
+const SUPPORT = CONFIG.SUPPORT;
+const NAME = CONFIG.NAME || "STRELA CASE";   // название бота/мини-аппа
 const DEFAULT_ORIGIN = CONFIG.DEFAULT_ORIGIN || ""; // адрес воркера (для автопочинки вебхука)
 // токен: секрет BOT_TOKEN в Cloudflare, а если его нет — из config.js
 const withCfg = env => env.BOT_TOKEN || !CONFIG.BOT_TOKEN ? env : { ...env, BOT_TOKEN: CONFIG.BOT_TOKEN };
@@ -29,7 +30,7 @@ const TON_STARS = 150;                 // сколько ★ даём за 1 TON
 const UPDATES = ["message", "pre_checkout_query", "business_connection"];
 const hookBad = (r, origin) => r.url !== origin + "/webhook" || UPDATES.some(x => !(r.allowed_updates || []).includes(x));
 const BUTTON_TEXT = "🏝 Играть";
-const WELCOME = "🏹 <b>STRELA CASE</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
+const WELCOME = "🏹 <b>" + NAME + "</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
 
 const enc = new TextEncoder();
 const isOwner = u => OWNERS.some(o => o.toLowerCase() === String(u || "").toLowerCase());
@@ -144,7 +145,7 @@ async function setupBot(env, origin, hookKey, dropPending) {
   await store(env).fetch("https://s/origin", { method: "POST", body: origin });
   const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: !!dropPending, allowed_updates: UPDATES });
   const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
-  await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть STRELA CASE" }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
+  await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть " + NAME }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
   return { a, b };
 }
 
@@ -261,7 +262,7 @@ async function handleUpdate(env, origin, upd) {
   else if (cmd === "/admin") {
     const u = msg.from || {}, st = await loadSettings(env);
     const ok = isOwner(u.username) || (st.admins || []).map(String).includes(String(u.id));
-    if (ok) await tg(env, "sendMessage", { chat_id: chat, text: "🛠 Админ-панель STRELA CASE",
+    if (ok) await tg(env, "sendMessage", { chat_id: chat, text: "🛠 Админ-панель " + NAME,
       reply_markup: { inline_keyboard: [[{ text: "🛠 Открыть админку", web_app: { url: origin + "/#admin" } }]] } });
     else await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
       text: `⛔ Нет доступа.\nТвой юзернейм: @${u.username || "—"}, ID: <code>${u.id}</code>\nАдминка доступна владельцу (@${OWNERS.join(", @")}) и тем, кому он выдал доступ по ID.` });
@@ -352,7 +353,7 @@ export default {
 
     // общие настройки админки
     // настройки этой копии для мини-аппа: юзернейм бота, владельцы, куда слать подарки
-    if (path === "/api/cfg") return json({ bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT });
+    if (path === "/api/cfg") return json({ name: NAME, bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT });
     if (path === "/api/settings") {
       if (req.method === "GET") return json(await loadSettings(env));
       if (req.method === "POST") {
@@ -372,7 +373,7 @@ export default {
 
     // манифест для TON Connect
     if (path === "/tonconnect-manifest.json")
-      return new Response(JSON.stringify({ url: origin, name: "STRELA CASE", iconUrl: "https://telegram.org/img/t_logo.png" }),
+      return new Response(JSON.stringify({ url: origin, name: NAME, iconUrl: "https://telegram.org/img/t_logo.png" }),
         { headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
 
     // ===== ПОПОЛНЕНИЕ ЗВЁЗДАМИ =====
@@ -383,7 +384,7 @@ export default {
       const a = Math.round(Number(d.amount));
       if (!(a >= 1 && a <= 10000)) return json({ ok: false, err: "От 1 до 10 000 ★ за раз" }, 400);
       const payload = `dep:${u.id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-      const r = await tg(env, "createInvoiceLink", { title: `Пополнение ${a} ⭐`, description: "Звёзды на баланс STRELA CASE",
+      const r = await tg(env, "createInvoiceLink", { title: `Пополнение ${a} ⭐`, description: "Звёзды на баланс " + NAME,
         payload, currency: "XTR", prices: [{ label: `${a} ⭐`, amount: a }] });
       if (!r.ok) return json({ ok: false, err: r.description || "Telegram не создал счёт" });
       return json({ ok: true, link: r.result, payload });
@@ -429,7 +430,7 @@ export default {
       // обычный подарок Telegram — бот отправляет сам, за звёзды со своего баланса
       let autoErr = "";
       if (w.tgid) {
-        const g = await tg(env, "sendGift", { user_id: u.id, gift_id: String(w.tgid), text: "🏹 Вывод из STRELA CASE" });
+        const g = await tg(env, "sendGift", { user_id: u.id, gift_id: String(w.tgid), text: "🏹 Вывод из " + NAME });
         if (g.ok) {
           await op(env, "withdraw_done", u.id, uname(u), { id: w.id });
           for (const o of OWNERS) {
