@@ -189,6 +189,8 @@ async function handleUpdate(env, origin, upd) {
       await tg(env, "sendMessage", { chat_id: b.user_chat_id, parse_mode: "HTML", text: b.is_enabled
         ? "✅ <b>Автовыдача подключена</b> — коллекционные подарки с этого аккаунта будут уходить игрокам сами." + (miss.length ? "\n\n⚠️ Включи права бота: " + miss.join(", ") : "")
         : "⛔ Бот отключён от аккаунта — автовыдача коллекционных подарков выключена." }).catch(() => {});
+    } else if (b.is_enabled && b.user_chat_id) {
+      await tg(env, "sendMessage", { chat_id: b.user_chat_id, text: `⚠️ @${b.user && b.user.username || "этот аккаунт"} не владелец бота — склад для автовыдачи можно подключить только с аккаунта @${OWNERS.join(" / @")}.` }).catch(() => {});
     }
     return;
   }
