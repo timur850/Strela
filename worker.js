@@ -123,7 +123,20 @@ export class Store {
   }
 }
 const store = env => env.STORE.get(env.STORE.idFromName("main"));
-async function loadSettings(env) { try { return JSON.parse(await (await store(env).fetch("https://s/")).text()); } catch { return {}; } }
+async function loadSettings(env) {
+  let st; try { st = JSON.parse(await (await store(env).fetch("https://s/")).text()); } catch { st = {}; }
+  if (st.freeGate === undefined && CONFIG.FREE_GATE) st.freeGate = CONFIG.FREE_GATE;   // по умолчанию — из config.js
+  return st;
+}
+// подписан ли игрок на канал (бот должен быть админом канала)
+async function isSub(env, channel, uid) {
+  const ch = "@" + String(channel || "").replace(/^@|^(?:https?:\/\/)?t\.me\//g, "").replace(/\/$/, "");
+  const r = await tg(env, "getChatMember", { chat_id: ch, user_id: uid });
+  if (!r.ok) return { ok: false, why: "Бот не может проверить подписку на " + ch + " — админ, добавь бота админом канала" };
+  const s = r.result.status;
+  const ok = ["creator", "administrator", "member"].includes(s) || (s === "restricted" && r.result.is_member);
+  return { ok, why: ok ? "" : "Подпишись на канал " + ch };
+}
 
 async function setupBot(env, origin, hookKey, dropPending) {
   await store(env).fetch("https://s/origin", { method: "POST", body: origin });
@@ -136,7 +149,7 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start"]);
+const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share"]);
 const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
@@ -462,7 +475,14 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
-      delete d.initData;
+      delete d.initData; delete d.gate; delete d.subOk; delete d.subWhy;
+      if (name === "case" && d.free === "daily") {          // бесплатный кейс: условия из настроек
+        const g = (await loadSettings(env)).freeGate;
+        if (g && g.on) {
+          d.gate = { on: true, shares: Math.max(0, Math.min(20, Math.round(+g.shares || 0))), channel: String(g.channel || "") };
+          if (d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
+        }
+      }
       return json(await op(env, name, u.id, uname(u), d));
     }
     // ===== ЗАДАНИЯ: подписку на канал/чат и ссылку в био проверяем через Telegram =====

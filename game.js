@@ -34,7 +34,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -150,6 +150,8 @@ export class Game {
   }
 
   op_me() { return {}; }
+  // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
+  async op_share(u) { u.shares = Math.min(20, (u.shares || 0) + 1); return { shares: u.shares }; }
 
   // ---- кейсы ----
   async op_case(u, uid, d) {
@@ -157,7 +159,15 @@ export class Game {
     if (d.free === "daily" || d.free === "tick") {
       c = L.FREE(d.free);
       if (d.free === "tick") { if (u.tick < 10) fail("Нужно 10 🎫"); u.tick -= 10; }
-      else { if (Date.now() - (u.daily || 0) < 864e5) fail("Кейс доступен раз в 24 часа"); u.daily = Date.now(); }
+      else {
+        if (Date.now() - (u.daily || 0) < 864e5) fail("Кейс доступен раз в 24 часа");
+        const gate = d.gate;                      // условия ставит только сервер (worker), не клиент
+        if (gate && gate.on) {
+          if ((u.shares || 0) < gate.shares) fail(`Сначала поделись ссылкой в ${gate.shares} чата (${u.shares || 0}/${gate.shares})`);
+          if (gate.channel && d.subOk !== true) fail(d.subWhy || "Подпишись на канал " + gate.channel);
+        }
+        u.daily = Date.now(); u.shares = 0;
+      }
     } else {
       c = L.CASES().find(x => x.n === d.name);
       if (!c) fail("Кейс не найден");

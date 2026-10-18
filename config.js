@@ -4,5 +4,7 @@ export const CONFIG = {
   SUPPORT: "@PODONOK_UC_1",                 // контакт поддержки
   GIFT_ACC: "Sdelka_ton",                   // аккаунт, куда игроки отправляют подарки (без @)
   BOT_TOKEN: "",                            // пусто = берётся секрет BOT_TOKEN из Cloudflare
+  // бесплатный кейс (раз в 24 ч): сначала поделиться ссылкой в N чатов и подписаться на канал. Меняется в админке
+  FREE_GATE: { on: false, shares: 3, channel: "" },
   DEFAULT_ORIGIN: "https://strela.timalukyang.workers.dev", // адрес воркера (можно оставить пустым)
 };

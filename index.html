@@ -313,7 +313,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['minWd','freeGate','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -363,7 +363,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в STRELA CASE — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -627,7 +627,16 @@ function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classL
 /* кейсы */
 function openCase(i){S.curCase=CASES()[i];S.freeK=null;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
 function armSpin(){S.openAt=Date.now();const b=$('#spinBtn');if(b){b.disabled=true;setTimeout(()=>{if(b.isConnected)b.disabled=false},800)}}
-function freeCase(k){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else if(Date.now()-(U().daily||0)<864e5)return toast('Кейс доступен раз в 24 часа');
+const GATE=()=>{const g=ADM.freeGate||{};return {on:!!g.on,shares:Math.max(0,+g.shares||0),channel:String(g.channel||'').replace(/^@|^(?:https?:\/\/)?t\.me\//,'')}};
+function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g.shares;
+ sheet(`<h2>Бесплатный кейс</h2><p class="sub">Выполни условия, чтобы открыть кейс</p><div class="card steps">
+  ${g.shares?`<div class="st"><div class="n">${done?'✓':1}</div><div style="flex:1"><b>Поделись ссылкой в ${g.shares} чата</b><small>Отправлено: ${n}/${g.shares}</small></div>${done?'':'<button class="btn sm sand" onclick="gateShare()">Отправить</button>'}</div>`:''}
+  ${g.channel?`<div class="st"><div class="n">${g.shares?2:1}</div><div style="flex:1"><b>Подпишись на канал</b><small>@${esc(g.channel)}</small></div><button class="btn sm ghost" onclick="openUrl('https://t.me/${esc(g.channel)}')">Перейти</button></div>`:''}
+ </div><button class="btn sand" ${done||!g.shares?'':'disabled'} onclick="closeSheet();freeCase('daily',1)">🎁 Открыть кейс</button>`)}
+async function gateShare(){const txt='Забирай бесплатный кейс с подарками в STRELA CASE 🏝';
+ try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
+ setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
+function freeCase(k,ok){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{if(Date.now()-(U().daily||0)<864e5)return toast('Кейс доступен раз в 24 часа');if(GATE().on&&!ok)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 function fillStrip(prize){const s=$('#strip');if(!s)return;const c=S.curCase;S.items=Array.from({length:60},()=>caseGift(c));if(prize)S.items[50]=prize;s.style.transition='none';s.style.transform='translateX(0)';s.innerHTML=S.items.map(g=>`<div class="cell">${gi(g)}<small><span class="star">★</span> ${fmt(g.price)}</small></div>`).join('')}
 async function spinCase(){const c=S.curCase;if(S.spinning)return;if(c.p&&Date.now()-(S.openAt||0)<800)return;
@@ -849,6 +858,10 @@ cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hi
  return `<div class="card"><div class="ad-h">🧳 Кейсы <small style="background:var(--sea)">${ALL_CASES().length}</small></div><p class="sub" style="text-align:left;margin:0 0 6px">Нажмите на кейс, чтобы изменить содержимое, шансы, цену и обложку.</p>
  ${ALL_CASES().map(c=>row(c,'c:'+c.n)).join('')}</div>
  <div class="card"><div class="ad-h">🎁 Бесплатные</div>${['daily','tick'].map(k=>row(FREE(k),'f:'+k)).join('')}</div>
+  <div class="card"><div class="ad-h">🔒 Условия бесплатного кейса (раз в 24 ч)</div><p class="sub" style="text-align:left;margin:0 0 6px">Перед открытием игрок должен поделиться ссылкой в N чатов и подписаться на канал. Бот должен быть админом канала.</p>
+  <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="fgOn" ${GATE().on?'checked':''}> Включено</label>
+  <div class="field"><input id="fgN" type="number" min="0" max="20" placeholder="Сколько чатов" value="${GATE().shares}" style="max-width:120px"><input id="fgC" placeholder="@канал (пусто — без подписки)" value="${GATE().channel?'@'+esc(GATE().channel):''}"></div>
+  <button class="btn sand" onclick="ADM.freeGate={on:$('#fgOn').checked,shares:Math.max(0,Math.min(20,Math.round(+$('#fgN').value||0))),channel:$('#fgC').value.trim()};saveAdm(1);setTab('admin')">Сохранить</button></div>
  <div class="card"><div class="ad-h">➕ Новый кейс</div><div class="field"><input id="ncN" placeholder="Название"><input id="ncP" type="number" placeholder="Цена ★" style="max-width:110px"></div><button class="btn sand" onclick="ceCreate()">Создать кейс</button></div>`},
 games(){return `<div class="card"><div class="ad-h">🕹 Включение игр</div>
  ${GAMES.map(([id,,ic,t])=>`<div class="grow"><span style="font-size:28px">${ic}</span><div class="nm">${t}</div><button class="sw ${ADM.off[id]?'':'on'}" onclick="ADM.off['${id}']=!ADM.off['${id}'];this.classList.toggle('on');saveAdm()"></button></div>`).join('')}</div>`},
