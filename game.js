@@ -499,6 +499,7 @@ export class Game {
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
+    if (op === "wd_count") return { ok: true, n: (await this.s.list({ prefix: "wdq:", limit: 500 })).size };
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
     fail("Неизвестное действие");
   }

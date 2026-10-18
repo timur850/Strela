@@ -131,6 +131,12 @@ async function isAdminUser(env, u) {
   return (st.admins || []).map(String).includes(String(u.id));
 }
 
+// владелец открыл мини-апп → запоминаем его чат (в личке chat_id = user id), чтобы заявки на вывод доходили
+async function seenOwner(env, u) {
+  if (!u || !u.username || !isOwner(u.username)) return;
+  const k = "ownerchat:" + u.username.toLowerCase();
+  if (!(await getKey(env, k))) await putKey(env, k, String(u.id));
+}
 const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
 const putKey = (env, k, v) => store(env).fetch("https://s/" + k, { method: "POST", body: typeof v === "string" ? v : JSON.stringify(v) });
 
@@ -212,6 +218,10 @@ async function handleUpdate(env, origin, upd) {
     if (m && msg.from) await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
   }
   if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, parse_mode: "HTML", reply_markup: kb });
+  if ((cmd === "/start" || cmd === "/admin") && msg.from && isOwner(msg.from.username)) {
+    const pend = await op(env, "admin/wd_count", msg.from.id, "", {}, true);
+    if (pend.ok && pend.n) await tg(env, "sendMessage", { chat_id: chat, text: `📤 Ждут выдачи: ${pend.n} заявок на вывод — открой /admin → Статистика` });
+  }
   else if (cmd === "/id") {
     const u = msg.from || {};
     await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
@@ -301,7 +311,7 @@ export default {
       if (req.method === "GET") return json(await loadSettings(env));
       if (req.method === "POST") {
         let data; try { data = await req.json(); } catch { return json({ ok: false }, 400); }
-        const user = await checkInitData(data.initData || "", env.BOT_TOKEN || "");
+        const user = await checkInitData(data.initData || "", env.BOT_TOKEN || ""); if (user) await seenOwner(env, user);
         if (!user) return json({ ok: false, err: "bad initData" }, 403);
         const cur = await loadSettings(env), admins = (cur.admins || []).map(String);
         if (!isOwner(user.username) && !admins.includes(String(user.id))) return json({ ok: false, err: "not admin" }, 403);
@@ -322,7 +332,7 @@ export default {
     // ===== ПОПОЛНЕНИЕ ЗВЁЗДАМИ =====
     if (path === "/api/stars/invoice" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
       const a = Math.round(Number(d.amount));
       if (!(a >= 1 && a <= 10000)) return json({ ok: false, err: "От 1 до 10 000 ★ за раз" }, 400);
@@ -334,7 +344,7 @@ export default {
     }
     if (path === "/api/stars/claim" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false }, 403);
       return json(await op(env, "claim_stars", u.id, uname(u), { payload: String(d.payload || "") }));
     }
@@ -346,7 +356,7 @@ export default {
     }
     if (path === "/api/ton/check" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false }, 403);
       const memo = String(d.memo || "");
       if (!memo.startsWith(`S${u.id}-`) || memo.length > 60) return json({ ok: false }, 400);
@@ -365,7 +375,7 @@ export default {
     // ===== ЗАЯВКА НА ВЫВОД ПОДАРКА → сообщение владельцу =====
     if (path === "/api/withdraw" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
       const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug });
       if (!r.ok) return json(r);
@@ -401,18 +411,18 @@ export default {
         (!w.slug.startsWith("r_") ? `\n🔗 https://fragment.com/gifts/${w.slug}` : "") +
         (autoErr ? `\n\n⚠️ Автовыдача не сработала: ${e(autoErr)}\n` + (w.tgid ? "Проверь баланс звёзд бота (@BotFather → бот → Balance) и отправь вручную." : "Отправь вручную или проверь склад командой /biz.") : "");
       const kb = { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] };
+      // шлём владельцам и всем админам из настроек
+      const st = await loadSettings(env), to = new Set();
+      for (const o of OWNERS) { const c = await getKey(env, "ownerchat:" + o.toLowerCase()); if (c) to.add(String(c)); }
+      for (const a of st.admins || []) to.add(String(a));
       let sent = 0;
-      for (const o of OWNERS) {
-        const chat = await getKey(env, "ownerchat:" + o.toLowerCase());
-        if (!chat) continue;
+      for (const chat of to) {
         const x = await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: kb, disable_web_page_preview: true });
         if (x.ok) sent++;
       }
-      if (!sent) {
-        const back = await op(env, "withdraw_undo", u.id, uname(u), { id: w.id });
-        return json({ ok: false, err: "Вывод временно недоступен, напиши в поддержку " + SUPPORT, me: back.me });
-      }
-      return json(r);
+      // даже если сообщение не ушло — заявка остаётся в админке (Статистика → Заявки на вывод), подарок не возвращаем
+      if (!sent) console.log("withdraw notify failed", w.id);
+      return json({ ...r, queued: !sent });
     }
 
     // ===== ИГРЫ: результат решает сервер =====
@@ -420,7 +430,7 @@ export default {
       const name = path.slice(10);
       if (!PUBLIC_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
       delete d.initData;
       return json(await op(env, name, u.id, uname(u), d));
@@ -428,7 +438,7 @@ export default {
     // ===== ЗАДАНИЯ: подписку на канал/чат и ссылку в био проверяем через Telegram =====
     if (path === "/api/task" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
       const st = await loadSettings(env);
       const t = (st.tasks || DEF_TASKS).find(x => x.id === d.id && x.on);
@@ -460,7 +470,7 @@ export default {
       const name = path.slice(11);
       if (!ADMIN_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
-      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Нет доступа" }, 403);
       delete d.initData;
       if (name === "bc_test") {      // пробное сообщение самому себе
