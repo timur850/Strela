@@ -12,11 +12,13 @@ const DEFAULT_ORIGIN = CONFIG.DEFAULT_ORIGIN || ""; // адрес воркера
 // токен: секрет BOT_TOKEN в Cloudflare, а если его нет — из config.js
 const withCfg = env => env.BOT_TOKEN || !CONFIG.BOT_TOKEN ? env : { ...env, BOT_TOKEN: CONFIG.BOT_TOKEN };
 // юзернейм бота узнаём сами (getMe) — чтобы копии работали без правки кода
-let _botName = "";
+let _botName = "", _botTok = "";
 async function botName(env) {
+  if (_botTok !== env.BOT_TOKEN) { _botName = ""; _botTok = env.BOT_TOKEN; }
   if (_botName) return _botName;
-  let n = await getKey(env, "botname");
-  if (!n && env.BOT_TOKEN) { const me = await tg(env, "getMe", {}); if (me.ok) { n = me.result.username; await putKey(env, "botname", n); } }
+  const bk = "botname:" + String(env.BOT_TOKEN || "").split(":")[0];   // свой ключ на каждый токен — смена токена = новый юзернейм
+  let n = await getKey(env, bk);
+  if (!n && env.BOT_TOKEN) { const me = await tg(env, "getMe", {}); if (me.ok) { n = me.result.username; await putKey(env, bk, n); } }
   if (n) for (const t of DEF_TASKS) if (t.url && t.url.includes("StrelaCase_bot")) t.url = t.url.replace("StrelaCase_bot", n);
   _botName = n || "";
   return _botName;
@@ -319,7 +321,7 @@ export default {
     // первичная настройка: вебхук + кнопка меню + команды
     if (path === "/setup") {
       const me = await tg(env, "getMe", {});
-      if (me.ok) { await putKey(env, "botname", me.result.username); _botName = me.result.username; }
+      if (me.ok) { await putKey(env, "botname:" + String(env.BOT_TOKEN).split(":")[0], me.result.username); _botName = me.result.username; }
       if (!me.ok) return new Response("Токен не подходит: " + JSON.stringify(me), { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
       const { a, b } = await setupBot(env, origin, hookKey, true);
       const ok = a.ok && b.ok;
