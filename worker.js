@@ -480,9 +480,9 @@ export default {
       delete d.initData; delete d.gate; delete d.subOk; delete d.subWhy;
       if (name === "case" && d.free === "daily") {          // бесплатный кейс: условия из настроек
         const g = (await loadSettings(env)).freeGate;
-        if (g && g.on) {
-          d.gate = { on: true, shares: Math.max(0, Math.min(20, Math.round(+g.shares || 0))), channel: String(g.channel || "") };
-          if (d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
+        if (g) {
+          d.gate = { on: !!g.on, hours: Math.max(1, Math.min(168, +g.hours || 24)), shares: Math.max(0, Math.min(20, Math.round(+g.shares || 0))), channel: String(g.channel || "") };
+          if (d.gate.on && d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
         }
       }
       return json(await op(env, name, u.id, uname(u), d));

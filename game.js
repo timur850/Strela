@@ -160,8 +160,10 @@ export class Game {
       c = L.FREE(d.free);
       if (d.free === "tick") { if (u.tick < 10) fail("Нужно 10 🎫"); u.tick -= 10; }
       else {
-        if (Date.now() - (u.daily || 0) < 864e5) fail("Кейс доступен раз в 24 часа");
         const gate = d.gate;                      // условия ставит только сервер (worker), не клиент
+        const hrs = Math.max(1, Math.min(168, +(gate && gate.hours) || 24));
+        const left = (u.daily || 0) + hrs * 36e5 - Date.now();
+        if (left > 0) fail(`Кейс доступен раз в ${hrs} ч — через ${Math.ceil(left / 6e4) >= 60 ? Math.ceil(left / 36e5) + " ч" : Math.ceil(left / 6e4) + " мин"}`);
         if (gate && gate.on) {
           if ((u.shares || 0) < gate.shares) fail(`Сначала поделись ссылкой в ${gate.shares} чата (${u.shares || 0}/${gate.shares})`);
           if (gate.channel && d.subOk !== true) fail(d.subWhy || "Подпишись на канал " + gate.channel);
