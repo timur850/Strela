@@ -891,14 +891,14 @@ function digDraw(){const cv=$('#digc');if(!cv||!DIG.g)return;const x=cv.getConte
   x.drawImage(ch==='.'?T.air:T[ch]||T.s,px,py,B+.6,B+.6);
   const dm=DIG.dmg[r+','+c];if(dm&&ch!=='.'){x.fillStyle='rgba(0,0,0,.6)';const n=Math.ceil(dm*5),u=B/16;const L=[[7,7,2,1],[6,8,1,3],[9,6,3,1],[4,10,3,1],[10,9,1,4],[3,4,4,1],[12,3,1,3],[2,12,3,1],[11,13,4,1],[7,2,1,3]];for(let i=0;i<Math.min(L.length,n*2);i++){const [a,b,w,h]=L[i];x.fillRect(px+a*u,py+b*u,w*u,h*u)}}}
  for(const p of DIG.parts){x.fillStyle=p.c;x.fillRect(p.x,p.y-cam*B,p.s,p.s)}
- if(DIG.pk){const p=DIG.pk,px=(p.x+.5)*B,py=top+(p.y-cam)*B+B*.5;x.save();x.translate(px,py);x.rotate(p.rot||0);x.drawImage(T.pick[p.t],-B*.55,-B*.6,B*1.1,B*1.1);x.restore()}
+ if(DIG.pk){const p=DIG.pk,px=(p.x+(p.ox||0)+.5)*B,py=top+(p.y-cam)*B+B*.5;x.save();x.translate(px,py);x.rotate(p.rot||0);x.drawImage(T.pick[p.t],-B*.55,-B*.6,B*1.1,B*1.1);x.restore()}
  x.textAlign='center';for(const f of DIG.fx){const a=Math.max(0,1-f.t/1100);x.globalAlpha=a;x.font=`900 ${Math.round(B*(f.big?.55:.38))}px Nunito,sans-serif`;const y=top+(f.y-cam)*B-f.t/16;x.lineWidth=4;x.strokeStyle='rgba(0,0,0,.75)';x.strokeText(f.s,(f.x+.5)*B,y);x.fillStyle=f.col||'#ffe066';x.fillText(f.s,(f.x+.5)*B,y);x.globalAlpha=1}
  x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);if(DIG.flash>0){x.fillStyle=`rgba(255,230,160,${DIG.flash})`;x.fillRect(0,0,W,H)}}
 function digBurst(c,r,ch,n){const B=$('#digc').clientWidth/7,top=B*2.2,T=digTex();for(let i=0;i<(n||9);i++)DIG.parts.push({x:(c+.5)*B,y:top+(r+.5)*B,vx:(Math.random()-.5)*B*.14,vy:-Math.random()*B*.16,s:B*(.08+Math.random()*.1),c:Math.random()<.5?T.avg[ch]||'#777':'rgba(0,0,0,.35)',life:600+Math.random()*400})}
 function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min(50,now-(DIG.lt||now));DIG.lt=now;
  const B=$('#digc').clientWidth/7;for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
  for(const f of DIG.fx)f.t+=dt;DIG.fx=DIG.fx.filter(f=>f.t<1100);DIG.shake=Math.max(0,DIG.shake-dt*.04);DIG.flash=Math.max(0,DIG.flash-dt*.002);
- if(DIG.pk){const p=DIG.pk;if(DIG.A)digAnim(dt/1000);else if(!DIG.run&&!DIG.spin){p.rot=Math.sin(now/300)*.2}
+ if(DIG.pk){const p=DIG.pk;p.ox=(p.ox||0)*Math.pow(.0005,dt/1000*DIG_SPD[DIG.speed]);if(DIG.A)digAnim(dt/1000);else if(!DIG.run&&!DIG.spin){p.rot=Math.sin(now/300)*.2}
   const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
 function digHud(hp,max,t,won){$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
@@ -930,14 +930,20 @@ function digAnim(dt){const A=DIG.A,p=DIG.pk;if(!A||!p)return;const S=globalThis.
   if(A.mode==='wait'){A.wait-=dt;if(A.wait>0)return;dt=-A.wait;A.mode='next';continue}
   if(A.mode==='fall'){p.vy=(p.vy||0)+DIG_G*dt;p.y+=p.vy*dt;p.rot=(p.rot||0)+p.spin*dt;
    if(p.y<A.target)return;p.y=A.target;A.mode='next';continue}
+  if(A.mode==='hop'){const H=A.hop;H.t+=dt;p.vy+=DIG_G*dt;p.y+=p.vy*dt;p.x=H.from+(H.to-H.from)*Math.min(1,H.t/H.dur);p.rot=(p.rot||0)+p.spin*dt;
+   if(!(p.vy>0&&p.y>=A.rest))return;p.y=A.rest;p.x=H.to;p.vy=0;A.mode='next';continue}
   if(A.mode==='bounce'){p.vy+=DIG_G*dt;p.y+=p.vy*dt;p.rot+=(.35-p.rot)*Math.min(1,dt*10);
    if(!(p.vy>0&&p.y>=A.rest))return;p.y=A.rest;p.vy=0;A.mode='next';continue}
   /* следующее событие */
   if(A.i>=A.ev.length){DIG.A=null;return digEnd(A.j)}
   const e=A.ev[A.i++];
   if(e.e==='f'){let n=e.y;while(A.i<A.ev.length&&A.ev[A.i].e==='f')n=A.ev[A.i++].y;A.target=n;A.mode='fall';p.spin=(p.vy>1?6:4)*(Math.random()<.5?-1:1);continue}
-  if(e.e==='h'){const ch=DIG.g[e.y][e.x];A.hp=e.p;DIG.dmg[e.y+','+e.x]=e.d;digBurst(e.x,e.y,ch,3);DIG.shake=Math.max(DIG.shake,3);
-   p.rot=-.55;p.vy=-Math.sqrt(2*DIG_G*DIG_BOUNCE)*(.85+Math.random()*.3);A.rest=p.y;A.mode='bounce';digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred('light')}catch(_){}continue}
+  if(e.e==='h'){const ch=DIG.g[e.y][e.x];A.hp=e.p;DIG.dmg[e.y+','+e.x]=e.d;digBurst(e.x,e.y,ch,3);DIG.shake=Math.max(DIG.shake,3);digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred('light')}catch(_){}
+   if(e.s){p.ox=.33*e.s;p.rot=e.s*.95;A.mode='wait';A.wait=.16;continue}   /* ударилась о боковой блок и отлетела назад */
+   const v0=Math.sqrt(2*DIG_G*DIG_BOUNCE)*(.85+Math.random()*.3),nx=A.ev[A.i];A.rest=p.y;p.vy=-v0;
+   if(nx&&nx.e==='m'){A.i++;A.hop={from:p.x,to:nx.x,t:0,dur:2*v0/DIG_G};p.spin=7*nx.s;A.mode='hop';continue}   /* отскочила в соседнюю колонку */
+   p.rot=-.55;A.mode='bounce';continue}
+  if(e.e==='m'){const v0=Math.sqrt(2*DIG_G*DIG_BOUNCE);A.rest=p.y;p.vy=-v0;A.hop={from:p.x,to:e.x,t:0,dur:2*v0/DIG_G};p.spin=7*(e.s||1);A.mode='hop';continue}
   if(e.e==='b'){const ch=DIG.g[e.y][e.x];DIG.g[e.y][e.x]='.';delete DIG.dmg[e.y+','+e.x];digBurst(e.x,e.y,ch,A.inX?5:12);
    if(e.v){const a=A.j.bet*e.v*A.j.unit;A.won+=a;DIG.fx.push({x:e.x,y:e.y,s:'+'+(a>=10?Math.round(a):a.toFixed(1)),t:0,col:e.v>=4?'#7dfcff':'#ffe066',big:e.v>=4});digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred(e.v>=4?'heavy':'medium')}catch(_){}
     if(!A.inX){A.mode='wait';A.wait=.12}}

@@ -86,7 +86,7 @@ const DIG_W=7, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10];
 const DIG_HARD={g:1,d:1,v:1,s:2,c:2,p:3,C:3,I:3,R:3,L:3,G:3,D:4,E:4,T:1,W:2,O:1e9};
 const DIG_VAL={C:.1,I:.2,R:.3,L:.4,G:.6,D:4,E:15};
 const DIG_ORE_P=[['C',.07],['I',.045],['R',.035],['L',.025],['G',.018],['D',.005],['E',.002],['T',.006],['W',.005]];
-let DIG_MT={1:[4.9312,7.9932,11.6937],2:[5.1128,8.282,11.9957],5:[5.1353,8.3143,12.1678],10:[5.2549,8.5964,12.1038]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
+let DIG_MT={1:[3.5186,6.0215,9.2268],2:[3.6886,6.2531,9.4661],5:[3.7476,6.4399,9.5612],10:[3.8209,6.2173,9.5877]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
 function digGen(rand,K){const H=150,rows=[];
  for(let y=0;y<H;y++){let r='';for(let x=0;x<DIG_W;x++){let ch;
   if(y===0)ch='g';else if(y<3)ch=rand()<.7?'d':'v';
@@ -94,19 +94,25 @@ function digGen(rand,K){const H=150,rows=[];
    const q=rand();let a=0;for(const [o,pr] of DIG_ORE_P){a+=pr*(DIG_VAL[o]?1/K:1)*(o==='D'||o==='E'?(.5+deep):1);if(q<a){ch=o;break}}}
   r+=ch}rows.push(r)}
  rows.push('OOOOOOO');
- return {rows,mv:Array.from({length:400},()=>{const q=rand();return q<.12?-1:q<.24?1:0}),x0:2+Math.floor(rand()*3)}}
+ return {rows,mv:Array.from({length:600},()=>{const q=rand();return q<.22?-1:q<.44?1:0}),x0:2+Math.floor(rand()*3)}}
 function digSim(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp=g.map(r=>r.map(ch=>DIG_HARD[ch]||0)),ev=[];
- // кирка падает как предмет строго вниз в своей колонке: удар о блок → прочность блока и кирки −1 → блок сломан → падает дальше
- const x=w.x0;let y=-1,t=tier,php=DIG_TIER[t],raw=0;
+ // кирка — как подброшенный предмет: падает вниз, бьёт блок, отскакивает в случайную сторону
+ // (в соседнюю колонку, если там пусто, или ударяется о боковой блок и отлетает назад)
+ let x=w.x0,y=-1,t=tier,php=DIG_TIER[t],raw=0,mi=0;
  const brk=(cx,cy,tnt)=>{const ch=g[cy][cx];if(ch==='.'||ch==='O')return;g[cy][cx]='.';hp[cy][cx]=0;const v=(DIG_VAL[ch]||0)*K;raw+=v;ev.push({e:'b',x:cx,y:cy,t:ch,v});
   if(ch==='W'){if(t<2){t++;php=DIG_TIER[t];ev.push({e:'u',t,hp:php,up:1})}else{php=DIG_TIER[2];ev.push({e:'u',t,hp:php,up:0})}}
   if(ch==='T'&&!tnt){ev.push({e:'x',x:cx,y:cy});for(let yy=cy;yy<Math.min(H-1,cy+4);yy++)for(let xx=Math.max(0,cx-1);xx<=Math.min(DIG_W-1,cx+1);xx++)brk(xx,yy,1);ev.push({e:'xe'})}};   /* взрыв 3×4 */
+ const hit=(cx,cy,side)=>{php--;hp[cy][cx]--;ev.push({e:'h',x:cx,y:cy,p:php,s:side,d:1-hp[cy][cx]/(DIG_HARD[g[cy][cx]]||1)});if(hp[cy][cx]<=0){brk(cx,cy,0);return 1}return 0};
  for(let it=0;it<20000;it++){
   if(php<=0||y+1>=H-1)break;
   if(g[y+1][x]==='.'){y++;ev.push({e:'f',x,y});continue}
   if(g[y+1][x]==='O')break;
-  php--;hp[y+1][x]--;ev.push({e:'h',x,y:y+1,p:php,d:1-hp[y+1][x]/(DIG_HARD[g[y+1][x]]||1)});
-  if(hp[y+1][x]<=0)brk(x,y+1,0)}
+  if(hit(x,y+1,0))continue;                      // блок снизу сломан — падаем дальше
+  const m=w.mv[mi++%w.mv.length];                 // куда отскочит (решил сервер заранее)
+  if(!m||y<0||x+m<0||x+m>=DIG_W||php<=0)continue;
+  const sc=g[y][x+m];
+  if(sc==='.'){x+=m;ev.push({e:'m',x,y,s:m})}     // перепрыгнула в соседнюю колонку
+  else if(sc!=='O'&&hit(x+m,y,m)){x+=m;ev.push({e:'m',x,y,s:m})}}   // ударилась о боковой блок; пробила — закатилась в дыру
  ev.push({e:'end',p:php});return {ev,raw}}
 function digTierP(tp){const a=(tp&&tp.length===3?tp:[60,30,10]).map(v=>Math.max(0,+v||0));const s=a[0]+a[1]+a[2]||1;return a.map(v=>v/s)}
 // средний выигрыш при заданных шансах кирок (линейно по каждой кирке)
