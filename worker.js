@@ -152,6 +152,13 @@ async function refGood(env, uid) {
   return ok ? (i.nft > 0 ? `NFT: ${i.nft}` : `уровень ${i.level}`) : "";
 }
 const REF_LEVEL = 2;   // минимальный уровень профиля для кейса Friends
+// технический перерыв: игрокам всё закрыто, админам и владельцам — открыто
+async function maintStop(env, u) {
+  const st = await loadSettings(env), m = st.maint;
+  if (!m || !m.on) return null;
+  if (isOwner(u.username) || (st.admins || []).map(String).includes(String(u.id))) return null;
+  return json({ ok: false, maint: true, err: "🛠 Технический перерыв" + (m.text ? ": " + m.text : ". Скоро вернёмся!") });
+}
 // подписан ли игрок на канал (бот должен быть админом канала)
 async function isSub(env, channel, uid) {
   const ch = "@" + String(channel || "").replace(/^@|^(?:https?:\/\/)?t\.me\//g, "").replace(/\/$/, "");
@@ -461,6 +468,7 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
+      { const ms = await maintStop(env, u); if (ms) return ms; }
       const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug });
       if (!r.ok) return json(r);
       const w = r.wd, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -517,6 +525,7 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      { const ms = (["me", "crash_state", "pvp_state"].includes(name)) ? null : await maintStop(env, u); if (ms) return ms; }
       delete d.initData; delete d.gate; delete d.subOk; delete d.subWhy;
       if (name === "case" && d.free === "daily") {          // бесплатный кейс: условия из настроек
         const g = (await loadSettings(env)).freeGate;
@@ -532,6 +541,7 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      { const ms = await maintStop(env, u); if (ms) return ms; }
       const last = Number(await getKey(env, "refchk:" + u.id)) || 0;
       if (Date.now() - last < 60000) return json({ ok: false, err: "Проверять можно раз в минуту" });
       await putKey(env, "refchk:" + u.id, String(Date.now()));
@@ -546,6 +556,7 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      { const ms = await maintStop(env, u); if (ms) return ms; }
       const st = await loadSettings(env);
       const t = (st.tasks || DEF_TASKS).find(x => x.id === d.id && x.on);
       if (!t) return json({ ok: false, err: "Задание не найдено" });

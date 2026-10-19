@@ -34,6 +34,9 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 .pill .plus{border:0;border-radius:999px;background:linear-gradient(135deg,var(--sun),var(--sunset));color:#5a2600;font:800 13px Nunito,system-ui,sans-serif;padding:6px 12px}
 .pill.t{padding-right:12px}
 
+/* тех. перерыв */
+#maint{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:linear-gradient(180deg,rgba(3,40,70,.92),rgba(2,25,45,.97));backdrop-filter:blur(8px)}
+#maint .mbox{text-align:center;max-width:340px}#maint .micon{font-size:64px;animation:bob 3s ease-in-out infinite}#maint h1{margin:10px 0}#maint p{color:var(--muted);font-weight:700;line-height:1.4;margin-bottom:18px}
 /* кейс Friends */
 .ccard.friends{background:linear-gradient(160deg,rgba(255,61,139,.55),rgba(124,58,237,.55));box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 8px 26px rgba(255,61,139,.35)}
 .ccard.friends .ctitle em{color:#ffd23f;font-style:normal}
@@ -320,7 +323,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','freeGate','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['minWd','freeGate','maint','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -331,7 +334,7 @@ function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))
   .then(r=>r.json()).then(j=>{if(j.ok){SYNC.last=p;SYNC.okAt=Date.now();toast('Сохранено для всех ✅')}else{SYNC.fail=j.err||'ошибка';toast('⚠️ Не сохранено: '+(j.err==='not admin'?'сервер не считает тебя админом':(j.err||'ошибка')))}}).catch(()=>toast('⚠️ Не сохранено: нет связи'))},now?0:900)}
 function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
   if(j&&typeof j==='object'){G_KEYS.forEach(k=>{ADM[k]=j[k]!==undefined?j[k]:(DEF[k]!==undefined?structuredClone(DEF[k]):undefined)});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
-  SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
+  SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();maintShow();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
 let GIFT_ACC='Sdelka_ton'; // аккаунт, куда игроки отправляют подарки
@@ -815,11 +818,22 @@ async function spinSlots(){if(S.sl)return;S.sl=1;const j=await srv('slots',{},{h
 /* ================== АДМИН-ПАНЕЛЬ ================== */
 S.adTab='stats';
 const GNAMES={cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
+/* ===== технический перерыв ===== */
+function maintShow(){const m=ADM.maint||{},on=!!m.on&&!IS_ADMIN;let o=document.getElementById('maint');
+ if(!on){if(o)o.remove();return}
+ if(!o){o=document.createElement('div');o.id='maint';document.body.appendChild(o)}
+ o.innerHTML=`<div class="mbox"><div class="micon">🛠</div><h1>Технический перерыв</h1><p>${esc(m.text||'Обновляем игру. Скоро вернёмся — все балансы и подарки сохранены!')}</p><button class="btn ghost" onclick="loadShared()">🔄 Проверить снова</button></div>`}
+function maintToggle(){const m=ADM.maint||{};ADM.maint={on:!m.on,text:($('#mtTxt')&&$('#mtTxt').value.trim())||m.text||''};saveAdm(1);toast(ADM.maint.on?'🛠 Перерыв включён — игрокам всё закрыто':'✅ Перерыв выключен');setTab('admin')}
+setInterval(()=>{if(!document.hidden&&(ADM.maint||{}).on&&!IS_ADMIN)loadShared()},30000);
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
   const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
+  const MT=ADM.maint||{};const mtCard=`<div class="card" style="${MT.on?'border-color:var(--coral);background:rgba(255,90,95,.22)':''}"><div class="ad-h">🛠 Технический перерыв <small style="background:${MT.on?'var(--coral)':'var(--palm)'}">${MT.on?'ВКЛЮЧЁН':'выключен'}</small></div>
+  <p class="sub" style="text-align:left;margin:0 0 6px">Когда включён, игроки видят экран перерыва и не могут играть, открывать кейсы и выводить. Админы видят всё как обычно.</p>
+  <div class="field"><input id="mtTxt" placeholder="Текст для игроков (необязательно)" value="${esc(MT.text||'')}"></div>
+  <button class="btn ${MT.on?'sand':'ghost'}" onclick="maintToggle()">${MT.on?'✅ Выключить перерыв':'🛠 Включить перерыв'}</button></div>`;
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+AD[S.adTab]();
 }
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
