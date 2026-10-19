@@ -177,40 +177,16 @@ export class Game {
   // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
   async op_share(u) { u.shares = Math.min(20, (u.shares || 0) + 1); return { shares: u.shares }; }
 
-  // ---- Шахта (майнкрафт): кирка копает вниз, руды дают звёзды. Итог решает сервер заранее ----
+  // ---- Шахта (майнкрафт): рулетка кирки, кирка падает и копает, верстак/TNT. Всё считает сервер ----
   async op_dig(u, uid, d) {
     if ((this.st.off || {}).dig) fail("Игра выключена");
     const v = bet(d.bet); if (!v) fail("Неверная ставка");
+    const S = globalThis.STRELA, K = S.DIG_KS.includes(+d.k) ? +d.k : 1;
     await this.charge(u, v);
-    const rtp = this.L.R ? this.L.R("dig") : ((this.st.rtp || {}).dig ?? 90) / 100;
-    // распределение множителя: частые маленькие, редкие большие
-    const T = [[0.2, 30], [0.4, 26], [0.6, 20], [0.8, 16], [1, 14], [1.3, 11], [1.7, 9], [2.2, 7], [3, 5], [5, 3], [8, 1.6], [15, .8], [30, .35], [75, .12], [200, .03]];
-    const W = T.reduce((a, [, w]) => a + w, 0), evNZ = T.reduce((a, [x, w]) => a + x * w / W, 0);
-    let X = 0;
-    if (rand() < Math.min(1, rtp / evNZ)) { let r = rand() * W; for (const [x, w] of T) { if ((r -= w) <= 0) { X = x; break; } } X *= 0.85 + rand() * 0.3; }
-    // раскладываем выигрыш на руды (доля ставки за блок)
-    const ORES = [["emerald", 5], ["diamond", 2], ["gold", .5], ["redstone", .25], ["iron", .1], ["copper", .05]];
-    let left = X, pieces = [];
-    for (const [t, m] of ORES) { while (left >= m * 0.999 && pieces.length < 60) { if (m >= 2 && rand() < .35 && left < m * 2) break; pieces.push([t, m]); left -= m; } }
-    if (left > 0.01 && pieces.length < 60) pieces.push(["copper", left]);
-    let chest = rand() < .25 && pieces.length > 2;               // сундук: склеиваем несколько руд в один приз
-    if (chest) { const k = 2 + randInt(Math.min(3, pieces.length - 1)); let m = 0; for (let i = 0; i < k; i++) m += pieces.pop()[1]; pieces.push(["chest", m]); }
-    // перемешиваем и вставляем «пустые» блоки, TNT и сердечки прочности
-    for (let i = pieces.length - 1; i > 0; i--) { const j = randInt(i + 1); [pieces[i], pieces[j]] = [pieces[j], pieces[i]]; }
-    const steps = [], STONE = ["stone", "stone", "stone", "cobble", "dirt", "gravel", "deepslate"];
-    const total = Math.max(26, pieces.length * 3 + 10 + randInt(14));
-    const slots = new Set(); while (slots.size < pieces.length) slots.add(2 + randInt(total - 3));
-    const order = [...slots].sort((a, b) => a - b); let pi = 0, col = 3, win = 0;
-    for (let i = 0; i < total; i++) {
-      if (rand() < .3) col = Math.max(0, Math.min(6, col + (rand() < .5 ? -1 : 1)));
-      if (pi < order.length && order[pi] === i) {
-        const [t, m] = pieces[pi++]; const a = Math.max(1, Math.round(v * m)); win += a; steps.push({ c: col, t, a });
-      } else steps.push({ c: col, t: rand() < .06 ? "tnt" : rand() < .05 ? "heart" : STONE[randInt(STONE.length)] });
-    }
-    if (X === 0) { win = 0; for (const s of steps) if (s.a) { s.t = "stone"; delete s.a; } }
+    const r = S.digRun(rand, K), unit = this.L.R("dig") / S.DIG_M[K];
+    const win = S.digPay(r.ev, v, unit);
     if (win) await this.payout(u, uid, win, GAME_NAMES.dig);
-    await this.tourAdd(u, 0);
-    return { steps, win, bet: v, x: +(win / v).toFixed(2) };
+    return { world: r.world, tier: r.tier, k: K, unit, win, bet: v, x: +(win / v).toFixed(2) };
   }
 
   // ---- кейсы ----

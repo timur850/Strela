@@ -80,5 +80,38 @@ function makeLogic(getADM,rand){
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
  return {R,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,itemsPick,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
 }
-G.STRELA={makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar};
+
+/* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */
+const DIG_W=7, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10];
+const DIG_HARD={g:1,d:1,v:1,s:2,c:2,p:3,C:3,I:3,R:3,L:3,G:3,D:4,E:4,T:1,W:2,O:1e9};
+const DIG_VAL={C:.1,I:.2,R:.3,L:.4,G:.6,D:4,E:15};
+const DIG_ORE_P=[['C',.07],['I',.045],['R',.035],['L',.025],['G',.018],['D',.005],['E',.002],['T',.009],['W',.005]];
+let DIG_M={1:10.365,2:10.929,5:11.132,10:11.359};   // средний «сырой» выигрыш за игру (откалибровано на 60 000 игр)
+function digGen(rand,K){const H=150,rows=[];
+ for(let y=0;y<H;y++){let r='';for(let x=0;x<DIG_W;x++){let ch;
+  if(y===0)ch='g';else if(y<3)ch=rand()<.7?'d':'v';
+  else{const deep=y/H;ch=rand()<deep*.8?'p':rand()<.25?'c':rand()<.1?'v':'s';
+   const q=rand();let a=0;for(const [o,pr] of DIG_ORE_P){a+=pr*(DIG_VAL[o]?1/K:1)*(o==='D'||o==='E'?(.5+deep):1);if(q<a){ch=o;break}}}
+  r+=ch}rows.push(r)}
+ rows.push('OOOOOOO');
+ return {rows,mv:Array.from({length:400},()=>{const q=rand();return q<.12?-1:q<.24?1:0}),x0:2+Math.floor(rand()*3)}}
+function digSim(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp=g.map(r=>r.map(ch=>DIG_HARD[ch]||0)),ev=[];
+ let x=w.x0,y=-1,t=tier,php=DIG_TIER[t],mi=0,raw=0,side=0;
+ const brk=(cx,cy,tnt)=>{const ch=g[cy][cx];if(ch==='.'||ch==='O')return;g[cy][cx]='.';hp[cy][cx]=0;const v=(DIG_VAL[ch]||0)*K;raw+=v;ev.push({e:'b',x:cx,y:cy,t:ch,v});
+  if(ch==='W'){if(t<2){t++;php=DIG_TIER[t];ev.push({e:'u',t,hp:php,up:1})}else{php=DIG_TIER[2];ev.push({e:'u',t,hp:php,up:0})}}
+  if(ch==='T'&&!tnt){ev.push({e:'x',x:cx,y:cy});for(let yy=cy;yy<Math.min(H-1,cy+8);yy++)for(let xx=0;xx<DIG_W;xx++)brk(xx,yy,1);ev.push({e:'xe'})}};
+ for(let it=0;it<20000;it++){
+  if(php<=0||y+1>=H-1&&!side)break;
+  const tx=side?x+side:x,ty=side?y:y+1;
+  if(!side&&g[ty][tx]==='.'){y++;ev.push({e:'f',x,y});continue}
+  if(g[ty][tx]==='O')break;
+  php--;hp[ty][tx]--;ev.push({e:'h',x:tx,y:ty,p:php,d:1-hp[ty][tx]/(DIG_HARD[g[ty][tx]]||1)});
+  if(hp[ty][tx]<=0){brk(tx,ty,0);
+   if(side){x+=side;side=0;ev.push({e:'m',x,y})}
+   else{const m=w.mv[mi++%w.mv.length];if(m&&y>=0&&x+m>=0&&x+m<DIG_W){if(g[y][x+m]==='.'){x+=m;ev.push({e:'m',x,y})}else if(g[y][x+m]!=='O')side=m}}}}
+ ev.push({e:'end',p:php});return {ev,raw}}
+function digRun(rand,K){const r=rand();const tier=r<DIG_TIER_P[0]?0:r<DIG_TIER_P[0]+DIG_TIER_P[1]?1:2;const world=digGen(rand,K);return {tier,world,...digSim(world,tier,K)}}
+// сумма выплаты: округляется только итог (у руд в мини-аппе — дробные значения)
+function digPay(ev,bet,unit){let s=0;for(const e of ev)if(e.e==='b'&&e.v)s+=e.v;return Math.round(bet*s*unit)}
+G.STRELA={digGen,digSim,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,get DIG_M(){return DIG_M},set DIG_M(v){DIG_M=v},makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar};
 })(globalThis);
