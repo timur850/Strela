@@ -323,7 +323,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','freeGate','maint','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['minWd','freeGate','maint','theme','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -334,7 +334,7 @@ function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))
   .then(r=>r.json()).then(j=>{if(j.ok){SYNC.last=p;SYNC.okAt=Date.now();toast('Сохранено для всех ✅')}else{SYNC.fail=j.err||'ошибка';toast('⚠️ Не сохранено: '+(j.err==='not admin'?'сервер не считает тебя админом':(j.err||'ошибка')))}}).catch(()=>toast('⚠️ Не сохранено: нет связи'))},now?0:900)}
 function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
   if(j&&typeof j==='object'){G_KEYS.forEach(k=>{ADM[k]=j[k]!==undefined?j[k]:(DEF[k]!==undefined?structuredClone(DEF[k]):undefined)});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
-  SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();maintShow();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
+  SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();maintShow();applyTheme();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
 let GIFT_ACC='Sdelka_ton'; // аккаунт, куда игроки отправляют подарки
@@ -823,17 +823,22 @@ function maintShow(){const m=ADM.maint||{},on=!!m.on&&!IS_ADMIN;let o=document.g
  if(!on){if(o)o.remove();return}
  if(!o){o=document.createElement('div');o.id='maint';document.body.appendChild(o)}
  o.innerHTML=`<div class="mbox"><div class="micon">🛠</div><h1>Технический перерыв</h1><p>${esc(m.text||'Обновляем игру. Скоро вернёмся — все балансы и подарки сохранены!')}</p><button class="btn ghost" onclick="loadShared()">🔄 Проверить снова</button></div>`}
+/* ===== тема оформления: лето (пляж) / осень ===== */
+const THEMES=[['summer','🏝 Лето'],['autumn','🍂 Осень']];
+function applyTheme(){try{autumnOn((ADM.theme||'autumn')==='autumn')}catch(e){}}
+function setTheme(t){ADM.theme=t;applyTheme();saveAdm(1);toast('Тема: '+(THEMES.find(x=>x[0]===t)||[])[1]);setTab('admin')}
 function maintToggle(){const m=ADM.maint||{};ADM.maint={on:!m.on,text:($('#mtTxt')&&$('#mtTxt').value.trim())||m.text||''};saveAdm(1);toast(ADM.maint.on?'🛠 Перерыв включён — игрокам всё закрыто':'✅ Перерыв выключен');setTab('admin')}
 setInterval(()=>{if(!document.hidden&&(ADM.maint||{}).on&&!IS_ADMIN)loadShared()},30000);
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
   const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
-  const MT=ADM.maint||{};const mtCard=`<div class="card" style="${MT.on?'border-color:var(--coral);background:rgba(255,90,95,.22)':''}"><div class="ad-h">🛠 Технический перерыв <small style="background:${MT.on?'var(--coral)':'var(--palm)'}">${MT.on?'ВКЛЮЧЁН':'выключен'}</small></div>
+  const MT=ADM.maint||{};const thCard=`<div class="card"><div class="ad-h">🎨 Оформление</div><div class="row" style="gap:8px">${THEMES.map(([k,n])=>`<button class="btn ${(ADM.theme||'autumn')===k?'sand':'ghost'}" onclick="setTheme('${k}')">${n}</button>`).join('')}</div><p class="sub" style="text-align:left;margin:8px 0 0">Меняется сразу у всех игроков.</p></div>`;
+  const mtCard=`<div class="card" style="${MT.on?'border-color:var(--coral);background:rgba(255,90,95,.22)':''}"><div class="ad-h">🛠 Технический перерыв <small style="background:${MT.on?'var(--coral)':'var(--palm)'}">${MT.on?'ВКЛЮЧЁН':'выключен'}</small></div>
   <p class="sub" style="text-align:left;margin:0 0 6px">Когда включён, игроки видят экран перерыва и не могут играть, открывать кейсы и выводить. Админы видят всё как обычно.</p>
   <div class="field"><input id="mtTxt" placeholder="Текст для игроков (необязательно)" value="${esc(MT.text||'')}"></div>
   <button class="btn ${MT.on?'sand':'ghost'}" onclick="maintToggle()">${MT.on?'✅ Выключить перерыв':'🛠 Включить перерыв'}</button></div>`;
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]();
 }
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
@@ -997,5 +1002,91 @@ function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filte
 
 upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(()=>{if(document.hidden)return;const fast=!S.stack.length&&(S.tab==='games'||S.tab==='tour');if(fast||Date.now()-(S.feedAt||0)>20000)loadFeed()},5000);
 </script>
+<!-- ===== ОСЕННЯЯ ТЕМА (включается классом body.autumn) ===== -->
+<style id="autumn-css">
+body.autumn{
+  --sea:#e0761c; --sea2:#9a3412; --deep:#3a1606; --lagoon:#f4a340; --sand:#ffd9a0; --sand2:#e8a85a;
+  --coral:#e2483d; --hibiscus:#d9433a; --palm:#c2791a; --sunset:#ff7a1a; --sun:#ffc23d;
+  --glass:rgba(48,18,6,.46); --glass2:rgba(255,220,180,.12); --line:rgba(255,214,170,.24);
+  --text:#fff7ec; --muted:rgba(255,236,214,.74);
+  background:#2a1206;
+}
+body.autumn .bg{background:var(--autumn-bg) center bottom/cover no-repeat,#3a1606!important}
+body.autumn .bg::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 0%,transparent 40%,rgba(30,8,0,.55) 100%)}
+body.autumn .waves{opacity:.9}
+body.autumn .waves svg path{fill:rgba(120,40,8,.55)!important}
+body.autumn .waves svg:nth-child(2) path{fill:rgba(190,80,20,.45)!important}
+/* плитки игр — тёплые оттенки вместо морских */
+body.autumn .tile{border-color:rgba(255,214,170,.3);box-shadow:0 6px 18px rgba(40,10,0,.35)}
+body.autumn .g-free{background:linear-gradient(120deg,rgba(255,206,120,.92),rgba(226,140,48,.85));color:#3d1a00}
+body.autumn .g-free small{color:rgba(61,26,0,.72)}
+body.autumn .g-cases{background:linear-gradient(120deg,#e0761c,#8a2d0b)}
+body.autumn .g-up{background:linear-gradient(120deg,#8b3a8f,#d9601c)}
+body.autumn .g-crash{background:linear-gradient(120deg,#5a250c,#a8461a)}
+body.autumn .g-mines{background:linear-gradient(120deg,#d9433a,#8f1d14)}
+body.autumn .g-plinko{background:linear-gradient(120deg,#c98a1a,#7a4a0a)}
+body.autumn .g-contr{background:linear-gradient(120deg,#b4235a,#6d1b3b)}
+body.autumn .g-eggs{background:linear-gradient(120deg,#8a8f1c,#4d5a0e)}
+body.autumn .g-pvp{background:linear-gradient(120deg,#ff7a1a,#b3360a)}
+body.autumn .g-slots{background:linear-gradient(120deg,#f2b01e,#a8650a)}
+body.autumn .tile::after{background:radial-gradient(circle,rgba(255,220,160,.28),transparent 70%)}
+/* кейсы — та же форма, тёплое свечение */
+body.autumn .ccard{border-color:rgba(255,214,170,.28);background:radial-gradient(120% 90% at 50% 35%,color-mix(in srgb,var(--g) 70%,transparent),rgba(46,16,4,.88) 70%)}
+body.autumn .ccard .burst{background:repeating-conic-gradient(from 0deg,rgba(255,220,170,.14) 0 8deg,transparent 8deg 22deg)}
+/* кнопки, панели, низ */
+body.autumn .btn{background:linear-gradient(135deg,#e0761c,#9a3412);box-shadow:0 6px 16px rgba(154,52,18,.45)}
+body.autumn .btn.sand{background:linear-gradient(135deg,var(--sun),var(--sunset));color:#3d1500}
+body.autumn .btn.ghost{background:rgba(255,220,180,.16);box-shadow:none}
+body.autumn .nav{background:rgba(48,16,4,.7)}
+body.autumn .sheet{background:linear-gradient(180deg,rgba(120,44,10,.96),rgba(52,18,4,.98))!important}
+body.autumn .sheet-bg{background:rgba(30,8,0,.55)}
+body.autumn .brand .lg.lgimg img{filter:drop-shadow(0 6px 12px rgba(120,40,0,.55)) hue-rotate(190deg) saturate(1.4) brightness(1.05)}
+body.autumn .brand h1 span{color:var(--sun)}
+body.autumn .tile .ic img{filter:hue-rotate(190deg) saturate(1.4) brightness(1.05)}
+body.autumn .live b i{background:#ffb02e;box-shadow:0 0 8px #ffb02e}
+/* падающие листья */
+#leaves{position:fixed;inset:0;pointer-events:none;z-index:15}
+</style>
+<script id="autumn-js">
+(function(){
+  /* фон: закатное небо, холмы, рыжие деревья, листва на земле — рисуем SVG, без картинок */
+  const tree=(x,y,s,c1,c2)=>`<g transform="translate(${x} ${y}) scale(${s})"><path d="M-6 0 L-4 -70 Q0 -78 4 -70 L6 0Z" fill="#3b1a0c"/><path d="M0 -60 L-26 -96 M0 -66 L22 -104 M-2 -84 L-12 -112" stroke="#3b1a0c" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="-34" cy="-104" r="30" fill="${c2}"/><circle cx="28" cy="-112" r="34" fill="${c2}"/><circle cx="-4" cy="-136" r="38" fill="${c1}"/><circle cx="-40" cy="-130" r="24" fill="${c1}"/><circle cx="36" cy="-142" r="26" fill="${c1}"/><circle cx="6" cy="-100" r="28" fill="${c1}" opacity=".85"/></g>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 1000" preserveAspectRatio="xMidYMax slice">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d1a4a"/><stop offset=".35" stop-color="#a8402a"/><stop offset=".62" stop-color="#f08a2c"/><stop offset=".8" stop-color="#ffc56b"/></linearGradient>
+  <radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2c4"/><stop offset=".4" stop-color="#ffcf6a" stop-opacity=".9"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="h1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8541f"/><stop offset="1" stop-color="#6e2a0e"/></linearGradient>
+  <linearGradient id="h2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a3010"/><stop offset="1" stop-color="#3a1606"/></linearGradient>
+  <linearGradient id="h3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a1c08"/><stop offset="1" stop-color="#220c02"/></linearGradient></defs>
+  <rect width="480" height="1000" fill="url(#sky)"/>
+  <circle cx="300" cy="560" r="170" fill="url(#sun)"/><circle cx="300" cy="560" r="46" fill="#fff0c0" opacity=".9"/>
+  <g fill="#ffd9a6" opacity=".25"><ellipse cx="90" cy="300" rx="80" ry="10"/><ellipse cx="380" cy="380" rx="100" ry="9"/><ellipse cx="200" cy="450" rx="70" ry="7"/></g>
+  <path d="M0 640 Q80 590 170 625 T340 610 T480 600 V1000 H0Z" fill="url(#h1)" opacity=".85"/>
+  ${tree(60,700,.7,'#e8731c','#b8451a')}${tree(420,690,.62,'#f2a02a','#c8561a')}${tree(250,660,.45,'#d9563a','#a8341c')}
+  <path d="M0 740 Q120 690 240 730 T480 715 V1000 H0Z" fill="url(#h2)"/>
+  ${tree(-10,840,1.05,'#ff8a1f','#c2410c')}${tree(470,860,1.15,'#e2483d','#9a2414')}${tree(150,810,.6,'#ffb52e','#d9761a')}
+  <path d="M0 860 Q140 820 260 850 T480 840 V1000 H0Z" fill="url(#h3)"/>
+  <g opacity=".9">${Array.from({length:70},(_,i)=>{const x=(i*37)%480,y=880+((i*53)%110),c=['#ff8a1f','#e2483d','#ffc23d','#c2410c','#b8541f'][i%5];return `<ellipse cx="${x}" cy="${y}" rx="7" ry="3.5" fill="${c}" transform="rotate(${(i*47)%180} ${x} ${y})"/>`}).join('')}</g>
+  </svg>`;
+  document.documentElement.style.setProperty('--autumn-bg',`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`);
+
+  /* падающие листья (canvas, ~28 штук, лёгкая нагрузка) */
+  let cv,cx,L=[],raf,on=false;
+  const COLORS=['#ff8a1f','#e2483d','#ffc23d','#c2410c','#f4a340','#b8341c'];
+  function leafPath(c,s){c.beginPath();c.moveTo(0,-s);c.bezierCurveTo(s*.55,-s*.7,s*.75,-s*.1,s*.55,s*.25);c.lineTo(s*.95,s*.15);c.lineTo(s*.35,s*.55);c.lineTo(s*.2,s*1.05);c.lineTo(0,s*.7);c.lineTo(-s*.2,s*1.05);c.lineTo(-s*.35,s*.55);c.lineTo(-s*.95,s*.15);c.lineTo(-s*.55,s*.25);c.bezierCurveTo(-s*.75,-s*.1,-s*.55,-s*.7,0,-s);c.closePath()}
+  function spawn(top){const W=innerWidth;return {x:Math.random()*W,y:top?-30-Math.random()*innerHeight:Math.random()*innerHeight,s:7+Math.random()*9,vy:.45+Math.random()*.9,sw:Math.random()*6.28,swS:.01+Math.random()*.02,amp:.6+Math.random()*1.4,r:Math.random()*6.28,vr:(Math.random()-.5)*.04,flip:Math.random()*6.28,c:COLORS[Math.random()*COLORS.length|0],a:.75+Math.random()*.25}}
+  function size(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+  function frame(){cx.clearRect(0,0,innerWidth,innerHeight);for(const p of L){p.sw+=p.swS;p.x+=Math.sin(p.sw)*p.amp;p.y+=p.vy;p.r+=p.vr;p.flip+=.03;
+    if(p.y>innerHeight+30)Object.assign(p,spawn(true),{y:-30});
+    cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.scale(Math.cos(p.flip),1);cx.globalAlpha=p.a;cx.fillStyle=p.c;leafPath(cx,p.s);cx.fill();
+    cx.strokeStyle='rgba(60,20,0,.45)';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,-p.s*.8);cx.lineTo(0,p.s*.9);cx.stroke();cx.restore()}
+    raf=requestAnimationFrame(frame)}
+  window.autumnOn=function(v){on=!!v;document.body.classList.toggle('autumn',on);
+    if(on&&!cv){cv=document.createElement('canvas');cv.id='leaves';document.body.appendChild(cv);cx=cv.getContext('2d');size();addEventListener('resize',size);L=Array.from({length:28},()=>spawn(false));frame()}
+    if(!on&&cv){cancelAnimationFrame(raf);cv.remove();cv=null}};
+  document.addEventListener('visibilitychange',()=>{if(!cv)return;if(document.hidden)cancelAnimationFrame(raf);else frame()});
+})();
+</script>
+<script>applyTheme()</script>
 </body>
 </html>
