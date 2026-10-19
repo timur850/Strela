@@ -132,18 +132,26 @@ async function loadSettings(env) {
   return st;
 }
 // друг «настоящий»: есть NFT-подарок в профиле или уровень (звёздный рейтинг) 2+
-async function refGood(env, uid) {
+async function refInfo(env, uid) {
+  const out = { level: null, rating: null, nft: 0, gifts: 0, errChat: "", errGifts: "" };
   try {
     const c = await tg(env, "getChat", { chat_id: uid });
-    const lvl = c.ok && c.result && c.result.rating ? +c.result.rating.level || 0 : 0;
-    if (lvl >= 2) return true;
-  } catch {}
+    if (!c.ok) out.errChat = c.description || "getChat";
+    else if (c.result.rating) { out.level = +c.result.rating.level; out.rating = c.result.rating.rating ?? null; }
+  } catch (e) { out.errChat = String(e); }
   try {
-    const g = await tg(env, "getUserGifts", { user_id: uid, exclude_unlimited: true, limit: 50 });
-    if (g.ok && (g.result.gifts || []).some(x => x.type === "unique")) return true;
-  } catch {}
-  return false;
+    const g = await tg(env, "getUserGifts", { user_id: uid, limit: 100 });
+    if (!g.ok) out.errGifts = g.description || "getUserGifts";
+    else { const L = g.result.gifts || []; out.gifts = L.length; out.nft = L.filter(x => x.type === "unique").length; }
+  } catch (e) { out.errGifts = String(e); }
+  return out;
 }
+async function refGood(env, uid) {
+  const i = await refInfo(env, uid);
+  const ok = i.nft > 0 || (i.level != null && i.level >= REF_LEVEL);
+  return ok ? (i.nft > 0 ? `NFT: ${i.nft}` : `уровень ${i.level}`) : "";
+}
+const REF_LEVEL = 2;   // минимальный уровень профиля для кейса Friends
 // подписан ли игрок на канал (бот должен быть админом канала)
 async function isSub(env, channel, uid) {
   const ch = "@" + String(channel || "").replace(/^@|^(?:https?:\/\/)?t\.me\//g, "").replace(/\/$/, "");
@@ -261,7 +269,8 @@ async function handleUpdate(env, origin, upd) {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
     if (m && msg.from) {
       const b = await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
-      if (b && b.bound && await refGood(env, msg.from.id)) await op(env, "ref_qualify", msg.from.id, uname(msg.from), {});
+      const why = b && b.bound ? await refGood(env, msg.from.id) : "";
+      if (why) await op(env, "ref_qualify", msg.from.id, uname(msg.from), { why });
     }
   }
   if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, parse_mode: "HTML", reply_markup: kb });
@@ -282,6 +291,18 @@ async function handleUpdate(env, origin, upd) {
       reply_markup: { inline_keyboard: [[{ text: "🛠 Открыть админку", web_app: { url: origin + "/#admin" } }]] } });
     else await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML",
       text: `⛔ Нет доступа.\nТвой юзернейм: @${u.username || "—"}, ID: <code>${u.id}</code>\nАдминка доступна владельцу (@${OWNERS.join(", @")}) и тем, кому он выдал доступ по ID.` });
+  }
+  else if (cmd === "/refinfo" && msg.from && isOwner(msg.from.username)) {
+    // /refinfo <id> — что Telegram отдаёт по человеку (для кейса Friends); /refinfo <id> list — кого он пригласил
+    const [, id, mode] = msg.text.trim().split(/\s+/);
+    if (!/^\d{3,15}$/.test(id || "")) await tg(env, "sendMessage", { chat_id: chat, text: "Напиши так: /refinfo 123456789\nИли /refinfo 123456789 list — список его приглашённых" });
+    else if (mode === "list") {
+      const r = await op(env, "admin/refs", msg.from.id, "", { id }, true);
+      await tg(env, "sendMessage", { chat_id: chat, text: (r.rows || []).map(x => `${x.id} ${x.name || ""} — ${x.q ? "✅ " + (x.why || "засчитан") : "—"}`).join("\n") || "Приглашённых нет" });
+    } else {
+      const i = await refInfo(env, id), why = await refGood(env, id);
+      await tg(env, "sendMessage", { chat_id: chat, text: `ID ${id}\nУровень: ${i.level ?? "—"} (рейтинг ${i.rating ?? "—"})${i.errChat ? "\n⚠️ getChat: " + i.errChat : ""}\nПодарков в профиле: ${i.gifts}, из них NFT: ${i.nft}${i.errGifts ? "\n⚠️ getUserGifts: " + i.errGifts : ""}\n\nДля Friends: ${why ? "✅ подходит (" + why + ")" : "❌ не подходит"}` });
+    }
   }
   else if (cmd === "/wdtest" && msg.from && isOwner(msg.from.username)) {
     const st = await loadSettings(env), lines = [];
@@ -516,7 +537,7 @@ export default {
       await putKey(env, "refchk:" + u.id, String(Date.now()));
       const p = await op(env, "ref_pending", u.id, uname(u), {});
       let added = 0;
-      for (const id of (p.ids || [])) if (await refGood(env, id)) { const q = await op(env, "ref_qualify", id, "", {}); if (q.done) added++; }
+      for (const id of (p.ids || [])) { const why = await refGood(env, id); if (why) { const q = await op(env, "ref_qualify", id, "", { why }); if (q.done) added++; } }
       const me = await op(env, "me", u.id, uname(u), {});
       return json({ ok: true, added, checked: (p.ids || []).length, me: me.me });
     }

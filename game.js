@@ -153,9 +153,9 @@ export class Game {
 
   op_me() { return {}; }
   // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
-  async op_ref_qualify(u, uid) {
+  async op_ref_qualify(u, uid, d) {
     if (u.refq || !u.ref) return { done: false };
-    u.refq = 1;
+    u.refq = 1; u.refWhy = String(d.why || "").slice(0, 40);
     const r = await this.s.get("u:" + u.ref); if (!r) return { done: false };
     r.refQ = (r.refQ || 0) + 1; await this.s.put("u:" + u.ref, r);
     return { done: true };
@@ -537,6 +537,12 @@ export class Game {
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
+    if (op === "refs") {
+      const r = await this.s.get("u:" + id); if (!r) return { ok: true, rows: [] };
+      const rows = [];
+      for (const fid of (r.refs || []).slice(-40).reverse()) { const f = await this.s.get("u:" + fid); rows.push({ id: fid, name: f && f.name, q: !!(f && f.refq), why: f && f.refWhy }); }
+      return { ok: true, refQ: r.refQ || 0, rows };
+    }
     if (op === "wd_count") return { ok: true, n: (await this.s.list({ prefix: "wdq:", limit: 500 })).size };
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
     fail("Неизвестное действие");
