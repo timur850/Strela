@@ -183,7 +183,8 @@ export class Game {
     const v = bet(d.bet); if (!v) fail("Неверная ставка");
     const S = globalThis.STRELA, K = S.DIG_KS.includes(+d.k) ? +d.k : 1;
     await this.charge(u, v);
-    const r = S.digRun(rand, K), unit = this.L.R("dig") / S.DIG_M[K];
+    const tp = this.st.digTier;                    // шансы кирок из админки (%, по умолчанию 60/30/10)
+    const r = S.digRun(rand, K, tp), unit = this.L.R("dig") / S.digM(K, tp);
     const win = S.digPay(r.ev, v, unit);
     if (win) await this.payout(u, uid, win, GAME_NAMES.dig);
     return { world: r.world, tier: r.tier, k: K, unit, win, bet: v, x: +(win / v).toFixed(2) };

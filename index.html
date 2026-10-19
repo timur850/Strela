@@ -345,7 +345,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','freeGate','maint','theme','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['minWd','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -543,7 +543,7 @@ dig(){return `<h1>Шахта</h1><div class="digbox"><canvas id="digc"></canvas>
  <div class="row" style="align-items:center;gap:6px"><span class="star">★</span><input id="dbet" type="number" value="50" oninput="digKSet(DIG.k)" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="dbet.value=Math.max(1,Math.round(dbet.value/2));digKSet(DIG.k)">½</button><button class="btn ghost sm" onclick="dbet.value=Math.round(dbet.value*2);digKSet(DIG.k)">x2</button><button class="btn ghost sm" onclick="dbet.value=+dbet.value+100;digKSet(DIG.k)">+100</button></div>
  <button class="btn sand" id="dbtn" style="margin-top:10px" onclick="digGo()">⛏ Копать</button></div>
  <div class="card"><div class="ad-h">Сколько даёт блок при твоей ставке</div><div class="digleg" id="dleg"></div>
- <p class="sub" style="text-align:left;margin:8px 0 0">В начале рулетка выдаёт кирку: каменная ♥100, железная ♥150, алмазная ♥250. Каждый удар отнимает 1 ♥, твёрдые блоки ломаются дольше. Верстак улучшает кирку на уровень, а алмазную — чинит до полной. TNT взрывает всё в зоне 7×8.</p></div>`},
+ <p class="sub" style="text-align:left;margin:8px 0 0">В начале рулетка выдаёт кирку: каменная ♥100, железная ♥150, алмазная ♥250 (шансы: ${digTierP().map(v=>Math.round(v*100)+'%').join(' / ')}). Каждый удар отнимает 1 ♥, твёрдые блоки ломаются дольше. Верстак улучшает кирку на уровень, а алмазную — чинит до полной. TNT взрывает блоки в зоне 3×4.</p></div>`},
 mines(){return `<div class="mgrid" id="mg"></div>
  <div class="seg" style="margin:14px 0">${[3,5,7].map(n=>`<button ${n==5?'class="on"':''} onclick="mSize(this,${n})">${n}x${n}</button>`).join('')}</div>
  <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
@@ -853,7 +853,8 @@ S.adTab='stats';
 const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
-const DIG={k:1,speed:1};
+const DIG={k:1,speed:1};const DIG_SPD={1:.55,2:.85,3:1.7,4:3.2};   /* x1 и x2 — медленнее, дальше быстрее */
+const digTierP=()=>globalThis.STRELA.digTierP(ADM.digTier);
 const DIG_NAMES={C:'Медь',I:'Железо',R:'Редстоун',L:'Лазурит',G:'Золото',D:'Алмаз',E:'Изумруд'};
 const DIG_TN=['Каменная','Железная','Алмазная'];
 function digTex(){if(DIG.tex)return DIG.tex;const T={};let sd=7;const R=()=>(sd=(sd*16807)%2147483647)/2147483647;
@@ -897,30 +898,30 @@ function digBurst(c,r,ch,n){const B=$('#digc').clientWidth/7,top=B*2.2,T=digTex(
 function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min(50,now-(DIG.lt||now));DIG.lt=now;
  const B=$('#digc').clientWidth/7;for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
  for(const f of DIG.fx)f.t+=dt;DIG.fx=DIG.fx.filter(f=>f.t<1100);DIG.shake=Math.max(0,DIG.shake-dt*.04);DIG.flash=Math.max(0,DIG.flash-dt*.002);
- if(DIG.pk){const p=DIG.pk;p.y+=(p.ty-p.y)*Math.min(1,dt*.018*DIG.speed);p.x+=(p.tx-p.x)*Math.min(1,dt*.02*DIG.speed);p.rot=(p.rot||0)+((p.trot||0)-(p.rot||0))*Math.min(1,dt*.02);if(!DIG.run&&!DIG.spin)p.trot=Math.sin(now/300)*.2;
-  const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG.speed)}
+ if(DIG.pk){const p=DIG.pk;p.y+=(p.ty-p.y)*Math.min(1,dt*.018*DIG_SPD[DIG.speed]);p.x+=(p.tx-p.x)*Math.min(1,dt*.02*DIG_SPD[DIG.speed]);p.rot=(p.rot||0)+((p.trot||0)-(p.rot||0))*Math.min(1,dt*.02);if(!DIG.run&&!DIG.spin)p.trot=Math.sin(now/300)*.2;
+  const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
 function digHud(hp,max,t,won){$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
 function digInit(){DIG.run=0;DIG.spin=0;clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,tx:3,ty:-1,t:0};digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
-function digKSet(k){DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.DIG_M[k];
- leg.innerHTML=Object.entries(S.DIG_VAL).map(([o,v])=>`<span><canvas data-t="${o}" width="16" height="16"></canvas>${DIG_NAMES[o]}<b>${(bet*v*k*unit).toFixed(1)} ★</b></span>`).join('')+`<span><canvas data-t="T" width="16" height="16"></canvas>TNT<b>взрыв 7×8</b></span><span><canvas data-t="W" width="16" height="16"></canvas>Верстак<b>⬆ / 🔧</b></span>`;
+function digKSet(k){DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.digM(k,ADM.digTier);
+ leg.innerHTML=Object.entries(S.DIG_VAL).map(([o,v])=>`<span><canvas data-t="${o}" width="16" height="16"></canvas>${DIG_NAMES[o]}<b>${(bet*v*k*unit).toFixed(1)} ★</b></span>`).join('')+`<span><canvas data-t="T" width="16" height="16"></canvas>TNT<b>взрыв 3×4</b></span><span><canvas data-t="W" width="16" height="16"></canvas>Верстак<b>⬆ / 🔧</b></span>`;
  leg.querySelectorAll('canvas').forEach(c=>{const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(digTex()[c.dataset.t],0,0)})}
 function digSpin(tier){return new Promise(res=>{const box=$('#droul');box.className='droul show';const T=digTex(),strip=$('#drstrip');const seq=[];for(let i=0;i<34;i++)seq.push([0,0,0,1,1,2][(Math.random()*6)|0]);seq[30]=tier;
  strip.innerHTML=seq.map(t=>`<div class="dri t${t}"><canvas width="16" height="16"></canvas><b>${DIG_TN[t]}</b><small>♥ ${globalThis.STRELA.DIG_TIER[t]}</small></div>`).join('');
  strip.querySelectorAll('canvas').forEach((c,i)=>{const x=c.getContext('2d');x.drawImage(T.pick[seq[i]],0,0)});strip.style.transition='none';strip.style.transform='translateX(0)';strip.offsetWidth;
  const w=strip.children[0].getBoundingClientRect().width+8,off=30*w-box.clientWidth/2+w/2+(Math.random()*w*.5-w*.25);
- strip.style.transition=`transform ${3.2/DIG.speed}s cubic-bezier(.12,.75,.18,1)`;strip.style.transform=`translateX(${-off}px)`;
- setTimeout(()=>{strip.children[30].classList.add('win');try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}setTimeout(()=>{box.className='droul';res()},700/DIG.speed)},3300/DIG.speed)})}
+ strip.style.transition=`transform ${3.2/Math.max(1,DIG_SPD[DIG.speed])}s cubic-bezier(.12,.75,.18,1)`;strip.style.transform=`translateX(${-off}px)`;
+ setTimeout(()=>{strip.children[30].classList.add('win');try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}setTimeout(()=>{box.className='droul';res()},700/Math.max(1,DIG_SPD[DIG.speed]))},3300/Math.max(1,DIG_SPD[DIG.speed]))})}
 async function digGo(){if(DIG.run||DIG.spin)return;const v=Math.round(+$('#dbet').value);if(!(v>0))return toast('Введите ставку');
  const b=$('#dbtn');b.disabled=true;$('#dres').className='dres';
  const j=await srv('dig',{bet:v,k:DIG.k},{lock:1,hold:j=>j.win});if(!j){b.disabled=false;return}
  DIG.spin=1;digSetup(j.world.rows);DIG.cam=0;DIG.pk={x:j.world.x0,y:-3,tx:j.world.x0,ty:-3,t:j.tier};digHud(globalThis.STRELA.DIG_TIER[j.tier],globalThis.STRELA.DIG_TIER[j.tier],j.tier,0);
  await digSpin(j.tier);DIG.spin=0;DIG.run=1;
  const S=globalThis.STRELA,sim=S.digSim(j.world,j.tier,j.k),ev=sim.ev;let i=0,won=0,t=j.tier,max=S.DIG_TIER[t],hp=max,inX=0;
- let est=0;for(const e of ev)est+={f:26,h:44,m:45,b:e.v?75:12,xe:380,u:500,end:200}[e.e]||0;const auto=Math.max(1,est/18000);  /* длинные партии ускоряем до ~18 с */
+ let est=0;for(const e of ev)est+={f:26,h:44,m:45,b:e.v?75:12,xe:380,u:500,end:200}[e.e]||0;const auto=Math.max(1,est/32000);  /* длинные партии ускоряем до ~18 с */
  const step=()=>{if(!$('#digc')){DIG.run=0;return}
   if(i>=ev.length)return digEnd(j);
-  const e=ev[i++],p=DIG.pk,sp=DIG.speed*auto;let d=0;
+  const e=ev[i++],p=DIG.pk,sp=DIG_SPD[DIG.speed]*auto;let d=0;
   if(e.e==='f'){p.tx=e.x;p.ty=e.y;p.trot=.15;d=26}
   else if(e.e==='h'){hp=e.p;p.trot=-1.1;setTimeout(()=>{if(DIG.pk)DIG.pk.trot=.25},40/sp);DIG.dmg[e.y+','+e.x]=e.d;digHud(hp,max,t,won);d=44}
   else if(e.e==='m'){p.tx=e.x;p.ty=e.y;d=45}
@@ -936,14 +937,14 @@ async function digGo(){if(DIG.run||DIG.spin)return;const v=Math.round(+$('#dbet'
 function digEnd(j){DIG.run=0;const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);if(DIG.pk)DIG.pk.trot=.8;
  const r=$('#dres');if(!r)return;r.innerHTML=j.win?`<b>${fmt(j.win)} ★</b><small>x${j.x} от ставки</small>`:`<b>Пусто 🪨</b><small>кирка сломалась без руды</small>`;r.className='dres show '+(j.win?'ok':'no');
  if(j.win){loadFeed();try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}}
-function digSpeed(){DIG.speed=DIG.speed>=4?1:DIG.speed*2;$('#dspd').textContent='⏩ x'+DIG.speed}
+function digSpeed(){DIG.speed=DIG.speed>=4?1:DIG.speed+1;$('#dspd').textContent='⏩ x'+DIG.speed}
 function maintShow(){const m=ADM.maint||{},on=!!m.on&&!IS_ADMIN;let o=document.getElementById('maint');
  if(!on){if(o)o.remove();return}
  if(!o){o=document.createElement('div');o.id='maint';document.body.appendChild(o)}
  o.innerHTML=`<div class="mbox"><div class="micon">🛠</div><h1>Технический перерыв</h1><p>${esc(m.text||'Обновляем игру. Скоро вернёмся — все балансы и подарки сохранены!')}</p><button class="btn ghost" onclick="loadShared()">🔄 Проверить снова</button></div>`}
 /* ===== тема оформления: лето (пляж) / осень ===== */
 const THEMES=[['summer','🏝 Лето'],['autumn','🍂 Осень']];
-function applyTheme(){try{autumnOn((ADM.theme||'autumn')==='autumn')}catch(e){}}
+function applyTheme(){const au=(ADM.theme||'autumn')==='autumn';try{autumnOn(au)}catch(e){}const ic=au?'img/dig_autumn.webp':'img/dig.webp';if(GICON.dig!==ic){GICON.dig=ic;if(S.tab==='games'&&!S.stack.length)setTab('games')}}
 function setTheme(t){ADM.theme=t;applyTheme();saveAdm(1);toast('Тема: '+(THEMES.find(x=>x[0]===t)||[])[1]);setTab('admin')}
 function maintToggle(){const m=ADM.maint||{};ADM.maint={on:!m.on,text:($('#mtTxt')&&$('#mtTxt').value.trim())||m.text||''};saveAdm(1);toast(ADM.maint.on?'🛠 Перерыв включён — игрокам всё закрыто':'✅ Перерыв выключен');setTab('admin')}
 setInterval(()=>{if(!document.hidden&&(ADM.maint||{}).on&&!IS_ADMIN)loadShared()},30000);
@@ -995,6 +996,9 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button><button class="btn ghost" style="color:#ff8a8a" onclick="if(confirm('Обнулить баланс и билеты у ВСЕХ игроков и всю статистику? Отменить нельзя.'))adApi('resetall',{}).then(j=>{if(j){toast('Обнулено игроков: '+j.users);adLoad(1)}})">🧹 Обнулить всех</button><button class="btn ghost" onclick="if(confirm('Обнулить турнир (начать новую неделю)?'))adApi('resettour',{}).then(j=>{if(j){S.tour=null;toast('Турнир обнулён')}})">🏆 Обнулить турнир</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]??90}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]??90}%</b></div>`).join('')}
+ <div class="ad-h" style="margin-top:12px">⛏ Шахта — шансы кирок на рулетке</div><p class="sub" style="text-align:left;margin:0 0 6px">В процентах. Отдача Шахты всё равно остаётся такой, как выставлено выше — пересчитывается сама.</p>
+ <div class="field">${['Каменная','Железная','Алмазная'].map((n,i)=>`<label style="flex:1;font-weight:800;font-size:12px">${n}<input id="dtp${i}" type="number" min="0" max="100" value="${(ADM.digTier||[60,30,10])[i]}" style="width:100%"></label>`).join('')}</div>
+ <button class="btn ghost" style="margin-bottom:10px" onclick="ADM.digTier=[0,1,2].map(i=>Math.max(0,Math.round(+$('#dtp'+i).value||0)));if(!ADM.digTier.some(v=>v>0))ADM.digTier=[60,30,10];saveAdm(1);setTab('admin')">Сохранить шансы кирок</button>
  <div class="rng"><span>PvP комиссия</span><input type="range" min="0" max="20" value="${ADM.pvpFee}" oninput="ADM.pvpFee=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.pvpFee}%</b></div></div>
  <button class="btn sand" onclick="saveAdm(1)">Сохранить</button>`},
 give(){return `<div class="card"><div class="ad-h">⭐ Выдать звёзды по ID</div>
