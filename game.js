@@ -4,10 +4,12 @@
 import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
-const REF_CASE_NEED = 5;  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
+const REF_CASE_NEED = 5;
+const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за билеты
+const FREE_NFT_REFS = 5;  // NFT из ежедневного кейса выводится после стольких приглашённых  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
 
 const MAX_BET = 1_000_000;
-const GAME_NAMES = { case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
+const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
 
 // честный случайный генератор (криптостойкий)
 const rand = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); return (a[0] * 2 ** 21 + (a[1] >>> 11)) / 2 ** 53; };
@@ -35,7 +37,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -45,6 +47,11 @@ export class Game {
     const r = await this.s.get("u:" + ref); if (!r) return {};
     u.ref = ref;
     r.refCount = (r.refCount || 0) + 1;
+    if (r.refCount % 3 === 0) {                     // каждые 3 приглашённых — 1 🎫 (не больше 10 в день)
+      const day = new Date().toISOString().slice(0, 10);
+      if (r.refDay !== day) { r.refDay = day; r.refDayTick = 0; }
+      if ((r.refDayTick || 0) < 10) { r.tick += 1; r.refDayTick = (r.refDayTick || 0) + 1; }
+    }
     r.refs = (r.refs || []).concat(uid).slice(-300);   // список приглашённых — для кейса Friends
     await this.s.put("u:" + ref, r);
     return { bound: true };
@@ -56,13 +63,6 @@ export class Game {
     const r = await this.s.get("u:" + u.ref); if (!r) return;
     const b = Math.floor(amount * 0.1);
     if (b) { r.bal += b; r.refEarn = (r.refEarn || 0) + b; }
-    if (!u.refPaid && u.depSum >= REF_MIN_DEP) {          // друг реально пополнил → 5 🎫 (не больше 30 в день)
-      u.refPaid = 1;
-      const day = new Date().toISOString().slice(0, 10);
-      if (r.refDay !== day) { r.refDay = day; r.refDayTick = 0; }
-      const t = Math.min(5, 30 - (r.refDayTick || 0));
-      if (t > 0) { r.tick += t; r.refDayTick = (r.refDayTick || 0) + t; }
-    }
     await this.s.put("u:" + u.ref, r);
   }
 
@@ -147,6 +147,10 @@ export class Game {
     const fn = this["op_" + op];
     if (!fn) fail("Неизвестное действие");
     const res = (await fn.call(this, u, uid, d || {})) || {};
+    if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
+      const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
+      u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
+    }
     await this.s.put("u:" + uid, u);
     return { ok: true, ...res, me: this.view(u) };
   }
@@ -173,6 +177,42 @@ export class Game {
   // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
   async op_share(u) { u.shares = Math.min(20, (u.shares || 0) + 1); return { shares: u.shares }; }
 
+  // ---- Шахта (майнкрафт): кирка копает вниз, руды дают звёзды. Итог решает сервер заранее ----
+  async op_dig(u, uid, d) {
+    if ((this.st.off || {}).dig) fail("Игра выключена");
+    const v = bet(d.bet); if (!v) fail("Неверная ставка");
+    await this.charge(u, v);
+    const rtp = this.L.R ? this.L.R("dig") : ((this.st.rtp || {}).dig ?? 90) / 100;
+    // распределение множителя: частые маленькие, редкие большие
+    const T = [[0.2, 30], [0.4, 26], [0.6, 20], [0.8, 16], [1, 14], [1.3, 11], [1.7, 9], [2.2, 7], [3, 5], [5, 3], [8, 1.6], [15, .8], [30, .35], [75, .12], [200, .03]];
+    const W = T.reduce((a, [, w]) => a + w, 0), evNZ = T.reduce((a, [x, w]) => a + x * w / W, 0);
+    let X = 0;
+    if (rand() < Math.min(1, rtp / evNZ)) { let r = rand() * W; for (const [x, w] of T) { if ((r -= w) <= 0) { X = x; break; } } X *= 0.85 + rand() * 0.3; }
+    // раскладываем выигрыш на руды (доля ставки за блок)
+    const ORES = [["emerald", 5], ["diamond", 2], ["gold", .5], ["redstone", .25], ["iron", .1], ["copper", .05]];
+    let left = X, pieces = [];
+    for (const [t, m] of ORES) { while (left >= m * 0.999 && pieces.length < 60) { if (m >= 2 && rand() < .35 && left < m * 2) break; pieces.push([t, m]); left -= m; } }
+    if (left > 0.01 && pieces.length < 60) pieces.push(["copper", left]);
+    let chest = rand() < .25 && pieces.length > 2;               // сундук: склеиваем несколько руд в один приз
+    if (chest) { const k = 2 + randInt(Math.min(3, pieces.length - 1)); let m = 0; for (let i = 0; i < k; i++) m += pieces.pop()[1]; pieces.push(["chest", m]); }
+    // перемешиваем и вставляем «пустые» блоки, TNT и сердечки прочности
+    for (let i = pieces.length - 1; i > 0; i--) { const j = randInt(i + 1); [pieces[i], pieces[j]] = [pieces[j], pieces[i]]; }
+    const steps = [], STONE = ["stone", "stone", "stone", "cobble", "dirt", "gravel", "deepslate"];
+    const total = Math.max(26, pieces.length * 3 + 10 + randInt(14));
+    const slots = new Set(); while (slots.size < pieces.length) slots.add(2 + randInt(total - 3));
+    const order = [...slots].sort((a, b) => a - b); let pi = 0, col = 3, win = 0;
+    for (let i = 0; i < total; i++) {
+      if (rand() < .3) col = Math.max(0, Math.min(6, col + (rand() < .5 ? -1 : 1)));
+      if (pi < order.length && order[pi] === i) {
+        const [t, m] = pieces[pi++]; const a = Math.max(1, Math.round(v * m)); win += a; steps.push({ c: col, t, a });
+      } else steps.push({ c: col, t: rand() < .06 ? "tnt" : rand() < .05 ? "heart" : STONE[randInt(STONE.length)] });
+    }
+    if (X === 0) { win = 0; for (const s of steps) if (s.a) { s.t = "stone"; delete s.a; } }
+    if (win) await this.payout(u, uid, win, GAME_NAMES.dig);
+    await this.tourAdd(u, 0);
+    return { steps, win, bet: v, x: +(win / v).toFixed(2) };
+  }
+
   // ---- кейсы ----
   async op_case(u, uid, d) {
     const L = this.L; let c;
@@ -184,7 +224,7 @@ export class Game {
       u.refDaily = Date.now();
     } else if (d.free === "daily" || d.free === "tick") {
       c = L.FREE(d.free);
-      if (d.free === "tick") { if (u.tick < 10) fail("Нужно 10 🎫"); u.tick -= 10; }
+      if (d.free === "tick") { if (u.tick < TICKET_CASE) fail(`Нужно ${TICKET_CASE} 🎫`); u.tick -= TICKET_CASE; }
       else {
         const gate = d.gate;                      // условия ставит только сервер (worker), не клиент
         const hrs = Math.max(1, Math.min(168, +(gate && gate.hours) || 24));
@@ -204,6 +244,7 @@ export class Game {
     }
     const g = L.caseGift(c);
     await this.giveGift(u, uid, g, "Кейс " + c.n);
+    if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после 5 приглашённых
     return { prize: g.slug };
   }
 
@@ -444,6 +485,9 @@ export class Game {
     if (!g || isStar(g)) fail("Этот подарок нельзя вывести");
     const minWd = Math.max(0, Math.round(this.st.minWd ?? 50));
     if (g.price < minWd) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
+    const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
+    if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
+      fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
     u.inv.splice(i, 1);
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, t: Date.now(), st: "new" });

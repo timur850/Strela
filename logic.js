@@ -7,15 +7,15 @@ const NFT_LIST=[["plushpepe", "Plush Pepe", 999900], ["heartlocket", "Heart Lock
 const GIFT_LIST=[
  ...REG_LIST.map(([s,n,p,id,e])=>[s,n,p,e,id]),
  ...NFT_LIST,
- ...[300,200,150,100,50,25,10].map(v=>['stars'+v,v+' звёзд',v,'⭐']),
+ ...[300,200,150,100,75,50,25,15,10,5].map(v=>['stars'+v,v+' звёзд',v,'⭐']),
 ];
 const CASE_DEF=[["Farm", 38, null, 0, ["r_heart", "r_bear", "r_box", "r_rose", "r_cake", "r_gem", "lolpop"], "#7b3dff", "", "FARM"], ["Winter", 975, null, 0, ["candycane", "xmasstocking", "gingercookie", "spicedwine", "santahat", "jinglebells", "winterwreath", "snowmittens", "snowglobe", "sleighbell"], "#3fa7ff", "", ""], ["Halloween", 1050, null, 1, ["witchhat", "hexpot", "spyagaric", "skullflower", "crystalball", "flyingbroom", "madpumpkin", "voodoodoll"], "#ff6a1a", "lim", ""], ["Love", 1200, null, 0, ["r_rose", "cookieheart", "valentinebox", "lovecandle", "cupidcharm", "lovepotion", "trappedheart", "eternalrose", "bondedring", "heartlocket"], "#ff3d8b", "", ""], ["Space", 1350, null, 0, ["stellarrocket", "starnotepad", "moonpendant", "hangingstar", "crystalball", "iongem", "astralshard"], "#4d6bff", "new", ""], ["Westside", 1500, null, 0, ["snoopdogg", "swagbag", "snoopcigar", "lowrider", "westsidesign"], "#22c55e", "", ""], ["Gold Rush", 2850, null, 0, ["moneypot", "diamondring", "signetring", "swisswatch", "bondedring", "gemsignet", "nailbracelet"], "#f2b31a", "new", ""], ["Champions", 3750, null, 0, ["victorymedal", "ufcstrike", "khabibspapakha", "mightyarm", "heroichelmet"], "#e0304a", "", ""], ["Durov", 7350, null, 0, ["toybear", "vintagecigar", "signetring", "swisswatch", "lootbag", "minioscar", "durovsglasses", "durovscap"], "#2e9cf2", "", ""], ["Legend", 11250, null, 0, ["nekohelmet", "kissedfrog", "scaredcat", "iongem", "astralshard", "preciouspeach", "durovscap", "heartlocket", "plushpepe"], "#9a4dff", "", ""]];
-const FREE_DEF=[["Free 24h", 0, null, 0, ["r_heart", "r_bear", "r_box", "r_rose", "r_cake", "r_rocket", "r_trophy", "instantramen", "lolpop"], "#f2a20f", "", "FREE<em>24</em>"], ["Free", 0, null, 0, ["r_heart", "r_bear", "r_rose", "r_box", "r_champagne", "deskcalendar"], "#16a88a", "", "FREE"], ["Friends", 0, null, 0, ["r_cake", "r_rocket", "r_trophy", "r_ring", "r_gem", "lolpop", "instantramen", "deskcalendar"], "#ff3d8b", "new", "FRIENDS<em>×5</em>", 200]];
+const FREE_DEF=[["Free 24h", 0, null, 0, [["stars5",380],["stars10",250],["stars15",150],["stars25",100],["stars50",60],["stars75",25],["stars100",20],["hangingstar",1],["jellybunny",1.5],["jollychimp",1.5],["lightsword",2],["moonpendant",2],["prettyposy",2],["hexpot",2],["cookieheart",2]], "#f2a20f", "", "FREE<em>24</em>"], ["Free", 0, null, 0, [["stars5",350],["stars10",250],["stars15",150],["stars25",120],["stars50",70],["stars100",40],["vintagecigar",.6],["bondedring",.5],["sharptongue",.5],["kissedfrog",.4],["heroichelmet",.08],["scaredcat",.06],["preciouspeach",.05]], "#16a88a", "", "FREE<em>🎫</em>"], ["Friends", 0, null, 0, ["r_cake", "r_rocket", "r_trophy", "r_ring", "r_gem", "lolpop", "instantramen", "deskcalendar"], "#ff3d8b", "new", "FRIENDS<em>×5</em>", 200]];
 const EGGS=[['jellybunny','3 кокоса',249],['ionicdryer','3 кокоса',249],['crystalball','4 кокоса',349],['preciouspeach','5 кокосов',999],['heartlocket','5 кокосов',999],['plushpepe','5 кокосов',2999]];
 const PM0=[[5.6,2.1,1.1,1,.5,1,1.1,2.1,5.6],[13,3,1.3,.7,.4,.7,1.3,3,13],[29,4,1.5,.3,.2,.3,1.5,4,29]];
 const BIN=[1,8,28,56,70,56,28,8,1].map(x=>x/256);   // шансы лунок plinko (8 рядов)
 const SLOT_SYMS=['🍉','🥥','🐚','🌺','🍹','💎'];
-const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90}; // как в админке по умолчанию
+const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,dig:90}; // как в админке по умолчанию
 const PVP_BETS=[100,500,2500], SLOT_BET=100, CRASH_K=.12;
 /* задания по умолчанию (пока админ не сохранил свои) */
 const DEF_TASKS=[
@@ -52,6 +52,7 @@ function makeLogic(getADM,rand){
  const _fitC={};
  function caseObj([n,p,s,l,defItems,glow,badge,title,fcost],free){const a=A();GIFTS();const c=(a.caseCfg||{})[n]||{};const price=free?0:(c.p??(a.caseP||{})[n]??p);
   let items=c.items&&c.items.length?c.items:null;
+  if(!items&&defItems&&Array.isArray(defItems[0]))items=defItems;
   if(!items&&defItems){const k=n+price+R('cases')+_GK;items=_fitC[k]||(_fitC[k]=fitW(defItems,free?(fcost||60):price,free?.5:R('cases')))}
   const art=(items||[]).map(x=>giftBy(x[0])).filter(Boolean).sort((a,b)=>b.price-a.price);
   return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
