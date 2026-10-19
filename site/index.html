@@ -34,6 +34,13 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 .pill .plus{border:0;border-radius:999px;background:linear-gradient(135deg,var(--sun),var(--sunset));color:#5a2600;font:800 13px Nunito,system-ui,sans-serif;padding:6px 12px}
 .pill.t{padding-right:12px}
 
+/* кейс Friends */
+.ccard.friends{background:linear-gradient(160deg,rgba(255,61,139,.55),rgba(124,58,237,.55));box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 8px 26px rgba(255,61,139,.35)}
+.ccard.friends .ctitle em{color:#ffd23f;font-style:normal}
+.ccard.friends::after{content:'👥';position:absolute;left:10px;bottom:34px;font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.frhead{text-align:center}.frbadge{width:64px;height:64px;margin:0 auto 6px;border-radius:20px;display:grid;place-items:center;font-size:34px;background:linear-gradient(160deg,#ff3d8b,#7c3aed);box-shadow:0 8px 24px rgba(255,61,139,.45)}
+.frbar{height:10px;border-radius:6px;background:rgba(255,255,255,.15);overflow:hidden}.frbar i{display:block;height:100%;background:linear-gradient(90deg,#ff3d8b,#ffd23f);border-radius:6px;transition:width .4s}
+.frdots{display:flex;justify-content:space-between;margin-top:10px}.frdots span{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:rgba(255,255,255,.12);border:1px solid var(--line)}.frdots span.on{background:linear-gradient(160deg,#ff3d8b,#7c3aed);border-color:transparent}
 /* live */
 .live{display:flex;align-items:center;gap:10px;margin:10px 0 14px;padding:10px 12px;border-radius:20px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);overflow:hidden}
 .live b{font-weight:900;font-size:17px;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
@@ -366,7 +373,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -405,7 +412,7 @@ const GICON={"cases": "data:image/webp;base64,UklGRp4SAABXRUJQVlA4WAoAAAAQAAAAvw
 /* свои картинки игр (морской стиль) */
 Object.assign(GICON,{cases:'img/gift.webp',free:'img/gift.webp',eggs:'img/egg.webp',crash:'img/plane.webp',slots:'img/coin.webp',contracts:'img/slots.webp',pvp:'img/tgcoin.webp',upgrade:'img/upgrade.webp'});
 const GAMES=[
- ['free','g-free','🎁','Бесплатно','2 кейса'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
+ ['free','g-free','🎁','Бесплатно','3 кейса'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
  ['upgrade','g-up','🧜‍♀️','Апгрейд','Улучшите свои подарки'],['crash','g-crash','🏄','Краш','<span class="tag">Онлайн</span>'],
  ['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],
  ['contracts','g-contr','📜','Контракты','Объедините подарки'],['eggs','g-eggs','🥥','Яйца','6 кейсов'],
@@ -484,7 +491,7 @@ deposit(){return `<h1>Пополнение баланса</h1><div class="seg" s
   <div class="row" style="margin:30px 0 12px">${[100,500,1000,5000].map(v=>`<button class="btn ghost sm" style="flex:1" onclick="setAmt(${v})">${fmt(v)}</button>`).join('')}</div>
   <button class="btn sand" onclick="deposit()">Пополнить</button></div>`},
 cases(){sheet(`<h2>Кейсы</h2><div class="cgrid">${CASES().map((c,i)=>caseCard(c,`openCase(${i})`)).join('')}</div>`);return null},
-free(){const d=FREE('daily'),t=FREE('tick');sheet(`<h2>Бесплатно</h2><div class="cgrid">${caseCard(d,"freeCase('daily')")}${caseCard(t,"freeCase('tick')").replace('бесплатно','🎫 10')}</div>`);return null},
+free(){const d=FREE('daily'),t=FREE('tick'),f=FREE('ref');sheet(`<h2>Бесплатно</h2><div class="cgrid">${caseCard(d,"freeCase('daily')")}${caseCard(t,"freeCase('tick')").replace('бесплатно','🎫 10')}${caseCard(f,"freeCase('ref')").replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED)}/${REF_NEED}</i>`).replace('class="ccard"','class="ccard friends"')}</div>`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:'бесплатно'}</p><div class="roul"><div class="ptr"></div><div class="strip" id="strip"></div></div>
  <div class="row" style="margin-bottom:12px"><button class="btn ghost" onclick="toast('Скоро')">⚙️ Настройки</button><button class="btn ghost" onclick="casePrizes()">🎁 Призы</button></div>
  <button class="btn sand" id="spinBtn" onclick="spinCase()">${c.p?`Крутить за ★ ${fmt(c.p)}`:'Крутить бесплатно'}</button>
@@ -639,7 +646,18 @@ function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g
 async function gateShare(){const txt='Забирай бесплатный кейс с подарками в '+APP_NAME+' 🏝';
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
-function freeCase(k,ok){if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
+const REF_NEED=5;
+function refSheet(){const n=Math.min(U().refQ||0,REF_NEED),ok=n>=REF_NEED,left=(U().refDaily||0)+864e5-Date.now();
+ sheet(`<div class="frhead"><div class="frbadge">👥</div><h2>Кейс Friends</h2><p class="sub">Пригласи ${REF_NEED} друзей, у которых в профиле есть <b>NFT-подарок</b> или <b>уровень 2+</b>. Открывается раз в 24 часа.</p></div>
+ <div class="card"><div class="frbar"><i style="width:${n/REF_NEED*100}%"></i></div><div class="frdots">${Array.from({length:REF_NEED},(_,i)=>`<span class="${i<n?'on':''}">${i<n?'✓':i+1}</span>`).join('')}</div>
+ <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${REF_NEED}</b></p></div>
+ ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('ref',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
+ `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck()">🔄 Проверить друзей</button>`}
+ <p class="sub" style="margin-top:10px;font-size:12px">Друг засчитывается, когда заходит по твоей ссылке. Если NFT или уровень у него появились позже — нажми «Проверить друзей». Скрытые подарки бот не видит.</p>`)}
+function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
+async function refCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet()}catch(e){toast('Нет связи с сервером')}}
+function freeCase(k,ok){if(k==='ref'){if(!ok)return refSheet();S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
+if(k==='tick'){if(U().tick<10)return toast('Нужно 10 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 function fillStrip(prize){const s=$('#strip');if(!s)return;const c=S.curCase;S.items=Array.from({length:60},()=>caseGift(c));if(prize)S.items[50]=prize;s.style.transition='none';s.style.transform='translateX(0)';s.innerHTML=S.items.map(g=>`<div class="cell">${gi(g)}<small><span class="star">★</span> ${fmt(g.price)}</small></div>`).join('')}
 async function spinCase(){const c=S.curCase;if(S.spinning)return;if(c.p&&Date.now()-(S.openAt||0)<800)return;
@@ -860,7 +878,7 @@ gifts(){return `<div class="card"><div class="ad-h">🎁 Подарки Fragment
 cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hidden?.45:1}" onclick="ceOpen('${k}')">${gi(c.g)}<div class="nm">${c.n}${c.hidden?' · скрыт':''}<small style="display:block;color:var(--muted);font-size:12px">${c.free?'бесплатный':'★ '+fmt(c.p)} · ${c.items?c.items.length+' подарков (вручную)':'авто по RTP'}</small></div><span style="font-size:20px">✏️</span></div>`;
  return `<div class="card"><div class="ad-h">🧳 Кейсы <small style="background:var(--sea)">${ALL_CASES().length}</small></div><p class="sub" style="text-align:left;margin:0 0 6px">Нажмите на кейс, чтобы изменить содержимое, шансы, цену и обложку.</p>
  ${ALL_CASES().map(c=>row(c,'c:'+c.n)).join('')}</div>
- <div class="card"><div class="ad-h">🎁 Бесплатные</div>${['daily','tick'].map(k=>row(FREE(k),'f:'+k)).join('')}</div>
+ <div class="card"><div class="ad-h">🎁 Бесплатные</div>${['daily','tick','ref'].map(k=>row(FREE(k),'f:'+k)).join('')}</div>
   <div class="card"><div class="ad-h">🔒 Бесплатный кейс: как часто и условия</div><p class="sub" style="text-align:left;margin:0 0 6px">Перед открытием игрок должен поделиться ссылкой в N чатов и подписаться на канал. Бот должен быть админом канала.</p>
   <div class="field"><input id="fgH" type="number" min="1" max="168" value="${GATE().hours}" style="max-width:90px"><span class="sub" style="align-self:center">ч — как часто можно открывать</span></div>
   <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="fgOn" ${GATE().on?'checked':''}> Включено</label>

@@ -131,6 +131,19 @@ async function loadSettings(env) {
   if (st.freeGate === undefined && CONFIG.FREE_GATE) st.freeGate = CONFIG.FREE_GATE;   // по умолчанию — из config.js
   return st;
 }
+// друг «настоящий»: есть NFT-подарок в профиле или уровень (звёздный рейтинг) 2+
+async function refGood(env, uid) {
+  try {
+    const c = await tg(env, "getChat", { chat_id: uid });
+    const lvl = c.ok && c.result && c.result.rating ? +c.result.rating.level || 0 : 0;
+    if (lvl >= 2) return true;
+  } catch {}
+  try {
+    const g = await tg(env, "getUserGifts", { user_id: uid, exclude_unlimited: true, limit: 50 });
+    if (g.ok && (g.result.gifts || []).some(x => x.type === "unique")) return true;
+  } catch {}
+  return false;
+}
 // подписан ли игрок на канал (бот должен быть админом канала)
 async function isSub(env, channel, uid) {
   const ch = "@" + String(channel || "").replace(/^@|^(?:https?:\/\/)?t\.me\//g, "").replace(/\/$/, "");
@@ -152,7 +165,7 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share"]);
+const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share"]   // ref_qualify / ref_pending вызывает только сервер);
 const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
@@ -246,7 +259,10 @@ async function handleUpdate(env, origin, upd) {
   if (cmd === "/start" && msg.from && msg.chat.type === "private") await putKey(env, "bu:" + msg.from.id, "1");
   if (cmd === "/start") {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
-    if (m && msg.from) await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
+    if (m && msg.from) {
+      const b = await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
+      if (b && b.bound && await refGood(env, msg.from.id)) await op(env, "ref_qualify", msg.from.id, uname(msg.from), {});
+    }
   }
   if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, parse_mode: "HTML", reply_markup: kb });
   if ((cmd === "/start" || cmd === "/admin") && msg.from && isOwner(msg.from.username)) {
@@ -489,6 +505,20 @@ export default {
         }
       }
       return json(await op(env, name, u.id, uname(u), d));
+    }
+    // ===== кейс Friends: перепроверить приглашённых (вдруг появился NFT или уровень) =====
+    if (path === "/api/refcheck" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || "");
+      if (!u) return json({ ok: false, err: "Открой игру через бота в Telegram" }, 403);
+      const last = Number(await getKey(env, "refchk:" + u.id)) || 0;
+      if (Date.now() - last < 60000) return json({ ok: false, err: "Проверять можно раз в минуту" });
+      await putKey(env, "refchk:" + u.id, String(Date.now()));
+      const p = await op(env, "ref_pending", u.id, uname(u), {});
+      let added = 0;
+      for (const id of (p.ids || [])) if (await refGood(env, id)) { const q = await op(env, "ref_qualify", id, "", {}); if (q.done) added++; }
+      const me = await op(env, "me", u.id, uname(u), {});
+      return json({ ok: true, added, checked: (p.ids || []).length, me: me.me });
     }
     // ===== ЗАДАНИЯ: подписку на канал/чат и ссылку в био проверяем через Telegram =====
     if (path === "/api/task" && req.method === "POST") {

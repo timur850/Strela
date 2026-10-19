@@ -4,6 +4,7 @@
 import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
+const REF_CASE_NEED = 5;  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
 
 const MAX_BET = 1_000_000;
 const GAME_NAMES = { case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
@@ -34,7 +35,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -44,6 +45,7 @@ export class Game {
     const r = await this.s.get("u:" + ref); if (!r) return {};
     u.ref = ref;
     r.refCount = (r.refCount || 0) + 1;
+    r.refs = (r.refs || []).concat(uid).slice(-300);   // список приглашённых — для кейса Friends
     await this.s.put("u:" + ref, r);
     return { bound: true };
   }
@@ -150,13 +152,37 @@ export class Game {
   }
 
   op_me() { return {}; }
+  // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
+  async op_ref_qualify(u, uid) {
+    if (u.refq || !u.ref) return { done: false };
+    u.refq = 1;
+    const r = await this.s.get("u:" + u.ref); if (!r) return { done: false };
+    r.refQ = (r.refQ || 0) + 1; await this.s.put("u:" + u.ref, r);
+    return { done: true };
+  }
+  // кого из моих приглашённых ещё не засчитали (до 15 за раз)
+  async op_ref_pending(u) {
+    const out = [];
+    for (const id of (u.refs || []).slice().reverse()) {
+      if (out.length >= 15) break;
+      const f = await this.s.get("u:" + id);
+      if (f && !f.refq) out.push(String(id));
+    }
+    return { ids: out };
+  }
   // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
   async op_share(u) { u.shares = Math.min(20, (u.shares || 0) + 1); return { shares: u.shares }; }
 
   // ---- кейсы ----
   async op_case(u, uid, d) {
     const L = this.L; let c;
-    if (d.free === "daily" || d.free === "tick") {
+    if (d.free === "ref") {                       // кейс Friends: 5 друзей с NFT или уровнем 2+, раз в 24 ч
+      c = L.FREE("ref");
+      if ((u.refQ || 0) < REF_CASE_NEED) fail(`Пригласи ${REF_CASE_NEED} друзей с NFT или уровнем 2+ (${u.refQ || 0}/${REF_CASE_NEED})`);
+      const left = (u.refDaily || 0) + 864e5 - Date.now();
+      if (left > 0) fail(`Кейс Friends — раз в 24 ч, через ${left >= 36e5 ? Math.ceil(left / 36e5) + " ч" : Math.ceil(left / 6e4) + " мин"}`);
+      u.refDaily = Date.now();
+    } else if (d.free === "daily" || d.free === "tick") {
       c = L.FREE(d.free);
       if (d.free === "tick") { if (u.tick < 10) fail("Нужно 10 🎫"); u.tick -= 10; }
       else {
