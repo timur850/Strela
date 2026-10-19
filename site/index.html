@@ -653,7 +653,8 @@ function refSheet(){const n=Math.min(U().refQ||0,REF_NEED),ok=n>=REF_NEED,left=(
  <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${REF_NEED}</b></p></div>
  ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('ref',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
  `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck()">🔄 Проверить друзей</button>`}
- <p class="sub" style="margin-top:10px;font-size:12px">Друг засчитывается, когда заходит по твоей ссылке. Если NFT или уровень у него появились позже — нажми «Проверить друзей». Скрытые подарки бот не видит.</p>`)}
+ <p class="sub" style="margin-top:10px;font-size:12px">Друг засчитывается, когда заходит по твоей ссылке. Если NFT или уровень у него появились позже — нажми «Проверить друзей». Скрытые подарки бот не видит.</p>
+ <h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE('ref'))}`)}
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
 async function refCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet()}catch(e){toast('Нет связи с сервером')}}
 function freeCase(k,ok){if(k==='ref'){if(!ok)return refSheet();S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
