@@ -853,7 +853,7 @@ S.adTab='stats';
 const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
-const DIG={k:1,speed:1};const DIG_SPD={1:.35,2:.7,3:1.25};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
+const DIG={k:1,speed:1};const DIG_SPD={1:1,2:1.7,3:2.8};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
 const digTierP=()=>globalThis.STRELA.digTierP(ADM.digTier);
 const DIG_NAMES={C:'Медь',I:'Железо',R:'Редстоун',L:'Лазурит',G:'Золото',D:'Алмаз',E:'Изумруд'};
 const DIG_TN=['Каменная','Железная','Алмазная'];
@@ -898,11 +898,11 @@ function digBurst(c,r,ch,n){const B=$('#digc').clientWidth/7,top=B*2.2,T=digTex(
 function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min(50,now-(DIG.lt||now));DIG.lt=now;
  const B=$('#digc').clientWidth/7;for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
  for(const f of DIG.fx)f.t+=dt;DIG.fx=DIG.fx.filter(f=>f.t<1100);DIG.shake=Math.max(0,DIG.shake-dt*.04);DIG.flash=Math.max(0,DIG.flash-dt*.002);
- if(DIG.pk){const p=DIG.pk;p.y+=(p.ty-p.y)*Math.min(1,dt*.018*DIG_SPD[DIG.speed]);p.x+=(p.tx-p.x)*Math.min(1,dt*.02*DIG_SPD[DIG.speed]);p.rot=(p.rot||0)+((p.trot||0)-(p.rot||0))*Math.min(1,dt*.02);if(!DIG.run&&!DIG.spin)p.trot=Math.sin(now/300)*.2;
+ if(DIG.pk){const p=DIG.pk;if(DIG.A)digAnim(dt/1000);else if(!DIG.run&&!DIG.spin){p.rot=Math.sin(now/300)*.2}
   const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
 function digHud(hp,max,t,won){$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
-function digInit(){DIG.run=0;DIG.spin=0;clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,tx:3,ty:-1,t:0};digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
+function digInit(){DIG.run=0;DIG.spin=0;clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,t:0,rot:0,vy:0};DIG.A=null;digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
 function digKSet(k){DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.digM(k,ADM.digTier);
  leg.innerHTML=Object.entries(S.DIG_VAL).map(([o,v])=>`<span><canvas data-t="${o}" width="16" height="16"></canvas>${DIG_NAMES[o]}<b>${(bet*v*k*unit).toFixed(1)} ★</b></span>`).join('')+`<span><canvas data-t="T" width="16" height="16"></canvas>TNT<b>взрыв 3×4</b></span><span><canvas data-t="W" width="16" height="16"></canvas>Верстак<b>⬆ / 🔧</b></span>`;
  leg.querySelectorAll('canvas').forEach(c=>{const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(digTex()[c.dataset.t],0,0)})}
@@ -915,26 +915,39 @@ function digSpin(tier){return new Promise(res=>{const box=$('#droul');box.classN
 async function digGo(){if(DIG.run||DIG.spin)return;const v=Math.round(+$('#dbet').value);if(!(v>0))return toast('Введите ставку');
  const b=$('#dbtn');b.disabled=true;$('#dres').className='dres';
  const j=await srv('dig',{bet:v,k:DIG.k},{lock:1,hold:j=>j.win});if(!j){b.disabled=false;return}
- DIG.spin=1;digSetup(j.world.rows);DIG.cam=0;DIG.pk={x:j.world.x0,y:-3,tx:j.world.x0,ty:-3,t:j.tier};digHud(globalThis.STRELA.DIG_TIER[j.tier],globalThis.STRELA.DIG_TIER[j.tier],j.tier,0);
- await digSpin(j.tier);DIG.spin=0;DIG.run=1;
- const S=globalThis.STRELA,sim=S.digSim(j.world,j.tier,j.k),ev=sim.ev;let i=0,won=0,t=j.tier,max=S.DIG_TIER[t],hp=max,inX=0;
- let est=0;for(const e of ev)est+={f:26,h:44,m:45,b:e.v?75:12,xe:380,u:500,end:200}[e.e]||0;const auto=Math.max(1,est/32000);  /* длинные партии ускоряем до ~18 с */
- const step=()=>{if(!$('#digc')){DIG.run=0;return}
-  if(i>=ev.length)return digEnd(j);
-  const e=ev[i++],p=DIG.pk,sp=DIG_SPD[DIG.speed]*auto;let d=0;
-  if(e.e==='f'){p.tx=e.x;p.ty=e.y;p.trot=.15;d=26}
-  else if(e.e==='h'){hp=e.p;p.trot=-1.1;setTimeout(()=>{if(DIG.pk)DIG.pk.trot=.25},40/sp);DIG.dmg[e.y+','+e.x]=e.d;digHud(hp,max,t,won);d=44}
-  else if(e.e==='m'){p.tx=e.x;p.ty=e.y;d=45}
-  else if(e.e==='b'){const ch=DIG.g[e.y][e.x];DIG.g[e.y][e.x]='.';delete DIG.dmg[e.y+','+e.x];digBurst(e.x,e.y,ch,inX?5:9);
-   if(e.v){const a=j.bet*e.v*j.unit;won+=a;DIG.fx.push({x:e.x,y:e.y,s:'+'+(a>=10?Math.round(a):a.toFixed(1)),t:0,col:e.v*1>=4?'#7dfcff':'#ffe066',big:e.v>=4});digHud(hp,max,t,won);try{tg.HapticFeedback.impactOccurred(e.v>=4?'heavy':'light')}catch(_){}}
-   d=inX?0:e.v?75:12}
-  else if(e.e==='x'){inX=1;DIG.flash=.8;DIG.shake=24;DIG.fx.push({x:e.x,y:e.y,s:'💥 TNT',t:0,col:'#ff6b4a',big:1});try{tg.HapticFeedback.impactOccurred('heavy')}catch(_){}d=0}
-  else if(e.e==='xe'){inX=0;d=380}
-  else if(e.e==='u'){t=e.t;max=S.DIG_TIER[t];hp=e.hp;p.t=t;DIG.fx.push({x:p.tx,y:p.ty,s:e.up?`⬆ ${DIG_TN[t]}!`:'🔧 Починка!',t:0,col:'#9dff8a',big:1});DIG.flash=.35;digHud(hp,max,t,won);d=500}
-  else if(e.e==='end'){d=200}
-  DIG.next=setTimeout(step,d/sp)};
- step()}
-function digEnd(j){DIG.run=0;const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);if(DIG.pk)DIG.pk.trot=.8;
+ DIG.spin=1;digSetup(j.world.rows);DIG.cam=0;DIG.A=null;DIG.pk={x:j.world.x0,y:-4,t:j.tier,rot:0,vy:0};digHud(globalThis.STRELA.DIG_TIER[j.tier],globalThis.STRELA.DIG_TIER[j.tier],j.tier,0);
+ await digSpin(j.tier);DIG.spin=0;
+ DIG.run=1;digAnimStart(j)}
+/* ===== физика кирки: падает как предмет (гравитация, вращение), отскакивает от блока при ударе ===== */
+const DIG_G=46,DIG_BOUNCE=.28;   /* ускорение (блоков/с²) и высота отскока при ударе (в блоках) */
+function digAnimStart(j){const S=globalThis.STRELA,sim=S.digSim(j.world,j.tier,j.k);
+ const A={j,ev:sim.ev,i:0,mode:'fall',target:-1,won:0,t:j.tier,max:S.DIG_TIER[j.tier],hp:S.DIG_TIER[j.tier],inX:0,wait:0,rest:0};
+ let est=0,fall=0;const v0=Math.sqrt(2*DIG_G*DIG_BOUNCE);for(const e of A.ev){if(e.e==='f'){fall++;continue}if(fall){est+=Math.sqrt(2*fall/DIG_G);fall=0}est+={h:2*v0/DIG_G,x:.55,xe:.35,u:.6}[e.e]||0}
+ A.auto=Math.max(1,est/40);   /* очень длинные партии слегка ускоряем (≈40 с на x1) */
+ DIG.pk.vy=0;DIG.pk.spin=7;DIG.A=A}
+function digAnim(dt){const A=DIG.A,p=DIG.pk;if(!A||!p)return;const S=globalThis.STRELA;dt*=DIG_SPD[DIG.speed]*A.auto;
+ for(let guard=0;guard<40&&dt>0;guard++){
+  if(A.mode==='wait'){A.wait-=dt;if(A.wait>0)return;dt=-A.wait;A.mode='next';continue}
+  if(A.mode==='fall'){p.vy=(p.vy||0)+DIG_G*dt;p.y+=p.vy*dt;p.rot=(p.rot||0)+p.spin*dt;
+   if(p.y<A.target)return;p.y=A.target;A.mode='next';continue}
+  if(A.mode==='bounce'){p.vy+=DIG_G*dt;p.y+=p.vy*dt;p.rot+=(.35-p.rot)*Math.min(1,dt*10);
+   if(!(p.vy>0&&p.y>=A.rest))return;p.y=A.rest;p.vy=0;A.mode='next';continue}
+  /* следующее событие */
+  if(A.i>=A.ev.length){DIG.A=null;return digEnd(A.j)}
+  const e=A.ev[A.i++];
+  if(e.e==='f'){let n=e.y;while(A.i<A.ev.length&&A.ev[A.i].e==='f')n=A.ev[A.i++].y;A.target=n;A.mode='fall';p.spin=(p.vy>1?6:4)*(Math.random()<.5?-1:1);continue}
+  if(e.e==='h'){const ch=DIG.g[e.y][e.x];A.hp=e.p;DIG.dmg[e.y+','+e.x]=e.d;digBurst(e.x,e.y,ch,3);DIG.shake=Math.max(DIG.shake,3);
+   p.rot=-.55;p.vy=-Math.sqrt(2*DIG_G*DIG_BOUNCE)*(.85+Math.random()*.3);A.rest=p.y;A.mode='bounce';digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred('light')}catch(_){}continue}
+  if(e.e==='b'){const ch=DIG.g[e.y][e.x];DIG.g[e.y][e.x]='.';delete DIG.dmg[e.y+','+e.x];digBurst(e.x,e.y,ch,A.inX?5:12);
+   if(e.v){const a=A.j.bet*e.v*A.j.unit;A.won+=a;DIG.fx.push({x:e.x,y:e.y,s:'+'+(a>=10?Math.round(a):a.toFixed(1)),t:0,col:e.v>=4?'#7dfcff':'#ffe066',big:e.v>=4});digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred(e.v>=4?'heavy':'medium')}catch(_){}
+    if(!A.inX){A.mode='wait';A.wait=.12}}
+   continue}
+  if(e.e==='x'){A.inX=1;DIG.flash=.8;DIG.shake=24;DIG.fx.push({x:e.x,y:e.y,s:'💥 TNT',t:0,col:'#ff6b4a',big:1});try{tg.HapticFeedback.impactOccurred('heavy')}catch(_){}continue}
+  if(e.e==='xe'){A.inX=0;A.mode='wait';A.wait=.45;continue}
+  if(e.e==='u'){A.t=e.t;A.max=S.DIG_TIER[A.t];A.hp=e.hp;p.t=A.t;DIG.fx.push({x:p.x,y:p.y,s:e.up?`⬆ ${DIG_TN[A.t]}!`:'🔧 Починка!',t:0,col:'#9dff8a',big:1});DIG.flash=.35;digHud(A.hp,A.max,A.t,A.won);A.mode='wait';A.wait=.6;continue}
+  if(e.e==='end'){A.mode='wait';A.wait=.3;continue}
+ }}
+function digEnd(j){DIG.run=0;const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);
  const r=$('#dres');if(!r)return;r.innerHTML=j.win?`<b>${fmt(j.win)} ★</b><small>x${j.x} от ставки</small>`:`<b>Пусто 🪨</b><small>кирка сломалась без руды</small>`;r.className='dres show '+(j.win?'ok':'no');
  if(j.win){loadFeed();try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}}
 function digSpeed(){DIG.speed=DIG.speed>=3?1:DIG.speed+1;$('#dspd').textContent='⏩ x'+DIG.speed}
