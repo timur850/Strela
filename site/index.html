@@ -853,7 +853,7 @@ S.adTab='stats';
 const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
-const DIG={k:1,speed:1};const DIG_SPD={1:.55,2:.85,3:1.7,4:3.2};   /* x1 и x2 — медленнее, дальше быстрее */
+const DIG={k:1,speed:1};const DIG_SPD={1:.35,2:.7,3:1.25};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
 const digTierP=()=>globalThis.STRELA.digTierP(ADM.digTier);
 const DIG_NAMES={C:'Медь',I:'Железо',R:'Редстоун',L:'Лазурит',G:'Золото',D:'Алмаз',E:'Изумруд'};
 const DIG_TN=['Каменная','Железная','Алмазная'];
@@ -937,7 +937,7 @@ async function digGo(){if(DIG.run||DIG.spin)return;const v=Math.round(+$('#dbet'
 function digEnd(j){DIG.run=0;const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);if(DIG.pk)DIG.pk.trot=.8;
  const r=$('#dres');if(!r)return;r.innerHTML=j.win?`<b>${fmt(j.win)} ★</b><small>x${j.x} от ставки</small>`:`<b>Пусто 🪨</b><small>кирка сломалась без руды</small>`;r.className='dres show '+(j.win?'ok':'no');
  if(j.win){loadFeed();try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}}
-function digSpeed(){DIG.speed=DIG.speed>=4?1:DIG.speed+1;$('#dspd').textContent='⏩ x'+DIG.speed}
+function digSpeed(){DIG.speed=DIG.speed>=3?1:DIG.speed+1;$('#dspd').textContent='⏩ x'+DIG.speed}
 function maintShow(){const m=ADM.maint||{},on=!!m.on&&!IS_ADMIN;let o=document.getElementById('maint');
  if(!on){if(o)o.remove();return}
  if(!o){o=document.createElement('div');o.id='maint';document.body.appendChild(o)}
