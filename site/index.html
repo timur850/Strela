@@ -542,7 +542,7 @@ dig(){return `<h1>Шахта</h1><div class="digbox"><canvas id="digc"></canvas>
  <div id="dres" class="dres"></div></div>
  <div class="card"><div class="ad-h">Коэффициент</div><div class="dk">${globalThis.STRELA.DIG_KS.map(k=>`<button data-k="${k}" class="${DIG.k===k?'on':''}" onclick="digKSet(${k})">x${k}</button>`).join('')}</div>
  <p class="sub" style="text-align:left;margin:6px 0 10px;font-size:12px">Чем выше коэффициент — тем реже руда, но тем она дороже.</p>
- <div class="row" style="align-items:center;gap:6px"><span class="star">★</span><input id="dbet" type="number" value="50" oninput="digKSet(DIG.k)" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="dbet.value=Math.max(1,Math.round(dbet.value/2));digKSet(DIG.k)">½</button><button class="btn ghost sm" onclick="dbet.value=Math.round(dbet.value*2);digKSet(DIG.k)">x2</button><button class="btn ghost sm" onclick="dbet.value=+dbet.value+100;digKSet(DIG.k)">+100</button></div>
+ <div class="row" id="dbrow" style="align-items:center;gap:6px"><span class="star">★</span><input id="dbet" type="number" value="50" oninput="digKSet(DIG.k)" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="dbet.value=Math.max(1,Math.round(dbet.value/2));digKSet(DIG.k)">½</button><button class="btn ghost sm" onclick="dbet.value=Math.round(dbet.value*2);digKSet(DIG.k)">x2</button><button class="btn ghost sm" onclick="dbet.value=+dbet.value+100;digKSet(DIG.k)">+100</button></div>
  <button class="btn sand" id="dbtn" style="margin-top:10px" onclick="digGo()">⛏ Копать</button></div>
  <div class="card"><div class="ad-h">Сколько даёт блок при твоей ставке</div><div class="digleg" id="dleg"></div>
  <p class="sub" style="text-align:left;margin:8px 0 0">В начале рулетка выдаёт кирку: каменная ♥100, железная ♥150, алмазная ♥250 (шансы: ${digTierP().map(v=>Math.round(v*100)+'%').join(' / ')}). Каждый удар отнимает 1 ♥, твёрдые блоки ломаются дольше. Верстак улучшает кирку на уровень, а алмазную — чинит до полной. TNT взрывает блоки в зоне 3×4.</p></div>`},
@@ -904,8 +904,9 @@ function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min
   const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
 function digHud(hp,max,t,won){$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
-function digInit(){DIG.run=0;DIG.spin=0;clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,t:0,rot:0,vy:0};DIG.A=null;digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
-function digKSet(k){DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.digM(k,ADM.digTier);
+function digLock(on){document.querySelectorAll('.dk button,#dbrow button,#dbet').forEach(e=>{e.disabled=!!on;e.style.opacity=on?.45:'';e.style.pointerEvents=on?'none':''})}
+function digInit(){DIG.run=0;DIG.spin=0;digLock(0);clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,t:0,rot:0,vy:0};DIG.A=null;digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
+function digKSet(k){if((DIG.run||DIG.spin)&&k!==DIG.k)return;DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.digM(k,ADM.digTier);
  leg.innerHTML=Object.entries(S.DIG_VAL).map(([o,v])=>`<span><canvas data-t="${o}" width="16" height="16"></canvas>${DIG_NAMES[o]}<b>${(bet*v*k*unit).toFixed(1)} ★</b></span>`).join('')+`<span><canvas data-t="T" width="16" height="16"></canvas>TNT<b>взрыв 3×4</b></span><span><canvas data-t="W" width="16" height="16"></canvas>Верстак<b>⬆ / 🔧</b></span>`;
  leg.querySelectorAll('canvas').forEach(c=>{const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(digTex()[c.dataset.t],0,0)})}
 function digSpin(tier){return new Promise(res=>{const box=$('#droul');box.className='droul show';const T=digTex(),strip=$('#drstrip');const seq=[];for(let i=0;i<34;i++)seq.push([0,0,0,1,1,2][(Math.random()*6)|0]);seq[30]=tier;
@@ -915,8 +916,8 @@ function digSpin(tier){return new Promise(res=>{const box=$('#droul');box.classN
  strip.style.transition=`transform ${3.2/Math.max(1,DIG_SPD[DIG.speed])}s cubic-bezier(.12,.75,.18,1)`;strip.style.transform=`translateX(${-off}px)`;
  setTimeout(()=>{strip.children[30].classList.add('win');try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}setTimeout(()=>{box.className='droul';res()},700/Math.max(1,DIG_SPD[DIG.speed]))},3300/Math.max(1,DIG_SPD[DIG.speed]))})}
 async function digGo(){if(DIG.run||DIG.spin)return;const v=Math.round(+$('#dbet').value);if(!(v>0))return toast('Введите ставку');
- const b=$('#dbtn');b.disabled=true;$('#dres').className='dres';
- const j=await srv('dig',{bet:v,k:DIG.k},{lock:1,hold:j=>j.win});if(!j){b.disabled=false;return}
+ const b=$('#dbtn');b.disabled=true;digLock(1);$('#dres').className='dres';
+ const j=await srv('dig',{bet:v,k:DIG.k},{lock:1,hold:j=>j.win});if(!j){b.disabled=false;digLock(0);return}
  DIG.spin=1;digSetup(j.world.rows);DIG.cam=0;DIG.A=null;DIG.pk={x:j.world.x0,y:-4,t:j.tier,rot:0,vy:0};digHud(globalThis.STRELA.DIG_TIER[j.tier],globalThis.STRELA.DIG_TIER[j.tier],j.tier,0);
  await digSpin(j.tier);DIG.spin=0;
  DIG.run=1;digAnimStart(j)}
@@ -955,7 +956,7 @@ function digAnim(dt){const A=DIG.A,p=DIG.pk;if(!A||!p)return;const S=globalThis.
   if(e.e==='u'){A.t=e.t;A.max=S.DIG_TIER[A.t];A.hp=e.hp;p.t=A.t;DIG.fx.push({x:p.x,y:p.y,s:e.up?`⬆ ${DIG_TN[A.t]}!`:'🔧 Починка!',t:0,col:'#9dff8a',big:1});DIG.flash=.35;digHud(A.hp,A.max,A.t,A.won);A.mode='wait';A.wait=.6;continue}
   if(e.e==='end'){A.mode='wait';A.wait=.3;continue}
  }}
-function digEnd(j){DIG.run=0;const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);
+function digEnd(j){DIG.run=0;digLock(0);const b=$('#dbtn');if(b)b.disabled=false;sync(j.me);
  const r=$('#dres');if(!r)return;r.innerHTML=j.win?`<b>${fmt(j.win)} ★</b><small>x${j.x} от ставки</small>`:`<b>Пусто 🪨</b><small>кирка сломалась без руды</small>`;r.className='dres show '+(j.win?'ok':'no');
  if(j.win){loadFeed();try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}}
 function digSpeed(){DIG.speed=DIG.speed>=3?1:DIG.speed+1;$('#dspd').textContent='⏩ x'+DIG.speed}
