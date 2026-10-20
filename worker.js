@@ -90,6 +90,17 @@ export class Store {
       } catch (e) { console.log("mig cases", e); }
       await state.storage.put("mig:cases1020", 1);
     });
+    // разовая: в Free 24h NFT только в рулетке (вес 0), выпадают звёзды
+    state.blockConcurrencyWhile(async () => {
+      if (await state.storage.get("mig:free24nft")) return;
+      try {
+        const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw; const cf = st.caseCfg && st.caseCfg["Free 24h"];
+          if (cf && Array.isArray(cf.items)) { cf.items = cf.items.map(([s, w]) => [s, String(s).startsWith("stars") ? w : 0]);
+            await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); } }
+      } catch (e) { console.log("mig free24", e); }
+      await state.storage.put("mig:free24nft", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
