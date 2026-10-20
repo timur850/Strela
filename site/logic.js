@@ -59,6 +59,7 @@ function makeLogic(getADM,rand){
  const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d)).filter(c=>!c.del);   // удалённые в админке — убраны совсем
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FREE=k=>caseObj(FREE_DEF[k==='tick'?1:k==='ref'?2:0],1);
+ const FREE_KEYS=()=>['daily','tick','ref'].filter(k=>!FREE(k).del);   // бесплатные, не удалённые в админке
  function itemsPick(items){const L=items.filter(([s])=>giftBy(s));let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
  function autoDist(cost,rtp){const pool=GIFTS().filter(g=>(isStar(g)?g.price<cost:g.price>=cost*.15)&&g.price<=cost*40);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
   for(let k=0;k<40;k++){const a=(lo+hi)/2;ws=P.map(g=>Math.pow(g.price,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=P.reduce((x,g,i)=>x+g.price*ws[i]/W,0);ev>target?lo=a:hi=a}
@@ -78,7 +79,7 @@ function makeLogic(getADM,rand){
  /* краш: P(дойти до x) = RTP/x */
  const crashPoint=()=>Math.max(1,Math.floor(100*R('crash')/(1-rand()))/100);
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
- return {R,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,itemsPick,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
+ return {R,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */

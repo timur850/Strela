@@ -193,6 +193,7 @@ export class Game {
   // ---- кейсы ----
   async op_case(u, uid, d) {
     const L = this.L; let c;
+    if (d.free && !L.FREE_KEYS().includes(d.free)) fail("Этот кейс удалён");
     if (d.free === "ref") {                       // кейс Friends: 5 друзей с NFT или уровнем 2+, раз в 24 ч
       c = L.FREE("ref");
       if ((u.refQ || 0) < REF_CASE_NEED) fail(`Пригласи ${REF_CASE_NEED} друзей с NFT или уровнем 2+ (${u.refQ || 0}/${REF_CASE_NEED})`);
