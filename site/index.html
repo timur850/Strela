@@ -1039,6 +1039,7 @@ gifts(){return `<div class="card"><div class="ad-h">🎁 Подарки Fragment
 cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hidden?.45:1}" onclick="ceOpen('${k}')">${gi(c.g)}<div class="nm">${c.n}${c.hidden?' · скрыт':''}<small style="display:block;color:var(--muted);font-size:12px">${c.free?'бесплатный':'★ '+fmt(c.p)} · ${c.items?c.items.length+' подарков (вручную)':'авто по RTP'}</small></div><span style="font-size:20px">✏️</span></div>`;
  return `<div class="card"><div class="ad-h">🧳 Кейсы <small style="background:var(--sea)">${ALL_CASES().length}</small></div><p class="sub" style="text-align:left;margin:0 0 6px">Нажмите на кейс, чтобы изменить содержимое, шансы, цену и обложку.</p>
  ${ALL_CASES().map(c=>row(c,'c:'+c.n)).join('')}</div>
+ ${(()=>{const D=Object.keys(ADM.caseCfg||{}).filter(n=>ADM.caseCfg[n].del);return D.length?`<div class="card"><div class="ad-h">🗑 Удалённые кейсы <small style="background:var(--coral)">${D.length}</small></div>${D.map(n=>`<div class="grow"><div class="nm">${esc(n)}</div><button class="btn sm ghost" onclick="ceRestore('${esc(n)}')">↩ Вернуть</button></div>`).join('')}</div>`:''})()}
  <div class="card"><div class="ad-h">🎁 Бесплатные</div>${['daily','tick','ref'].map(k=>row(FREE(k),'f:'+k)).join('')}</div>
   <div class="card"><div class="ad-h">🔒 Бесплатный кейс: как часто и условия</div><p class="sub" style="text-align:left;margin:0 0 6px">Перед открытием игрок должен поделиться ссылкой в N чатов и подписаться на канал. Бот должен быть админом канала.</p>
   <div class="field"><input id="fgH" type="number" min="1" max="168" value="${GATE().hours}" style="max-width:90px"><span class="sub" style="align-self:center">ч — как часто можно открывать</span></div>
@@ -1117,7 +1118,7 @@ function ceRender(){const c=ceGet(S.ceKey);const top=document.querySelector('#sh
  </div>
  <div class="kpi"><div><b id="ceEV">—</b><small>Средний выигрыш</small></div><div><b id="ceRTP">—</b><small>RTP кейса</small></div></div>
  <button class="btn sand" onclick="ceSave()">Сохранить</button>
- <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="ceAutoMode()">Вернуть авто</button>${ceGet(S.ceKey).custom?`<button class="btn ghost" style="background:rgba(255,90,95,.35)" onclick="ceDelete()">Удалить кейс</button>`:''}</div>`);
+ <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="ceAutoMode()">Вернуть авто</button>${ceGet(S.ceKey).free?'':`<button class="btn ghost" style="background:rgba(255,90,95,.35)" onclick="ceDelete()">🗑 Удалить кейс</button>`}</div>`);
  document.querySelector('#sheet').scrollTop=top;ceStats()}
 function ceStats(){const c=ceGet(S.ceKey);const L=S.ceItems.filter(([s])=>giftBy(s));const W=L.reduce((a,[,w])=>a+w,0);
  S.ceItems.forEach(([s,w],i)=>{const e=document.getElementById('cePct'+i);if(e)e.textContent=W?(w/W*100).toFixed(w/W<.01?2:1)+'%':'0%'});
@@ -1139,7 +1140,10 @@ function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.
 function ceAutoMode(){const c=ceGet(S.ceKey);delete ceCfg(c.n).items;saveAdm();closeSheet();setTab('admin');toast('Кейс в авто-режиме')}
 function ceCreate(){const n=($('#ncN').value||'').trim().replace(/['"<>`]/g,'');const p=Math.round(+$('#ncP').value);if(!n||!(p>0))return toast('Укажите название и цену');if(ALL_CASES().some(c=>c.n===n)||n==='Daily'||n==='Tickets')return toast('Такой кейс уже есть');
  ADM.customCases.push([n,p,autoDist(p,R('cases'))[0][0]]);saveAdm();setTab('admin');ceOpen('c:'+n)}
-function ceDelete(){const c=ceGet(S.ceKey);ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n];saveAdm();closeSheet();setTab('admin');toast('Кейс удалён')}
+function ceDelete(){const c=ceGet(S.ceKey);if(!c||c.free)return;if(!confirm(`Удалить кейс «${c.n}»? Игроки его больше не увидят.`))return;
+ if(c.custom){ADM.customCases=ADM.customCases.filter(x=>x[0]!==c.n);delete ADM.caseCfg[c.n]}else ceCfg(c.n).del=true;   /* встроенный — помечаем, его можно вернуть */
+ saveAdm(1);closeSheet();setTab('admin');toast('Кейс удалён 🗑')}
+function ceRestore(n){if(ADM.caseCfg[n])delete ADM.caseCfg[n].del;saveAdm(1);setTab('admin');toast('Кейс возвращён')}
 
 upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(()=>{if(document.hidden)return;const fast=!S.stack.length&&(S.tab==='games'||S.tab==='tour');if(fast||Date.now()-(S.feedAt||0)>20000)loadFeed()},5000);
 </script>

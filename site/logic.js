@@ -55,8 +55,8 @@ function makeLogic(getADM,rand){
   if(!items&&defItems&&Array.isArray(defItems[0]))items=defItems;
   if(!items&&defItems){const k=n+price+R('cases')+_GK;items=_fitC[k]||(_fitC[k]=fitW(defItems,free?(fcost||60):price,free?.5:R('cases')))}
   const art=(items||[]).map(x=>giftBy(x[0])).filter(Boolean).sort((a,b)=>b.price-a.price);
-  return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
- const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d));
+  return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,del:!!c.del,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
+ const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d)).filter(c=>!c.del);   // удалённые в админке — убраны совсем
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FREE=k=>caseObj(FREE_DEF[k==='tick'?1:k==='ref'?2:0],1);
  function itemsPick(items){const L=items.filter(([s])=>giftBy(s));let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
