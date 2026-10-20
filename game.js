@@ -461,7 +461,7 @@ export class Game {
     if (Date.now() - Number(last) < 10000) fail("Подожди пару секунд");
     const i = this.invIndex(u, d.i, d.slug), g = this.L.giftBy(u.inv[i]);
     if (!g || isStar(g)) fail("Этот подарок нельзя вывести");
-    const minWd = Math.max(0, Math.round(this.st.minWd ?? 50));
+    const minWd = Math.max(0, Math.round(this.st.minWd ?? 100));
     if (g.price < minWd) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)

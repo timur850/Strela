@@ -78,6 +78,18 @@ export class Store {
       } catch (e) { console.log("mig minwd", e); }
       await state.storage.put("mig:minwd50", 1);
     });
+    // разовая: вывод от 100 ★ и новые кейсы (Halloween с моделями, Mini Stars, Stars Case, Sexy Case) поверх старых настроек
+    state.blockConcurrencyWhile(async () => {
+      if (await state.storage.get("mig:cases1020")) return;
+      try {
+        const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw;
+          st.minWd = 100;
+          if (st.caseCfg) for (const n of ["Halloween", "Mini Stars", "Stars Case", "Sexy Case"]) delete st.caseCfg[n];
+          await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); }
+      } catch (e) { console.log("mig cases", e); }
+      await state.storage.put("mig:cases1020", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
@@ -219,8 +231,9 @@ async function bizTransfer(env, slug, toId) {
   const conn = await bizConn(env);
   if (!conn || !conn.on) return { err: "аккаунт-склад не подключён к боту через Telegram Business" };
   let list; try { list = await bizGifts(env, conn); } catch (e) { return { err: e.message }; }
-  const now = Date.now() / 1000, key = giftKey(slug);
-  const cand = list.filter(g => giftKey(g.gift.base_name) === key && g.can_be_transferred !== false && !(g.next_transfer_date > now))
+  const mdl = (globalThis.STRELA.MODEL_LIST || []).find(x => x[0] === slug);   // подарок с конкретной моделью
+  const now = Date.now() / 1000, key = giftKey(mdl ? mdl[3] : slug);
+  const cand = list.filter(g => giftKey(g.gift.base_name) === key && (!mdl || giftKey(g.gift.model && g.gift.model.name) === giftKey(mdl[4])) && g.can_be_transferred !== false && !(g.next_transfer_date > now))
     .sort((a, b) => (a.transfer_star_count || 0) - (b.transfer_star_count || 0));
   if (!cand.length) return { err: "такого подарка нет на складе" };
   let last = "";

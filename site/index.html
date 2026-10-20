@@ -375,6 +375,7 @@ const ini=n=>n.split(/[\s'-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('')
 const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
 function gi(g,n){if(!g)return '';if(isStar(g))return `<span class="gi"><span class="fb" style="flex-direction:column;font-size:.7em">⭐<b style="font-size:.32em;color:var(--sun);line-height:1">${fmt(g.price)}</b></span></span>`;
  if(g.reg)return `<span class="gi"><img src="${REG_IMG[g.tgid]}" alt="" style="opacity:1"></span>`;
+ if(g.m){const C=encodeURIComponent(GIFT_LIST.find(x=>x[0]===g.b)?.[1]||g.b),M=encodeURIComponent(g.m);return `<span class="gi"><span class="fb ini" style="--h:${hue(g.b)}">${ini(g.name)}</span><img src="https://cdn.changes.tg/gifts/models/${C}/png/${M}.png" alt="" loading="lazy" onload="this.previousElementSibling&&this.previousElementSibling.remove();this.style.opacity=1" onerror="if(!this.dataset.r){this.dataset.r=1;this.src='https://fragment.com/file/gifts/${g.b}/thumb.webp'}else this.remove()"></span>`}
  return `<span class="gi"><span class="fb ini" style="--h:${hue(g.slug)}">${g.e||ini(g.name)}</span><img src="https://fragment.com/file/gifts/${g.slug}/thumb.webp" alt="" loading="lazy" onload="this.previousElementSibling&&this.previousElementSibling.remove();this.style.opacity=1" onerror="if(!this.dataset.r){this.dataset.r=1;this.src='https://nft.fragment.com/gift/${g.slug}-${n||1}.webp'}else this.remove()"></span>`}
 
 /* текущий пользователь */
@@ -485,7 +486,7 @@ profile(){
 },
 admin(){return adminView()}
 };
-const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??50));
+const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
 function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);
  sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p><button class="btn sand" style="margin-top:14px" onclick="withdraw(${i})">📤 Вывести</button>`)}
 let wdBusy=false;
@@ -501,7 +502,7 @@ function sellAll(){srv('sellall',{},{lock:1}).then(j=>{if(j){toast(`Продан
 
 /* ================== ИГРЫ ================== */
 function caseCard(c,on){const a=c.art;return `<div class="ccard" style="--g:${c.glow}" onclick="${on}"><span class="burst"></span>
- ${c.badge==='new'?'<span class="cb new">✦ НОВОЕ</span>':''}${c.badge==='lim'||c.l?'<span class="cb lim">ЛИМИТ</span>':''}
+ ${c.badge==='new'?'<span class="cb new">✦ НОВОЕ</span>':''}${c.badge==='18'?'<span class="cb lim" style="background:#e0304a">18+</span>':''}${c.badge==='lim'||c.l?'<span class="cb lim">ЛИМИТ</span>':''}
  ${c.title?`<span class="ctitle">${c.free&&c.n.includes('24')?c.title.replace('24',GATE().hours):c.title}</span>`:''}
  ${a[1]?`<span class="ca s1">${gi(a[1])}</span>`:''}${a[2]?`<span class="ca s2">${gi(a[2])}</span>`:''}
  <span class="ca main">${gi(c.cover?c.g:(a[0]||c.g))}</span>
