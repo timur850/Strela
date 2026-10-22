@@ -558,6 +558,10 @@ export class Game {
       return { ok: true, users: n };
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
+    if (op === "setdep") {                       // ручная правка суммы пополнений
+      const v = Math.round(+d.value); if (!(v >= 0)) fail("Неверное число");
+      const st = (await this.s.get("stats")) || { dep: 0, bets: 0, wins: 0 }; st.dep = v; await this.s.put("stats", st); return { ok: true, dep: v };
+    }
     if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
     if (op === "refs") {
       const r = await this.s.get("u:" + id); if (!r) return { ok: true, rows: [] };
