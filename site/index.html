@@ -714,7 +714,7 @@ async function spinCase(){const c=S.curCase;if(S.spinning)return;if(c.p&&Date.no
  S.spinTok=(S.spinTok||0)+1;const tok=S.spinTok;
  setTimeout(()=>{S.spinning=0;sync(j.me);loadFeed();const b=$('#spinBtn');if(b&&S.spinTok===tok&&S.stack[S.stack.length-1]==='caseOpen'){winSheet(prize);b.disabled=false}else toast(isStar(prize)?`+${fmt(prize.price)} ★ на балансе`:`${prize.name} — в профиле 🎁`)},Math.max(300,5200-(Date.now()-t0)))}
 function caseItemsHtml(c){const D=caseDist(c).filter(([s])=>giftBy(s)).sort((a,b)=>giftBy(b[0]).price-giftBy(a[0]).price);const W=D.reduce((a,[,w])=>a+w,0)||1;
- return `<div class="inv">${D.map(([s,w])=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small><small style="color:var(--lagoon)">${w>0?pctFmt(w/W*100):'🔒 не выпадает'}</small></div>`}).join('')}</div>`}
+ return `<div class="inv">${D.map(([s,w])=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`}).join('')}</div>`}
 function casePrizes(){const c=S.curCase;sheet(`<h2>Призы · ${c.n}</h2>${caseItemsHtml(c)}`)}
 function showPrizes(cost){const P=GIFTS().filter(g=>g.price>=cost*.15&&g.price<=cost*40).sort((a,b)=>b.price-a.price);sheet(`<h2>Призы</h2><div class="inv">${P.map(g=>`<div class="case">${gi(g)}<small>${g.name}</small><small class="star">★ ${fmt(g.price)}</small></div>`).join('')}</div>`)}
 /* апгрейд */

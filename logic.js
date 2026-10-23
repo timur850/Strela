@@ -61,6 +61,8 @@ function makeLogic(getADM,rand){
   if(!items&&defItems&&Array.isArray(defItems[0]))items=defItems;
   if(!items&&defItems){const k=n+price+R('cases')+_GK;items=_fitC[k]||(_fitC[k]=fitW(defItems,free?(fcost||60):price,free?.5:R('cases')))}
   if(items)items=monoW(items);
+  /* бесплатные кейсы: NFT только пролетают в ленте, выпасть не могут */
+  if(items&&free){items=items.map(([s,w])=>{const g=giftBy(s);return [s,g&&!isStar(g)&&!g.reg?0:w]});if(!items.some(x=>x[1]>0))items=[...items,['stars5',1]]}
   const art=(items||[]).map(x=>giftBy(x[0])).filter(Boolean).sort((a,b)=>b.price-a.price);
   return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,del:!!c.del,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
  const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d)).filter(c=>!c.del);   // удалённые в админке — убраны совсем
