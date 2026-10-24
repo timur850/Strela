@@ -35,7 +35,7 @@ const isStar=g=>!!g&&g.slug.startsWith('stars');
 function makeLogic(getADM,rand){
  rand=rand||Math.random;
  const A=()=>getADM()||{};
- const R=g=>((A().rtp||{})[g]??DEF_RTP[g]??90)/100;
+ const R=g=>{const r=A().rtp||{};return (r[g]??(g==='contract'?r.upgrade:undefined)??DEF_RTP[g]??90)/100};   // контракты: пока не задан свой % — как у апгрейда
  const mkG=([slug,name,p,e,tgid,b,m])=>({slug,name,price:(A().prices||{})[slug]??p,e,tgid,reg:!!tgid,...(m?{b,m}:{})});
  let _GC=null,_GK='';
  const GIFTS=()=>{const a=A();const k=JSON.stringify([a.prices,a.giftOff]);if(k!==_GK||!_GC){_GK=k;_GC=GIFT_LIST.filter(g=>!(a.giftOff||{})[g[0]]).map(mkG)}return _GC};
@@ -85,11 +85,12 @@ function makeLogic(getADM,rand){
  /* слоты */
  const slotsMult=res=>{const u=new Set(res).size;return (u===1?10:u===2?2:0)*R('slots')/.9};
  /* апгрейд */
- const upChance=(a,b)=>Math.min(95,a/b*R('upgrade')*100);
+ const UP_MAX=()=>Math.min(95,Math.max(1,+A().upMax||95));   // потолок шанса апгрейда из админки (1–95%)
+ const upChance=(a,b)=>Math.min(UP_MAX(),a/b*R('upgrade')*100);
  /* краш: P(дойти до x) = RTP/x */
  const crashPoint=()=>Math.max(1,Math.floor(100*R('crash')/(1-rand()))/100);
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
- return {R,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
+ return {R,UP_MAX,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */

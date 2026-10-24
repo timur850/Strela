@@ -341,11 +341,11 @@ const REG_IMG={"5170145012310081615": "data:image/webp;base64,UklGRlwYAABXRUJQVl
 let OWNERS=['PODONOK_UC_1','Sdelka_ton']; // владельцы админки (username без @)
 const OWNER=OWNERS.join(', @');
 const isOwnerName=u=>OWNERS.some(o=>o.toLowerCase()===(u||'').toLowerCase());
-const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
+const DEF={upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['upMax','minWd','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -854,7 +854,10 @@ async function spinSlots(){if(S.sl)return;S.sl=1;const j=await srv('slots',{},{h
 
 /* ================== АДМИН-ПАНЕЛЬ ================== */
 S.adTab='stats';
-const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд/Контр.'};
+const rtpOf=k=>ADM.rtp[k]??(k==='contract'?ADM.rtp.upgrade:undefined)??90;
+const upPrevTxt=()=>{const r=rtpOf('upgrade'),m=ADM.upMax||95;return 'Шанс сейчас: '+[2,3,5,10,20].map(x=>'x'+x+' → '+(Math.min(m,r/x)).toFixed(1).replace(/\.0$/,'')+'%').join(' · ')};
+function upPrev(){const e=$('#upPrev');if(e)e.textContent=upPrevTxt()}
+const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
 const DIG={k:1,speed:1};const DIG_SPD={1:1,2:1.7,3:2.8};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
@@ -983,6 +986,9 @@ function adminView(){
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
   <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]();
 }
+function gstatCard(gs){const rows=[['upgrade','⬆️ Апгрейд'],['contract','📜 Контракты']].map(([k,n])=>{const g=gs[k]||{n:0,w:0,bet:0,pay:0},pr=g.bet-g.pay;
+ return `<div class="it" style="display:block"><b>${n}</b>${g.n?`<small style="display:block;color:var(--muted);font-weight:700;margin-top:4px;line-height:1.5">Игр: <b style="color:#fff">${fmt(g.n)}</b>${k==='upgrade'?` · выиграно: <b style="color:#fff">${fmt(g.w)}</b> (${(g.w/g.n*100).toFixed(1)}%)`:''}<br>Поставлено: <b style="color:#fff">${fmt(g.bet)} ★</b> · выплачено: <b style="color:#fff">${fmt(g.pay)} ★</b><br>Факт. RTP: <b style="color:#fff">${g.bet?(g.pay/g.bet*100).toFixed(1):0}%</b> · профит: <b style="color:${pr>=0?'#3dff8b':'#ff8a8a'}">${fmt(pr)} ★</b></small>`:'<small style="display:block;color:var(--muted)">Ещё не играли</small>'}</div>`}).join('');
+ return `<div class="card"><div class="ad-h">⬆️ Апгрейд и контракты</div><div class="list">${rows}</div></div>`}
 const AD={
 pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для пополнений</div>
  <p class="sub" style="text-align:left">Все TON от игроков приходят сюда. Звёзды зачисляются автоматически, когда перевод виден в сети.</p>
@@ -1016,10 +1022,13 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <div class="card"><div class="ad-h">📜 Кто что выиграл <small style="background:var(--sea)">${S.feed.length}</small></div><div class="list">${S.feed.length?S.feed.map(feedRow).join(''):'<div class="empty">Пока пусто</div>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="loadFeed();adLoad(1)">Обновить</button></div>`;
  return `<div class="kpi"><div><b>${us}</b><small>Игроков</small></div><div><b>${fmt(st.dep)} ★</b><small>Пополнения</small></div>
  <div><b>${fmt(st.bets)} ★</b><small>Оборот ставок</small></div><div><b style="color:${profit>=0?'#3dff8b':'#ff8a8a'}">${fmt(profit)} ★</b><small>Профит проекта</small></div></div>
- ${wd}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
+ ${wd}${gstatCard(A.gstats||{})}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
  <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button><button class="btn ghost" style="color:#ff8a8a" onclick="if(confirm('Обнулить баланс и билеты у ВСЕХ игроков и всю статистику? Отменить нельзя.'))adApi('resetall',{}).then(j=>{if(j){toast('Обнулено игроков: '+j.users);adLoad(1)}})">🧹 Обнулить всех</button><button class="btn ghost" onclick="if(confirm('Обнулить турнир (начать новую неделю)?'))adApi('resettour',{}).then(j=>{if(j){S.tour=null;toast('Турнир обнулён')}})">🏆 Обнулить турнир</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
- ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${ADM.rtp[k]??90}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm()"><b>${ADM.rtp[k]??90}%</b></div>`).join('')}
+ ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${rtpOf(k)}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm();if('${k}'==='upgrade')upPrev()"><b>${rtpOf(k)}%</b></div>`).join('')}
+ <div class="ad-h" style="margin-top:12px">⬆️ Апгрейд — потолок шанса</div><p class="sub" style="text-align:left;margin:0 0 6px">Шанс = (цена своего ÷ цена цели) × RTP апгрейда, но не выше этого потолка.</p>
+ <div class="rng"><span>Макс. шанс</span><input type="range" min="5" max="95" value="${ADM.upMax||95}" oninput="ADM.upMax=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm();upPrev()"><b>${ADM.upMax||95}%</b></div>
+ <p class="sub" id="upPrev" style="text-align:left;margin:6px 0 10px">${upPrevTxt()}</p>
  <div class="ad-h" style="margin-top:12px">⛏ Шахта — шансы кирок на рулетке</div><p class="sub" style="text-align:left;margin:0 0 6px">В процентах. Отдача Шахты всё равно остаётся такой, как выставлено выше — пересчитывается сама.</p>
  <div class="field">${['Каменная','Железная','Алмазная'].map((n,i)=>`<label style="flex:1;font-weight:800;font-size:12px">${n}<input id="dtp${i}" type="number" min="0" max="100" value="${(ADM.digTier||[60,30,10])[i]}" style="width:100%"></label>`).join('')}</div>
  <button class="btn ghost" style="margin-bottom:10px" onclick="ADM.digTier=[0,1,2].map(i=>Math.max(0,Math.round(+$('#dtp'+i).value||0)));if(!ADM.digTier.some(v=>v>0))ADM.digTier=[60,30,10];saveAdm(1);setTab('admin')">Сохранить шансы кирок</button>

@@ -73,6 +73,15 @@ export class Game {
     await this.s.put("stats", st);
   }
 
+  // статистика по отдельной игре: сколько раз играли, сколько выиграли, сколько поставили и выплатили
+  async gstat(game, betSum, paid) {
+    const all = (await this.s.get("gstats")) || {};
+    const g = all[game] || (all[game] = { n: 0, w: 0, bet: 0, pay: 0 });
+    g.n++; if (paid > 0) g.w++;
+    g.bet += Math.round(betSum); g.pay += Math.round(paid);
+    await this.s.put("gstats", all);
+  }
+
   async feed(u, uid, game, gift, amount) {
     if (!(amount > 0)) return;
     const raw = await this.s.get("feed");
@@ -246,6 +255,7 @@ export class Game {
     u.inv.splice(i, 1); await this.stat("bets", a.price);
     const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
     if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
+    await this.gstat("upgrade", a.price, won ? b.price : 0);
     return { won, chance: ch, roll };
   }
 
@@ -258,8 +268,9 @@ export class Game {
     for (const s of items) { const k = inv.indexOf(s); if (k < 0) fail("Подарок не найден, обнови страницу"); inv.splice(k, 1); }
     const sum = items.reduce((s, x) => s + ((L.giftBy(x) || {}).price || 0), 0);
     u.inv = inv; await this.stat("bets", sum);
-    const g = L.pickGift(sum, L.R("upgrade"));
+    const g = L.pickGift(sum, L.R("contract"));
     await this.giveGift(u, uid, g, GAME_NAMES.contract);
+    await this.gstat("contract", sum, g.price);
     return { prize: g.slug };
   }
 
@@ -524,7 +535,8 @@ export class Game {
       const bc = j ? { total: j.ids.length, sent: j.sent, failed: j.failed, done: j.done, stopped: !!j.stopped, text: j.text.slice(0, 80), t: j.t } : null;
       const aud = new Set(users.map(u => u.id));
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
-      return { ok: true, stats, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
+      const gstats = (await this.s.get("gstats")) || {};
+      return { ok: true, stats, gstats, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
       const text = String(d.text || "").trim().slice(0, 4000);
@@ -553,12 +565,12 @@ export class Game {
         if (page.size < 500) break;
       }
       await this.s.put("stats", { dep: 0, bets: 0, wins: 0 });
-      await this.s.delete("feed");
+      await this.s.delete(["feed", "gstats"]);
       await this.s.delete(["tour", "tour:prev"]);
       return { ok: true, users: n };
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
-    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); return { ok: true }; }
+    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); await this.s.delete("gstats"); return { ok: true }; }
     if (op === "refs") {
       const r = await this.s.get("u:" + id); if (!r) return { ok: true, rows: [] };
       const rows = [];
