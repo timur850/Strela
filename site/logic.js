@@ -43,8 +43,10 @@ function makeLogic(getADM,rand){
  const giftBy=s=>GIFTS().find(g=>g.slug===s)||(_GALL[s]?mkG(_GALL[s]):null);
 
  /* выбор подарка так, чтобы средний выигрыш = цена × RTP */
+ /* один список призов для показа («Призы») и для выпадения: от 15% до x40 стоимости, звёзды — меньше стоимости */
+ function prizePool(cost){return GIFTS().filter(g=>!g.m&&g.price>=cost*.15&&g.price<=cost*40&&(!isStar(g)||g.price<cost))}
  function pickGift(cost,rtp){
-  const pool=GIFTS().filter(g=>!g.m&&(isStar(g)?g.price<cost:g.price>=cost*.15)&&g.price<=cost*40);const P=pool.length?pool:GIFTS();
+  const pool=prizePool(cost);const P=pool.length?pool:GIFTS();
   const target=cost*rtp;let lo=0,hi=4,a=1,ws;
   for(let k=0;k<40;k++){a=(lo+hi)/2;ws=P.map(g=>Math.pow(g.price,-a));const W=ws.reduce((s,x)=>s+x,0);const ev=P.reduce((s,g,i)=>s+g.price*ws[i]/W,0);ev>target?lo=a:hi=a}
   let r=rand()*ws.reduce((s,x)=>s+x,0);for(let i=0;i<P.length;i++){if((r-=ws[i])<=0)return P[i]}return P[0];
@@ -71,7 +73,7 @@ function makeLogic(getADM,rand){
  const FREE_KEYS=()=>['daily','tick','ref'].filter(k=>!FREE(k).del);   // бесплатные, не удалённые в админке
  function itemsPick(items){const L0=items.filter(([s])=>giftBy(s)),L=L0.some(x=>x[1]>0)?L0.filter(x=>x[1]>0):L0;   // вес 0 = только витрина, не выпадает
  let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
- function autoDist(cost,rtp){const pool=GIFTS().filter(g=>!g.m&&(isStar(g)?g.price<cost:g.price>=cost*.15)&&g.price<=cost*40);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
+ function autoDist(cost,rtp){const pool=prizePool(cost);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
   for(let k=0;k<40;k++){const a=(lo+hi)/2;ws=P.map(g=>Math.pow(g.price,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=P.reduce((x,g,i)=>x+g.price*ws[i]/W,0);ev>target?lo=a:hi=a}
   const W=ws.reduce((x,y)=>x+y,0);return P.map((g,i)=>[g.slug,+(ws[i]/W*100).toFixed(2)]).sort((a,b)=>b[1]-a[1])}
  const caseGift=c=>c.items&&c.items.length?itemsPick(c.items):pickGift(c.p||100,c.free?.5:R('cases'));
@@ -90,7 +92,7 @@ function makeLogic(getADM,rand){
  /* краш: P(дойти до x) = RTP/x */
  const crashPoint=()=>Math.max(1,Math.floor(100*R('crash')/(1-rand()))/100);
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
- return {R,UP_MAX,GIFTS,giftBy,pickGift,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
+ return {R,UP_MAX,GIFTS,giftBy,pickGift,prizePool,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */
