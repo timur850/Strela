@@ -123,6 +123,13 @@ export class Store {
       } catch (e) { console.log("mig wdfee", e); }
       await state.storage.put("mig:wdfee5", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: фонд ежедневного дропа 200 ★
+      if (await state.storage.get("mig:drop200")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw; if (st.drop && st.drop.period !== "week") { st.drop.budget = 200; await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); } }
+      } catch (e) { console.log("mig drop200", e); }
+      await state.storage.put("mig:drop200", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";

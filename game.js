@@ -249,7 +249,7 @@ export class Game {
 
   // ---- дроп: раз в день (или неделю) на игрока, общий фонд на период ----
   dropCfg() { const c = this.st.drop || {}, week = c.period === "week";
-    return { on: c.on !== false, period: week ? "week" : "day", budget: Math.max(0, Math.round(c.budget ?? (week ? 1000 : 300))), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : DROP_PRIZES,
+    return { on: c.on !== false, period: week ? "week" : "day", budget: Math.max(0, Math.round(c.budget ?? (week ? 1000 : 200))), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : DROP_PRIZES,
       key: week ? "w" + weekKey() : "d" + dayKey(), end: week ? weekEnd() : dayEnd() }; }
   async op_drop_state(u) {
     const c = this.dropCfg(), w = c.key, p = (await this.s.get("drop:" + w)) || { spent: 0, n: 0 };
