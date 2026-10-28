@@ -477,7 +477,7 @@ export class Game {
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
       fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
-    const pct = Math.max(0, Math.min(50, +this.st.wdFee || 0)), fee = pct ? Math.ceil(g.price * pct / 100) : 0;   // комиссия за вывод, ★ с баланса
+    const pct = Math.max(0, Math.min(50, +(this.st.wdFee ?? 5) || 0)), fee = pct ? Math.ceil(g.price * pct / 100) : 0;   // комиссия за вывод, ★ с баланса
     if (fee && (u.bal || 0) < fee) fail(`Комиссия за вывод — ${fee} ★ (${pct}%). Пополни баланс`);
     u.inv.splice(i, 1);
     if (fee) { u.bal -= fee; await this.stat("fee", fee); }

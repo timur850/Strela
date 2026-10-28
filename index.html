@@ -487,7 +487,7 @@ profile(){
 admin(){return adminView()}
 };
 const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
-const WD_FEE=()=>Math.max(0,Math.min(50,+ADM.wdFee||0)),wdFeeOf=g=>WD_FEE()?Math.ceil(g.price*WD_FEE()/100):0;
+const WD_FEE=()=>Math.max(0,Math.min(50,+(ADM.wdFee??5)||0)),wdFeeOf=g=>WD_FEE()?Math.ceil(g.price*WD_FEE()/100):0;
 function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);
  sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p>${wdFeeOf(g)?`<div class="card" style="text-align:center;margin-top:10px">Комиссия за вывод: <b><span class="star">★</span> ${fmt(wdFeeOf(g))}</b> (${WD_FEE()}%)<br><small style="color:var(--muted)">Спишется с баланса. Если вывод отменится — вернётся.</small></div>`:''}<button class="btn sand" style="margin-top:14px" ${wdFeeOf(g)>(U().bal||0)?'disabled':''} onclick="withdraw(${i})">${wdFeeOf(g)>(U().bal||0)?`Нужно ★ ${fmt(wdFeeOf(g))} на балансе`:wdFeeOf(g)?`📤 Вывести за ★ ${fmt(wdFeeOf(g))}`:'📤 Вывести'}</button>`)}
 let wdBusy=false;

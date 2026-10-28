@@ -116,6 +116,13 @@ export class Store {
       try { const st = (await state.storage.get("stats")) || { dep: 0, bets: 0, wins: 0 }; st.dep = 5300; await state.storage.put("stats", st); } catch (e) { console.log("mig dep", e); }
       await state.storage.put("mig:dep5300", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: комиссия за вывод 5%
+      if (await state.storage.get("mig:wdfee5")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw; st.wdFee = 5; await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); }
+      } catch (e) { console.log("mig wdfee", e); }
+      await state.storage.put("mig:wdfee5", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
