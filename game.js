@@ -23,6 +23,8 @@ function dayKey(t = Date.now()) { try { return new Date(t).toLocaleDateString("s
 // неделя с понедельника 00:00 UTC
 function weekStart(t = Date.now()) { const d = new Date(t); const day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day); }
 const weekKey = () => new Date(weekStart()).toISOString().slice(0, 10), weekEnd = () => weekStart() + 7 * 864e5;
+// до полуночи по Киеву
+function dayEnd(t = Date.now()) { try { const [h, m, s] = new Intl.DateTimeFormat("en-GB", { timeZone: KYIV, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t).split(":").map(Number); return t + (86400 - h * 3600 - m * 60 - s) * 1000; } catch { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1); } }
 const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 4], [100, 1]];   // [звёзд, вес]
 
 export class Game {
@@ -245,24 +247,26 @@ export class Game {
     return { prize: g.slug };
   }
 
-  // ---- еженедельный дроп: раз в неделю на игрока, общий бюджет на неделю ----
-  dropCfg() { const c = this.st.drop || {}; return { on: c.on !== false, budget: Math.max(0, Math.round(c.budget ?? 1000)), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : DROP_PRIZES }; }
+  // ---- дроп: раз в день (или неделю) на игрока, общий фонд на период ----
+  dropCfg() { const c = this.st.drop || {}, week = c.period === "week";
+    return { on: c.on !== false, period: week ? "week" : "day", budget: Math.max(0, Math.round(c.budget ?? (week ? 1000 : 300))), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : DROP_PRIZES,
+      key: week ? "w" + weekKey() : "d" + dayKey(), end: week ? weekEnd() : dayEnd() }; }
   async op_drop_state(u) {
-    const c = this.dropCfg(), w = weekKey(), p = (await this.s.get("drop:" + w)) || { spent: 0, n: 0 };
-    return { drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: u.dropW === w, end: weekEnd() } };
+    const c = this.dropCfg(), w = c.key, p = (await this.s.get("drop:" + w)) || { spent: 0, n: 0 };
+    return { drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: u.dropW === w, end: c.end, period: c.period } };
   }
   async op_drop(u, uid) {
-    const c = this.dropCfg(), w = weekKey();
+    const c = this.dropCfg(), w = c.key;
     if (!c.on) fail("Дроп сейчас выключен");
-    if (u.dropW === w) fail("Ты уже забрал дроп на этой неделе");
+    if (u.dropW === w) fail(c.period === "week" ? "Ты уже забрал дроп на этой неделе" : "Дроп уже забран сегодня — приходи завтра");
     const k = "drop:" + w, p = (await this.s.get(k)) || { spent: 0, n: 0 }, left = c.budget - p.spent;
     const ok = c.prizes.filter(([v]) => v <= left);
-    if (!ok.length) fail("Дроп на этой неделе закончился — новый в понедельник");
+    if (!ok.length) fail(c.period === "week" ? "Фонд недели закончился — новый дроп в понедельник" : "Фонд на сегодня закончился — новый дроп завтра");
     let r = rand() * ok.reduce((a, x) => a + x[1], 0), v = ok[0][0];
     for (const [a, wt] of ok) { if ((r -= wt) <= 0) { v = a; break; } }
     p.spent += v; p.n++; await this.s.put(k, p);
     u.dropW = w; u.bal += v; await this.stat("drop", v); await this.feed(u, uid, "Дроп", null, v);
-    return { prize: v, drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: true, end: weekEnd() } };
+    return { prize: v, drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: true, end: c.end, period: c.period } };
   }
 
   // ---- яйца ----

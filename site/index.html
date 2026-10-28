@@ -98,6 +98,13 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 .drw .sec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 6px 6px}
 .drw .mi{display:flex;align-items:center;gap:12px;width:100%;padding:11px 10px;border:0;border-radius:12px;background:none;color:#fff;font:800 15px Nunito,sans-serif;text-align:left;cursor:pointer}
 .drw .mi:active,.drw .mi.on{background:rgba(255,255,255,.1)}.drw .mi i{font-style:normal;width:24px;text-align:center;font-size:18px}
+.dropimg{display:flex;justify-content:center;margin:4px 0 10px}.dropimg img{width:170px;height:170px;filter:drop-shadow(0 10px 24px rgba(150,90,255,.55));animation:dfl 3s ease-in-out infinite}
+@keyframes dfl{50%{transform:translateY(-8px)}}
+.dropimg.shake img{animation:dsh .13s linear infinite}
+@keyframes dsh{0%{transform:rotate(-6deg) scale(1.04)}50%{transform:rotate(6deg) scale(1.08)}100%{transform:rotate(-6deg) scale(1.04)}}
+.dropwin{position:relative;overflow:hidden;text-align:center;padding:22px 10px;margin:4px 0 10px;border-radius:20px;background:rgba(150,90,255,.25);animation:dwin .45s cubic-bezier(.2,1.6,.4,1)}
+.dropwin .burst{position:absolute;inset:-60%;background:repeating-conic-gradient(rgba(255,210,90,.18) 0 10deg,transparent 10deg 20deg);animation:dspin 8s linear infinite}
+@keyframes dwin{from{transform:scale(.6);opacity:0}}@keyframes dspin{to{transform:rotate(360deg)}}
 .g-drop{background:linear-gradient(120deg,rgba(150,90,255,.85),rgba(90,60,210,.8));color:#fff}
 .g-free{background:linear-gradient(120deg,rgba(246,213,154,.85),rgba(233,183,101,.75));color:#4a2c00}
 .g-free small{color:rgba(74,44,0,.7)} .g-free .tag{background:rgba(74,44,0,.15)}
@@ -452,7 +459,7 @@ const GICON={"cases": "data:image/webp;base64,UklGRp4SAABXRUJQVlA4WAoAAAAQAAAAvw
 /* свои картинки игр (морской стиль) */
 Object.assign(GICON,{dig:'img/dig.webp',cases:'img/gift.webp',free:'img/gift.webp',drop:'img/drop.webp',eggs:'img/egg.webp',crash:'img/plane.webp',slots:'img/coin.webp',contracts:'img/slots.webp',pvp:'img/tgcoin.webp',upgrade:'img/upgrade.webp'});
 const GAMES=[
- ['drop','g-drop','📦','Дроп недели','Бесплатно раз в неделю'],['free','g-free','🎁','Бесплатно','Бесплатные кейсы'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
+ ['drop','g-drop','📦','Ежедневный дроп','Бесплатный кейс раз в день'],['free','g-free','🎁','Бесплатно','Бесплатные кейсы'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
  ['upgrade','g-up','🧜‍♀️','Апгрейд','Улучшите свои подарки'],['crash','g-crash','🏄','Краш','<span class="tag">Онлайн</span>'],
  ['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],
  ['contracts','g-contr','📜','Контракты','Объедините подарки'],['eggs','g-eggs','🥥','Яйца','6 кейсов'],
@@ -616,7 +623,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  <div class="bal"><div><span class="star">★</span> ${fmt(u.bal||0)}</div><div>🎫 ${fmt(u.tick||0)}</div></div>
  <button class="btn sand" style="margin-bottom:6px" onclick="menuGo(()=>open_('deposit'))">Пополнить</button>
  <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('contests','🎁','Конкурсы')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
- <div class="sec">Бесплатно</div>${game('drop','📦','Дроп недели')}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
+ <div class="sec">Бесплатно</div>${game('drop','📦','Ежедневный дроп')}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
  <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
  ${SOCIALS().map(x=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<button class="mi" onclick='menuGo(()=>openUrl(${esc(JSON.stringify(x.url))}))'><i>${t[0]}</i>${esc(x.name||t[1])}</button>`}).join('')}`;
@@ -733,16 +740,19 @@ async function refCheck(){if(!(tg&&tg.initData))return toast('Открой иг�
 S.drop=null;
 async function dropOpen(){dropSheet();const j=await srv('drop_state',{},{quiet:1});if(j){S.drop=j.drop;dropSheet()}}
 function dropLeft(t){const ms=Math.max(0,t-Date.now()),d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);return d?`${d} д ${h} ч`:h?`${h} ч ${m} мин`:`${m} мин`}
-function dropSheet(res){const D=S.drop;if(!D){sheet(`<h2>📦 Дроп недели</h2><div class="card empty">Загрузка…</div>`);return}
+const DROP_T=D=>D&&D.period==='week'?['Дроп недели','Раз в неделю','недели','в понедельник']:['Ежедневный дроп','Раз в день','дня','завтра'];
+function dropSheet(res,anim){const D=S.drop,T=DROP_T(D);if(!D){sheet(`<h2>📦 ${T[0]}</h2><div class="dropimg"><img src="img/drop.webp" alt=""></div><div class="card empty">Загрузка…</div>`);return}
  const W=D.prizes.reduce((a,x)=>a+x[1],0),left=Math.max(0,D.budget-D.spent),pc=D.budget?left/D.budget*100:0,over=!D.prizes.some(([v])=>v<=left);
- sheet(`<h2>📦 Дроп недели</h2><p class="sub">Раз в неделю бесплатно — звёзды сразу на баланс</p>
- ${res?`<div class="card" style="text-align:center;background:rgba(150,90,255,.25)"><div style="font-size:54px">⭐</div><h2 style="margin:4px 0">+${fmt(res)} ★</h2><small style="color:var(--muted)">Уже на балансе</small></div>`:''}
- <div class="card"><div class="ad-h">Общий фонд недели</div><div style="height:12px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden"><div style="height:100%;width:${pc.toFixed(1)}%;background:linear-gradient(90deg,#9a5cff,#ffb43a)"></div></div>
- <p class="sub" style="text-align:left;margin:6px 0 0">Осталось ★ ${fmt(left)} из ${fmt(D.budget)} · забрали ${D.n} чел. · новый дроп через ${dropLeft(D.end)}</p></div>
+ sheet(`<h2>📦 ${T[0]}</h2><p class="sub">${T[1]} бесплатно — звёзды сразу на баланс</p>
+ ${res?`<div class="dropwin"><div class="burst"></div><div style="font-size:64px;position:relative">⭐</div><h2 style="margin:4px 0;position:relative">+${fmt(res)} ★</h2><small style="color:var(--muted);position:relative">Уже на балансе</small></div>`:`<div class="dropimg ${anim?'shake':''}"><img src="img/drop.webp" alt=""></div>`}
+ <div class="card"><div class="ad-h">Общий фонд ${T[2]}</div><div style="height:12px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden"><div style="height:100%;width:${pc.toFixed(1)}%;background:linear-gradient(90deg,#9a5cff,#ffb43a)"></div></div>
+ <p class="sub" style="text-align:left;margin:6px 0 0">Осталось ★ ${fmt(left)} из ${fmt(D.budget)} · забрали ${D.n} чел. · новый через ${dropLeft(D.end)}</p></div>
  <div class="card"><div class="ad-h">Что можно получить</div><div style="display:flex;gap:6px;flex-wrap:wrap">${D.prizes.map(([v,w])=>`<div style="flex:1;min-width:28%;text-align:center;padding:6px;border-radius:12px;background:rgba(255,255,255,.08);opacity:${v<=left?1:.35}"><b class="star">★ ${fmt(v)}</b><br><small style="color:var(--muted)">${(w/W*100).toFixed(w/W<.1?1:0)}%</small></div>`).join('')}</div>
  <p class="sub" style="text-align:left;margin:6px 0 0;font-size:12px">Когда фонд почти кончился, крупные призы выпасть уже не могут.</p></div>
- <button class="btn sand" ${!D.on||D.done||over?'disabled':''} onclick="dropClaim()">${!D.on?'Дроп выключен':D.done?`✅ Забрано · следующий через ${dropLeft(D.end)}`:over?'Фонд недели закончился':'📦 Забрать дроп'}</button>`)}
-async function dropClaim(){const j=await srv('drop',{},{lock:1});if(!j)return;S.drop=j.drop;dropSheet(j.prize);toast(`+${fmt(j.prize)} ★`)}
+ <button class="btn sand" ${!D.on||D.done||over?'disabled':''} onclick="dropClaim()">${!D.on?'Дроп выключен':D.done?`✅ Забрано · следующий через ${dropLeft(D.end)}`:over?`Фонд ${T[2]} закончился`:'📦 Открыть кейс'}</button>`)}
+async function dropClaim(){const b=document.querySelector('#sheet button.sand');if(b)b.disabled=true;const im=document.querySelector('#sheet .dropimg');if(im)im.classList.add('shake');
+ const [j]=await Promise.all([srv('drop',{},{lock:1,hold:j=>j.prize}),new Promise(r=>setTimeout(r,1300))]);if(!j){if(b)b.disabled=false;if(im)im.classList.remove('shake');return}
+ S.drop=j.drop;dropSheet(j.prize);try{tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred('success')}catch(e){}toast(`+${fmt(j.prize)} ★`)}
 function freeCase(k,ok){if(!FREE_KEYS().includes(k))return toast('Этот кейс удалён');if(k==='ref'){if(!ok)return refSheet();S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
 if(k==='tick'){if(U().tick<1)return toast('Нужен 1 🎫 — приглашай друзей: 3 друга = 1 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
@@ -1128,10 +1138,11 @@ cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hi
   <div class="field"><input id="fgN" type="number" min="0" max="20" placeholder="Сколько чатов" value="${GATE().shares}" style="max-width:120px"><input id="fgC" placeholder="@канал (пусто — без подписки)" value="${GATE().channel?'@'+esc(GATE().channel):''}"></div>
   <button class="btn sand" onclick="ADM.freeGate={hours:Math.max(1,Math.min(168,Math.round(+$('#fgH').value||24))),on:$('#fgOn').checked,shares:Math.max(0,Math.min(20,Math.round(+$('#fgN').value||0))),channel:$('#fgC').value.trim()};saveAdm(1);setTab('admin')">Сохранить</button></div>
  <div class="card"><div class="ad-h">➕ Новый кейс</div><div class="field"><input id="ncN" placeholder="Название"><input id="ncP" type="number" placeholder="Цена ★" style="max-width:110px"></div><button class="btn sand" onclick="ceCreate()">Создать кейс</button></div>`},
-drop(){const D=ADM.drop||{};return `<div class="card"><div class="ad-h">📦 Дроп недели</div>
- <p class="sub" style="text-align:left;margin:0 0 8px">Каждый игрок раз в неделю (с понедельника) бесплатно получает звёзды. Общий фонд на неделю ограничен — когда он кончится, дроп закрывается до следующего понедельника.</p>
+drop(){const D=ADM.drop||{},wk=D.period==='week';return `<div class="card"><div class="ad-h">📦 Дроп (бесплатный кейс)</div>
+ <p class="sub" style="text-align:left;margin:0 0 8px">Каждый игрок раз в день (или раз в неделю) бесплатно открывает кейс со звёздами. Общий фонд на период ограничен — когда он кончится, дроп закрыт до следующего дня/недели.</p>
+ <div class="row" style="gap:8px;margin-bottom:6px"><button class="btn sm ${wk?'ghost':'sand'}" style="flex:1" onclick="ADM.drop=Object.assign({},ADM.drop,{period:'day'});setTab('admin')">Раз в день</button><button class="btn sm ${wk?'sand':'ghost'}" style="flex:1" onclick="ADM.drop=Object.assign({},ADM.drop,{period:'week'});setTab('admin')">Раз в неделю</button></div>
  <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="drOn" ${D.on!==false?'checked':''}> Включён</label>
- <div class="field"><input id="drB" type="number" min="0" value="${D.budget??1000}"><span class="sub" style="align-self:center">★ — фонд на всю неделю</span></div>
+ <div class="field"><input id="drB" type="number" min="0" value="${D.budget??(wk?1000:300)}"><span class="sub" style="align-self:center">★ — фонд ${wk?'на всю неделю':'на день'}</span></div>
  <div class="field"><input id="drP" value="${esc((D.prizes||[[5,40],[10,30],[15,15],[25,10],[50,4],[100,1]]).map(([v,w])=>v+':'+w).join(' '))}"><span class="sub" style="align-self:center;white-space:nowrap">★:вес</span></div>
  <p class="sub" style="text-align:left;margin:0 0 8px;font-size:12px">Призы через пробел в виде <b>звёзды:вес</b>, например <b>5:40 10:30</b>. Проценты считаются автоматически, игроки их видят.</p>
  <button class="btn sand" onclick="dropSave()">Сохранить</button></div>`},
@@ -1164,7 +1175,7 @@ users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
 };
 function ensureUser(id){id=String(id).trim();if(!/^\d{3,15}$/.test(id)){toast('Неверный ID');return null}return id}
 function dropSave(){const pr=$('#drP').value.trim().split(/\s+/).map(x=>x.split(':').map(Number)).filter(([v,w])=>v>0&&w>0).map(([v,w])=>[Math.round(v),w]);if(!pr.length)return toast('Укажи призы, например 5:40 10:30');
- ADM.drop={on:$('#drOn').checked,budget:Math.max(0,Math.round(+$('#drB').value||0)),prizes:pr};saveAdm(1);setTab('admin');toast('Дроп сохранён')}
+ ADM.drop={period:(ADM.drop||{}).period==='week'?'week':'day',on:$('#drOn').checked,budget:Math.max(0,Math.round(+$('#drB').value||0)),prizes:pr};saveAdm(1);setTab('admin');toast('Дроп сохранён')}
 async function adApi(op,body){if(!(tg&&tg.initData)){toast('Открой через бота в Telegram');return null}
  try{const j=await API('api/admin/'+op,body);if(!j.ok){toast(j.err||'Ошибка');return null}
   if(j.user&&j.user.id===ME.id)sync(j.user);return j}catch(e){toast('Нет связи с сервером');return null}}
