@@ -18,6 +18,13 @@ const bet = v => { const n = Math.round(Number(v)); return n >= 1 && n <= MAX_BE
 class GameError extends Error {}
 const fail = m => { throw new GameError(m); };
 
+const KYIV = "Europe/Kyiv";
+function dayKey(t = Date.now()) { try { return new Date(t).toLocaleDateString("sv-SE", { timeZone: KYIV }); } catch { return new Date(t).toISOString().slice(0, 10); } }
+// неделя с понедельника 00:00 UTC
+function weekStart(t = Date.now()) { const d = new Date(t); const day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day); }
+const weekKey = () => new Date(weekStart()).toISOString().slice(0, 10), weekEnd = () => weekStart() + 7 * 864e5;
+const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 4], [100, 1]];   // [звёзд, вес]
+
 export class Game {
   constructor(storage) { this.s = storage; }
 
@@ -71,6 +78,8 @@ export class Game {
     const st = (await this.s.get("stats")) || { dep: 0, bets: 0, wins: 0 };
     st[k] = (st[k] || 0) + Math.round(v);
     await this.s.put("stats", st);
+    const dk = "sd:" + dayKey(), dd = (await this.s.get(dk)) || {};   // то же по дням — для графиков в админке
+    dd[k] = (dd[k] || 0) + Math.round(v); await this.s.put(dk, dd);
   }
 
   // статистика по отдельной игре: сколько раз играли, сколько выиграли, сколько поставили и выплатили
@@ -161,6 +170,7 @@ export class Game {
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
     }
     await this.s.put("u:" + uid, u);
+    if (this.isNew) await this.stat("new", 1);
     return { ok: true, ...res, me: this.view(u) };
   }
 
@@ -233,6 +243,26 @@ export class Game {
     await this.giveGift(u, uid, g, "Кейс " + c.n);
     if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после 5 приглашённых
     return { prize: g.slug };
+  }
+
+  // ---- еженедельный дроп: раз в неделю на игрока, общий бюджет на неделю ----
+  dropCfg() { const c = this.st.drop || {}; return { on: c.on !== false, budget: Math.max(0, Math.round(c.budget ?? 1000)), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : DROP_PRIZES }; }
+  async op_drop_state(u) {
+    const c = this.dropCfg(), w = weekKey(), p = (await this.s.get("drop:" + w)) || { spent: 0, n: 0 };
+    return { drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: u.dropW === w, end: weekEnd() } };
+  }
+  async op_drop(u, uid) {
+    const c = this.dropCfg(), w = weekKey();
+    if (!c.on) fail("Дроп сейчас выключен");
+    if (u.dropW === w) fail("Ты уже забрал дроп на этой неделе");
+    const k = "drop:" + w, p = (await this.s.get(k)) || { spent: 0, n: 0 }, left = c.budget - p.spent;
+    const ok = c.prizes.filter(([v]) => v <= left);
+    if (!ok.length) fail("Дроп на этой неделе закончился — новый в понедельник");
+    let r = rand() * ok.reduce((a, x) => a + x[1], 0), v = ok[0][0];
+    for (const [a, wt] of ok) { if ((r -= wt) <= 0) { v = a; break; } }
+    p.spent += v; p.n++; await this.s.put(k, p);
+    u.dropW = w; u.bal += v; await this.stat("drop", v); await this.feed(u, uid, "Дроп", null, v);
+    return { prize: v, drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: true, end: weekEnd() } };
   }
 
   // ---- яйца ----
@@ -540,7 +570,8 @@ export class Game {
       const aud = new Set(users.map(u => u.id));
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
       const gstats = (await this.s.get("gstats")) || {};
-      return { ok: true, stats, gstats, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
+      const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
+      return { ok: true, stats, gstats, days, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
       const text = String(d.text || "").trim().slice(0, 4000);
