@@ -477,9 +477,12 @@ export class Game {
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
       fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
+    const pct = Math.max(0, Math.min(50, +this.st.wdFee || 0)), fee = pct ? Math.ceil(g.price * pct / 100) : 0;   // комиссия за вывод, ★ с баланса
+    if (fee && (u.bal || 0) < fee) fail(`Комиссия за вывод — ${fee} ★ (${pct}%). Пополни баланс`);
     u.inv.splice(i, 1);
+    if (fee) { u.bal -= fee; await this.stat("fee", fee); }
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
-    await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, t: Date.now(), st: "new" });
+    await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, fee, t: Date.now(), st: "new" });
     await this.s.put("wd:" + uid, Date.now());
     return { wd: { id, slug: g.slug, name: g.name, price: g.price, tgid: g.tgid || null } };
   }
@@ -492,6 +495,7 @@ export class Game {
     const k = "wdq:" + d.id, w = await this.s.get(k);
     if (!w || w.uid !== uid || w.st !== "new") return {};
     await this.s.delete(k); await this.s.delete("wd:" + uid); u.inv.push(w.slug);
+    if (w.fee) u.bal = (u.bal || 0) + w.fee;     // комиссию возвращаем
     return {};
   }
 

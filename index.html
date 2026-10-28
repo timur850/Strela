@@ -345,7 +345,7 @@ const DEF={admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['minWd','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['minWd','wdFee','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -487,8 +487,9 @@ profile(){
 admin(){return adminView()}
 };
 const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
+const WD_FEE=()=>Math.max(0,Math.min(50,+ADM.wdFee||0)),wdFeeOf=g=>WD_FEE()?Math.ceil(g.price*WD_FEE()/100):0;
 function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);
- sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p><button class="btn sand" style="margin-top:14px" onclick="withdraw(${i})">📤 Вывести</button>`)}
+ sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p>${wdFeeOf(g)?`<div class="card" style="text-align:center;margin-top:10px">Комиссия за вывод: <b><span class="star">★</span> ${fmt(wdFeeOf(g))}</b> (${WD_FEE()}%)<br><small style="color:var(--muted)">Спишется с баланса. Если вывод отменится — вернётся.</small></div>`:''}<button class="btn sand" style="margin-top:14px" ${wdFeeOf(g)>(U().bal||0)?'disabled':''} onclick="withdraw(${i})">${wdFeeOf(g)>(U().bal||0)?`Нужно ★ ${fmt(wdFeeOf(g))} на балансе`:wdFeeOf(g)?`📤 Вывести за ★ ${fmt(wdFeeOf(g))}`:'📤 Вывести'}</button>`)}
 let wdBusy=false;
 async function withdraw(i){const s=U().inv[i],g=giftBy(s);if(!g||wdBusy)return;
  if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');
@@ -990,6 +991,8 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="field"><input id="pR" type="number" placeholder="★ за 1 TON" value="${ADM.tonRate||150}"><span class="sub" style="align-self:center">★ за 1 TON</span></div>
  <div class="ad-h" style="margin-top:14px">📤 Минимальный вывод</div>
  <div class="field"><input id="pMW" type="number" min="0" max="100000" placeholder="★" value="${MIN_WD()}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — подарки дешевле можно только продать</span></div>
+ <div class="ad-h" style="margin-top:14px">💸 Комиссия за вывод</div>
+ <div class="field"><input id="pWF" type="number" min="0" max="50" step="0.5" placeholder="%" value="${WD_FEE()}" onfocus="this.select()"><span class="sub" style="align-self:center">% от цены подарка, звёздами с баланса (0 — без комиссии)</span></div>
  <div class="ad-h" style="margin-top:14px">🎁 Бонус новым игрокам</div>
  <div class="field"><input id="pSB" type="number" placeholder="★ при входе" value="${ADM.startBal||0}"><span class="sub" style="align-self:center">★</span><input id="pST" type="number" placeholder="🎫" value="${ADM.startTick||0}" style="max-width:80px"><span class="sub" style="align-self:center">🎫</span></div>
  <button class="btn sand" onclick="paySave()">Сохранить</button></div>
@@ -1138,7 +1141,7 @@ function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);l
  /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
  if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';
  if(r>0)ADM.tonRate=r;else warn=warn||'курс TON не указан — оставил прежний';
- ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
+ ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));ADM.wdFee=Math.max(0,Math.min(50,+$('#pWF').value||0));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
 function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.filter(([s,w])=>giftBy(s)&&w>0);if(!L.length)return toast('Добавьте хотя бы 1 подарок с весом > 0');
  cfg.items=L.map(x=>[x[0],x[1]]);cfg.cover=$('#ceC').value;if(!c.free){cfg.p=Math.max(1,Math.round(+$('#ceP').value||c.p));cfg.lim=$('#ceL').classList.contains('on');cfg.hidden=$('#ceH').classList.contains('on')}
  saveAdm();closeSheet();setTab('admin');toast('Кейс сохранён ✅')}
