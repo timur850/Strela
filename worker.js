@@ -291,7 +291,8 @@ async function bizTransfer(env, slug, toId) {
 async function handleUpdate(env, origin, upd) {
   // подключение/отключение бота к аккаунту-складу (Telegram Business)
   if (upd.business_connection) {
-    const b = upd.business_connection, owner = b.user && isOwner(b.user.username);
+    const b = upd.business_connection, un = String((b.user && b.user.username) || "").toLowerCase();
+    const owner = b.user && (isOwner(b.user.username) || un === String(CONFIG.GIFT_ACC || "").replace("@", "").toLowerCase());   // склад: владелец или аккаунт для подарков
     if (owner) {
       const r = b.rights || {};
       await putKey(env, "bizconn", { id: b.id, on: !!b.is_enabled, user: b.user.username, chat: b.user_chat_id, rights: r, t: Date.now() });

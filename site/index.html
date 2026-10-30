@@ -380,7 +380,7 @@ function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.js
   SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();maintShow();applyTheme();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
-let SUPPORT='Sdelka_ton';let GIFT_ACC='Sdelka_ton'; // аккаунт, куда игроки отправляют подарки
+let SUPPORT='Sdelka_ton';let GIFT_ACC='StrelaCase_bo_support'; // аккаунт, куда игроки отправляют подарки
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TASK_TYPES={channel:'📢 Подписка на канал',chat:'💬 Вступить в чат',link:'🔗 Открыть ссылку',story:'📸 История',bio:'🧾 Ссылка в био',home:'🏖️ На рабочий стол'};
 const TASK_HINT={channel:'https://t.me/твой_канал',chat:'https://t.me/твой_чат',link:'https://youtube.com/@канал',story:'Ссылка на картинку/видео для истории (https://...)',bio:'Текст для био, напр. t.me/StrelaCase_bot',home:'— ссылка не нужна'};
