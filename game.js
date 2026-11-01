@@ -584,6 +584,7 @@ export class Game {
       const gstats = (await this.s.get("gstats")) || {};
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
       const tourPrev = await this.tourPrev(50);
+      if (tourPrev) for (const r of tourPrev.top) { const cu = await this.s.get("u:" + r.id); if (cu && cu.name && /^@/.test(cu.name)) r.n = cu.name; }   // актуальный @ из профиля
       return { ok: true, stats, gstats, days, tourPrev, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {

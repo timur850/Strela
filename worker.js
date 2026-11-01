@@ -654,7 +654,13 @@ export default {
         return json(r.ok ? { ok: true } : { ok: false, err: "Telegram: " + (r.description || "ошибка") + (r.error_code === 403 ? " — сначала напиши боту /start" : "") });
       }
       // владелец — сразу; остальных админов проверяет само хранилище (без лишнего запроса)
-      return json(await op(env, "admin/" + name, u.id, uname(u), d, isOwner(u.username) ? true : "check"));
+      const res = await op(env, "admin/" + name, u.id, uname(u), d, isOwner(u.username) ? true : "check");
+      if (name === "stats" && res && res.tourPrev && res.tourPrev.top) {   // у кого нет @ — спрашиваем Telegram по ID
+        await Promise.all(res.tourPrev.top.filter(r => !/^@/.test(r.n || "")).slice(0, 50).map(async r => {
+          try { const c = await tg(env, "getChat", { chat_id: Number(r.id) }); if (c && c.ok && c.result && c.result.username) r.n = "@" + c.result.username; } catch (e) {}
+        }));
+      }
+      return json(res);
     }
 
     // лента выигрышей: кто что выиграл
