@@ -122,6 +122,14 @@ export class Game {
     r[0] = u.name; r[1] += Math.round(n); t.rows[this.uid] = r;
     await this.s.put("tour", t);
   }
+  // итоги прошлой недели (если неделя кончилась, а новую ещё никто не начал — берём её)
+  async tourPrev(k = 50) {
+    let t = await this.s.get("tour");
+    if (!t || Date.now() < t.end) t = await this.s.get("tour:prev");
+    if (!t || !t.rows) return null;
+    const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
+    return { start: t.start, end: t.end, count: Object.keys(t.rows).length, top };
+  }
   async tourTop(k = 10) {
     const t = await this.tourGet();
     const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
@@ -159,7 +167,7 @@ export class Game {
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
-    if (op === "tour") return { ok: true, ...(await this.tourTop(10)) };
+    if (op === "tour") { const p = await this.tourPrev(3); return { ok: true, ...(await this.tourTop(10)), prev: p && { end: p.end, top: p.top.map(r => ({ n: r.n, v: r.v })) } }; }
     this.uid = uid;
     const u = await this.user(uid, name);
     const banned = (this.st.banned || []).map(String).includes(uid);
@@ -575,7 +583,8 @@ export class Game {
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
       const gstats = (await this.s.get("gstats")) || {};
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
-      return { ok: true, stats, gstats, days, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
+      const tourPrev = await this.tourPrev(50);
+      return { ok: true, stats, gstats, days, tourPrev, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
       const text = String(d.text || "").trim().slice(0, 4000);
