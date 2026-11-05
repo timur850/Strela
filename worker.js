@@ -144,6 +144,14 @@ export class Store {
       } catch (e) { console.log("mig dropoff", e); }
       await state.storage.put("mig:dropoff_hunt1", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: ещё слабее награды охоты
+      if (await state.storage.get("mig:hunt2")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw; st.hunt = Object.assign({}, st.hunt, { prizes: [[10, 45], [15, 30], [25, 18], [50, 7]] });
+          await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); }
+      } catch (e) { console.log("mig hunt2", e); }
+      await state.storage.put("mig:hunt2", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";

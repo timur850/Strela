@@ -1249,7 +1249,7 @@ function huntAdm(){const H=ADM.hunt||{};return `<div class="card"><div class="ad
  <p class="sub" style="text-align:left;margin:0 0 8px">Каждую неделю у каждого игрока 5 своих тайников в разных играх (кейс на определённую букву, глубина в шахте, высокий x в краше, мины, край в plinko, рискованный апгрейд, кокос, контракт, три в ряд в слотах). Нашёл все — открывает сундук.</p>
  <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="huOn" ${H.on!==false?'checked':''}> Включена</label>
  <div class="field"><input id="huMin" type="number" min="1" value="${H.minBet??25}"><span class="sub" style="align-self:center">★ — минимальная ставка, которая считается</span></div>
- <div class="field"><input id="huP" value="${esc((H.prizes||[[25,45],[50,30],[100,18],[200,7]]).map(([v,w])=>v+':'+w).join(' '))}"><span class="sub" style="align-self:center;white-space:nowrap">★:вес</span></div>
+ <div class="field"><input id="huP" value="${esc((H.prizes||[[10,45],[15,30],[25,18],[50,7]]).map(([v,w])=>v+':'+w).join(' '))}"><span class="sub" style="align-self:center;white-space:nowrap">★:вес</span></div>
  <button class="btn sand" onclick="huntSave()">Сохранить</button></div>`}
 function huntSave(){const pr=$('#huP').value.trim().split(/\s+/).map(x=>x.split(':').map(Number)).filter(([v,w])=>v>0&&w>0).map(([v,w])=>[Math.round(v),w]);if(!pr.length)return toast('Укажи призы, например 100:50 200:30');
  ADM.hunt={on:$('#huOn').checked,minBet:Math.max(1,Math.round(+$('#huMin').value||25)),prizes:pr};saveAdm(1);setTab('admin');toast('Охота сохранена')}
