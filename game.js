@@ -247,12 +247,16 @@ export class Game {
       c = L.CASES().find(x => x.n === d.name);
       if (!c) fail("Кейс не найден");
       if ((this.st.off || {}).cases) fail("Игра выключена");
-      await this.charge(u, c.p);
+      const n = Math.max(1, Math.min(5, Math.floor(+d.n) || 1));   // открытие 1–5 кейсов за раз
+      await this.charge(u, c.p * n);
+      const prizes = [];
+      for (let k = 0; k < n; k++) { const gk = L.caseGift(c); await this.giveGift(u, uid, gk, "Кейс " + c.n); prizes.push(gk.slug); }
+      return { prize: prizes[0], prizes };
     }
     const g = L.caseGift(c);
     await this.giveGift(u, uid, g, "Кейс " + c.n);
     if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после 5 приглашённых
-    return { prize: g.slug };
+    return { prize: g.slug, prizes: [g.slug] };
   }
 
   // ---- дроп: раз в день (или неделю) на игрока, общий фонд на период ----
