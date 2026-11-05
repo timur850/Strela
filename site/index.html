@@ -341,6 +341,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="i18n.js"></script>
 <script src="logic.js"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -496,7 +497,7 @@ tour(){
 },
 profile(){
   const inv=U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
-  return `<div class="card" style="text-align:center"><h1 style="font-size:22px">Приглашай друзей и получай <span style="background:var(--sea);padding:0 8px;border-radius:8px">10%</span> от их пополнений!</h1>
+  return `${langCard()}<div class="card" style="text-align:center"><h1 style="font-size:22px">Приглашай друзей и получай <span style="background:var(--sea);padding:0 8px;border-radius:8px">10%</span> от их пополнений!</h1>
   <p class="sub">А так же 🎫 1 за каждых 3 приглашённых друзей</p>
   <div class="row" style="margin-bottom:12px"><div class="card stat" style="margin:0"><b>${fmt(U().refCount||0)}</b><small>Приглашено</small></div><div class="card stat" style="margin:0"><b>${fmt(U().refEarn||0)} ★</b><small>Заработано</small></div></div>
   <div class="card" style="margin:0 0 12px;padding:10px 12px;font:700 13px Nunito,sans-serif;word-break:break-all;user-select:all;-webkit-user-select:all" onclick="copyRef()">${refLink()}</div>
@@ -617,6 +618,7 @@ function goBack(){stopAll();S.spinTok=(S.spinTok||0)+1;S.stack.pop();if(S.stack.
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
 if(IS_ADMIN)document.querySelector('.nav .adm').classList.add('vis');
 /* ===== боковое меню (кнопка ☰ или свайп от левого края) ===== */
+function langCard(){return `<div class="card"><div class="row" style="align-items:center;gap:8px"><b style="flex:1">🌐 Язык / Language</b><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:0 0 auto" onclick="setLang('ru')">🇷🇺 Русский</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:0 0 auto" onclick="setLang('en')">🇬🇧 English</button></div></div>`}
 function menuGo(f){menuClose();closeSheet();setTimeout(f,120)}
 function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack.length?'on':''}" onclick="menuGo(()=>setTab('${t}'))"><i>${ic}</i>${n}</button>`,
  game=(id,ic,n)=>ADM.off[id]?'':`<button class="mi" onclick="menuGo(()=>{setTab('games');open_('${id}')})"><i>${ic}</i>${n}</button>`,u=U();
@@ -626,6 +628,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('contests','🎁','Конкурсы')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
  <div class="sec">Бесплатно</div>${game('drop','📦','Ежедневный дроп')}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
  <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
+ <div class="sec">🌐 Язык / Language</div><div class="row" style="gap:6px;padding:0 4px"><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:1" onclick="setLang('ru')">🇷🇺 RU</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:1" onclick="setLang('en')">🇬🇧 EN</button></div>
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
  ${SOCIALS().map(x=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<button class="mi" onclick='menuGo(()=>openUrl(${esc(JSON.stringify(x.url))}))'><i>${t[0]}</i>${esc(x.name||t[1])}</button>`}).join('')}`;
  $('#drwBg').classList.add('show');try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred('light')}catch(e){}}

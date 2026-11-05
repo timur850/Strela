@@ -31,6 +31,10 @@ const UPDATES = ["message", "pre_checkout_query", "business_connection"];
 const hookBad = (r, origin) => r.url !== origin + "/webhook" || UPDATES.some(x => !(r.allowed_updates || []).includes(x));
 const BUTTON_TEXT = "🏝 Играть";
 const WELCOME = "🏹 <b>" + NAME + "</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
+const WELCOME_EN = "🏹 <b>" + NAME + "</b>\n\nCases, crash, mines, plinko, PvP and gifts from Fragment 🎁\nTap the button below to open the game 👇";
+// язык игрока по Telegram: русскоязычные регионы — русский, остальные — английский
+const RU_LANGS = ["ru", "uk", "be", "kk", "uz", "ky", "tg", "az", "hy", "ka"];
+const isEn = from => { const l = String((from && from.language_code) || "ru").toLowerCase().slice(0, 2); return !RU_LANGS.includes(l); };
 
 const enc = new TextEncoder();
 const isOwner = u => OWNERS.some(o => o.toLowerCase() === String(u || "").toLowerCase());
@@ -226,6 +230,7 @@ async function setupBot(env, origin, hookKey, dropPending) {
   const a = await tg(env, "setWebhook", { url: `${origin}/webhook`, secret_token: hookKey, drop_pending_updates: !!dropPending, allowed_updates: UPDATES });
   const b = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: BUTTON_TEXT, web_app: { url: origin + "/" } } });
   await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Открыть " + NAME }, { command: "admin", description: "Админ-панель" }, { command: "id", description: "Мой ID" }, { command: "help", description: "Поддержка" }] });
+  await tg(env, "setMyCommands", { language_code: "en", commands: [{ command: "start", description: "Open " + NAME }, { command: "admin", description: "Admin panel" }, { command: "id", description: "My ID" }, { command: "help", description: "Support" }] });
   return { a, b };
 }
 
@@ -323,8 +328,9 @@ async function handleUpdate(env, origin, upd) {
   // запоминаем чат владельца, чтобы присылать ему заявки на вывод
   if (msg.from && isOwner(msg.from.username) && msg.chat.type === "private") await putKey(env, "ownerchat:" + msg.from.username.toLowerCase(), String(msg.chat.id));
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
-  const kb = { inline_keyboard: [[{ text: BUTTON_TEXT, web_app: { url: origin + "/" } }],
-    [{ text: "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
+  const en = isEn(msg.from);
+  const kb = { inline_keyboard: [[{ text: en ? "🏝 Play" : BUTTON_TEXT, web_app: { url: origin + "/" } }],
+    [{ text: en ? "💬 Support" : "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
   if (cmd === "/start" && msg.from && msg.chat.type === "private") await putKey(env, "bu:" + msg.from.id, "1");
   if (cmd === "/start") {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
@@ -334,7 +340,7 @@ async function handleUpdate(env, origin, upd) {
       if (why) await op(env, "ref_qualify", msg.from.id, uname(msg.from), { why });
     }
   }
-  if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, parse_mode: "HTML", reply_markup: kb });
+  if (cmd === "/start") await tg(env, "sendMessage", { chat_id: chat, text: en ? WELCOME_EN : WELCOME, parse_mode: "HTML", reply_markup: kb });
   if ((cmd === "/start" || cmd === "/admin") && msg.from && isOwner(msg.from.username)) {
     const pend = await op(env, "admin/wd_count", msg.from.id, "", {}, true);
     if (pend.ok && pend.n) await tg(env, "sendMessage", { chat_id: chat, text: `📤 Ждут выдачи: ${pend.n} заявок на вывод — открой /admin → Статистика` });
@@ -390,8 +396,8 @@ async function handleUpdate(env, origin, upd) {
     }
     await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: t });
   }
-  else if (cmd === "/help") await tg(env, "sendMessage", { chat_id: chat, text: "Поддержка: " + SUPPORT });
-  else await tg(env, "sendMessage", { chat_id: chat, text: "Открой игру кнопкой ниже 👇", reply_markup: kb });
+  else if (cmd === "/help") await tg(env, "sendMessage", { chat_id: chat, text: (en ? "Support: " : "Поддержка: ") + SUPPORT });
+  else await tg(env, "sendMessage", { chat_id: chat, text: en ? "Open the game with the button below 👇" : "Открой игру кнопкой ниже 👇", reply_markup: kb });
 }
 
 export default {
