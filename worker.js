@@ -152,6 +152,15 @@ export class Store {
       } catch (e) { console.log("mig hunt2", e); }
       await state.storage.put("mig:hunt2", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: максимум приза дропа — 50 ★
+      if (await state.storage.get("mig:drop50")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (st.drop && Array.isArray(st.drop.prizes)) { st.drop.prizes = st.drop.prizes.filter(([v]) => v <= 50); if (!st.drop.prizes.length) delete st.drop.prizes; }
+          await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); }
+      } catch (e) { console.log("mig drop50", e); }
+      await state.storage.put("mig:drop50", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";

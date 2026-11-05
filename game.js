@@ -25,7 +25,7 @@ function weekStart(t = Date.now()) { const d = new Date(t); const day = (d.getUT
 const weekKey = () => new Date(weekStart()).toISOString().slice(0, 10), weekEnd = () => weekStart() + 7 * 864e5;
 // до полуночи по Киеву
 function dayEnd(t = Date.now()) { try { const [h, m, s] = new Intl.DateTimeFormat("en-GB", { timeZone: KYIV, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t).split(":").map(Number); return t + (86400 - h * 3600 - m * 60 - s) * 1000; } catch { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1); } }
-const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 4], [100, 1]];   // [звёзд, вес]
+const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 5]];   // [звёзд, вес]
 /* ===== охота за сокровищами: у каждого игрока свои 5 тайников, каждую неделю новые ===== */
 const HUNT_EMO = ["🐚", "🦪", "🐙", "🦀", "⭐"];
 const HUNT_PRIZES = [[10, 45], [15, 30], [25, 18], [50, 7]];
