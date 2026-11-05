@@ -653,12 +653,19 @@ export class Game {
       const j = await this.s.get("bc:job");
       const bc = j ? { total: j.ids.length, sent: j.sent, failed: j.failed, done: j.done, stopped: !!j.stopped, text: j.text.slice(0, 80), t: j.t } : null;
       const aud = new Set(users.map(u => u.id));
+      let total = all.size, after = all.size ? [...all.keys()].pop() : null;   // реальное число игроков: дочитываем всех по страницам
+      while (after && total % 1000 === 0) {
+        const page = await this.s.list({ prefix: "u:", limit: 1000, startAfter: after });
+        if (!page.size) break;
+        for (const k of page.keys()) { aud.add(k.slice(2)); after = k; }
+        total += page.size; if (page.size < 1000) break;
+      }
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
       const gstats = (await this.s.get("gstats")) || {};
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
       const tourPrev = await this.tourPrev(50);
       if (tourPrev) for (const r of tourPrev.top) { const cu = await this.s.get("u:" + r.id); if (cu && cu.name && /^@/.test(cu.name)) r.n = cu.name; }   // актуальный @ из профиля
-      return { ok: true, stats, gstats, days, tourPrev, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
+      return { ok: true, stats, gstats, days, tourPrev, total, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
       const text = String(d.text || "").trim().slice(0, 4000);
