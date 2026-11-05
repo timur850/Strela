@@ -134,6 +134,16 @@ export class Store {
       } catch (e) { console.log("mig drop200", e); }
       await state.storage.put("mig:drop200", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: дроп временно выключен, награды охоты слабее
+      if (await state.storage.get("mig:dropoff_hunt1")) return;
+      try { const raw = await state.storage.get("settings");
+        const st = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
+        st.drop = Object.assign({}, st.drop, { on: false });
+        if (st.hunt) st.hunt.prizes = [[25, 45], [50, 30], [100, 18], [200, 7]];
+        await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st);
+      } catch (e) { console.log("mig dropoff", e); }
+      await state.storage.put("mig:dropoff_hunt1", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";

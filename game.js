@@ -28,7 +28,7 @@ function dayEnd(t = Date.now()) { try { const [h, m, s] = new Intl.DateTimeForma
 const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 4], [100, 1]];   // [звёзд, вес]
 /* ===== охота за сокровищами: у каждого игрока свои 5 тайников, каждую неделю новые ===== */
 const HUNT_EMO = ["🐚", "🦪", "🐙", "🦀", "⭐"];
-const HUNT_PRIZES = [[100, 50], [200, 30], [300, 13], [500, 7]];
+const HUNT_PRIZES = [[25, 45], [50, 30], [100, 18], [200, 7]];
 const pick = a => a[randInt(a.length)];
 const HUNT_TYPES = {
   case:     L => { const C = L.CASES().filter(c => c.p > 0 && c.p <= 1500); const c = pick(C.length ? C : L.CASES()); return { name: c.n, ch: .3, hint: `Спрятано в кейсе на букву «${c.n[0]}»` }; },
