@@ -26,6 +26,26 @@ const weekKey = () => new Date(weekStart()).toISOString().slice(0, 10), weekEnd 
 // до полуночи по Киеву
 function dayEnd(t = Date.now()) { try { const [h, m, s] = new Intl.DateTimeFormat("en-GB", { timeZone: KYIV, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t).split(":").map(Number); return t + (86400 - h * 3600 - m * 60 - s) * 1000; } catch { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1); } }
 const DROP_PRIZES = [[5, 40], [10, 30], [15, 15], [25, 10], [50, 4], [100, 1]];   // [звёзд, вес]
+/* ===== охота за сокровищами: у каждого игрока свои 5 тайников, каждую неделю новые ===== */
+const HUNT_EMO = ["🐚", "🦪", "🐙", "🦀", "⭐"];
+const HUNT_PRIZES = [[100, 50], [200, 30], [300, 13], [500, 7]];
+const pick = a => a[randInt(a.length)];
+const HUNT_TYPES = {
+  case:     L => { const C = L.CASES().filter(c => c.p > 0 && c.p <= 1500); const c = pick(C.length ? C : L.CASES()); return { name: c.n, ch: .3, hint: `Спрятано в кейсе на букву «${c.n[0]}»` }; },
+  dig:      () => ({ depth: pick([60, 80, 100]), ch: .5, hint: "Глубоко под землёй — глубже, чем кажется" }),
+  crash:    () => ({ m: pick([2.5, 3, 4]), ch: .5, hint: "Там, где волна поднимается очень высоко" }),
+  mines:    () => ({ k: pick([4, 5, 6]), ch: .5, hint: "Под песком, после нескольких удачных шагов подряд" }),
+  plinko:   () => ({ ch: 1, hint: "Шарик должен упасть у самого края" }),
+  upgrade:  () => ({ max: pick([30, 40, 50]), ch: 1, hint: "Рискни и победи, когда шанс против тебя" }),
+  egg:      () => { const e = pick(EGGS); return { price: e[2], ch: .3, hint: `Внутри кокоса за ★ ${e[2]}` }; },
+  contract: () => ({ n: pick([3, 4, 5]), ch: .6, hint: "Собери много подарков в одну сделку" }),
+  slots:    () => ({ ch: .5, hint: "Когда три одинаковых встанут в ряд" }),
+};
+const HUNT_CHECK = {
+  case: (s, e) => e.name === s.name, dig: (s, e) => e.depth >= s.depth, crash: (s, e) => e.m >= s.m, mines: (s, e) => e.open >= s.k,
+  plinko: (s, e) => e.k <= 1 || e.k >= 7, upgrade: (s, e) => e.won && e.chance <= s.max, egg: (s, e) => e.price === s.price,
+  contract: (s, e) => e.n >= s.n, slots: (s, e) => e.three,
+};
 
 export class Game {
   constructor(storage) { this.s = storage; }
@@ -46,7 +66,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0 }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u) }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -174,7 +194,9 @@ export class Game {
     if (banned && op !== "me") fail("Аккаунт заблокирован");
     const fn = this["op_" + op];
     if (!fn) fail("Неизвестное действие");
+    this._hf = null; this.huntEnsure(u);
     const res = (await fn.call(this, u, uid, d || {})) || {};
+    if (this._hf) res.hunt = this._hf;
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
@@ -216,6 +238,7 @@ export class Game {
     const r = S.digRun(rand, K, tp), unit = this.L.R("dig") / S.digM(K, tp);
     const win = S.digPay(r.ev, v, unit);
     if (win) await this.payout(u, uid, win, GAME_NAMES.dig);
+    await this.huntHit(u, uid, { t: "dig", depth: Math.max(0, ...r.ev.map(e => e.y || 0)) }, v);
     return { world: r.world, tier: r.tier, k: K, unit, win, bet: v, x: +(win / v).toFixed(2) };
   }
 
@@ -251,12 +274,50 @@ export class Game {
       await this.charge(u, c.p * n);
       const prizes = [];
       for (let k = 0; k < n; k++) { const gk = L.caseGift(c); await this.giveGift(u, uid, gk, "Кейс " + c.n); prizes.push(gk.slug); }
+      await this.huntHit(u, uid, { t: "case", name: c.n }, c.p);
       return { prize: prizes[0], prizes };
     }
     const g = L.caseGift(c);
     await this.giveGift(u, uid, g, "Кейс " + c.n);
     if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после 5 приглашённых
     return { prize: g.slug, prizes: [g.slug] };
+  }
+
+  // ---- охота за сокровищами ----
+  huntCfg() { const c = this.st.hunt || {}; return { on: c.on !== false, minBet: Math.max(1, Math.round(c.minBet ?? 25)), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : HUNT_PRIZES }; }
+  huntEnsure(u) {
+    const c = this.huntCfg(); if (!c.on) return;
+    const k = weekKey(); if (u.hunt && u.hunt.k === k) return;
+    const types = Object.keys(HUNT_TYPES).sort(() => rand() - .5).slice(0, 5);   // 5 разных мест из 9, у каждого игрока свои
+    u.hunt = { k, spots: types.map((t, i) => ({ t, e: HUNT_EMO[i], got: false, ...HUNT_TYPES[t](this.L) })), claimed: false };
+  }
+  huntView(u) {
+    const c = this.huntCfg(); if (!c.on || !u.hunt || u.hunt.k !== weekKey()) return c.on ? null : { off: true };
+    return { spots: u.hunt.spots.map(s => ({ e: s.e, got: s.got, hint: s.hint })), claimed: u.hunt.claimed, end: weekEnd() };
+  }
+  async huntHit(u, uid, ev, amount) {
+    const c = this.huntCfg(); if (!c.on || this._hf) return;
+    if (amount != null && amount < c.minBet) return;            // мелкие ставки не считаются
+    this.huntEnsure(u); const H = u.hunt; if (!H || H.claimed) return;
+    for (const s of H.spots) {
+      if (s.got || s.t !== ev.t || !HUNT_CHECK[s.t](s, ev) || rand() >= s.ch) continue;
+      s.got = true; this._hf = { e: s.e, n: H.spots.filter(x => x.got).length }; return;
+    }
+  }
+  async op_hunt_state(u) {
+    const w = (await this.s.get("hunt:win:" + weekKey())) || [];
+    return { cfg: { prizes: this.huntCfg().prizes, minBet: this.huntCfg().minBet }, winners: w.slice(0, 10) };
+  }
+  async op_hunt_claim(u, uid) {
+    const c = this.huntCfg(); if (!c.on) fail("Охота сейчас выключена");
+    this.huntEnsure(u); const H = u.hunt;
+    if (H.claimed) fail("Сундук этой недели уже открыт");
+    if (!H.spots.every(s => s.got)) fail("Сначала найди все 5 сокровищ");
+    let r = rand() * c.prizes.reduce((a, x) => a + x[1], 0), v = c.prizes[0][0];
+    for (const [a, w] of c.prizes) { if ((r -= w) <= 0) { v = a; break; } }
+    H.claimed = true; await this.payout(u, uid, v, "Охота за сокровищами");
+    const k = "hunt:win:" + weekKey(), W = (await this.s.get(k)) || []; W.push({ n: u.name, v, t: Date.now() }); await this.s.put(k, W.slice(0, 50));
+    return { prize: v };
   }
 
   // ---- дроп: раз в день (или неделю) на игрока, общий фонд на период ----
@@ -289,6 +350,7 @@ export class Game {
     await this.charge(u, price);
     const g = this.L.pickGift(price, this.L.R("eggs"));
     await this.giveGift(u, uid, g, GAME_NAMES.egg);
+    await this.huntHit(u, uid, { t: "egg", price }, price);
     return { prize: g.slug };
   }
 
@@ -302,6 +364,7 @@ export class Game {
     const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
     if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
     await this.gstat("upgrade", a.price, won ? b.price : 0);
+    await this.huntHit(u, uid, { t: "upgrade", won, chance: ch }, a.price);
     return { won, chance: ch, roll };
   }
 
@@ -317,6 +380,7 @@ export class Game {
     const g = L.pickGift(sum, L.R("contract"));
     await this.giveGift(u, uid, g, GAME_NAMES.contract);
     await this.gstat("contract", sum, g.price);
+    await this.huntHit(u, uid, { t: "contract", n: items.length }, sum);
     return { prize: g.slug };
   }
 
@@ -363,6 +427,7 @@ export class Game {
     const x = Math.max(1, shown >= 1 && shown < m ? shown : m);
     await this.payout(u, uid, g.bet * x, GAME_NAMES.crash);
     const p = r.players.find(p => p.id === uid); if (p) { p.m = +x.toFixed(2); await this.s.put("crash:cur", r); }
+    await this.huntHit(u, uid, { t: "crash", m: x }, g.bet);
     return { crashed: false, m: x, win: Math.round(g.bet * x) };
   }
 
@@ -391,6 +456,7 @@ export class Game {
     const mult = this.L.minesMult(g.n, g.open.length);
     if (g.open.length >= g.n * g.n - g.bombs.length) {           // открыл всё — забираем автоматически
       await this.s.delete(k); await this.payout(u, uid, g.bet * mult, GAME_NAMES.mines);
+      await this.huntHit(u, uid, { t: "mines", open: g.open.length }, g.bet);
       return { safe: true, mult, done: true, win: Math.round(g.bet * mult), bombs: g.bombs };
     }
     await this.s.put(k, g);
@@ -402,6 +468,7 @@ export class Game {
     if (!g.open.length) fail("Открой хотя бы одну клетку");
     const mult = this.L.minesMult(g.n, g.open.length);
     await this.s.delete(k); await this.payout(u, uid, g.bet * mult, GAME_NAMES.mines);
+    await this.huntHit(u, uid, { t: "mines", open: g.open.length }, g.bet);
     return { mult, win: Math.round(g.bet * mult), bombs: g.bombs };
   }
 
@@ -412,6 +479,7 @@ export class Game {
     const path = Array.from({ length: 8 }, () => rand() < .5 ? 1 : 0), k = path.reduce((a, b) => a + b, 0);
     const mult = this.L.PM(risk)[k];
     await this.payout(u, uid, v * mult, GAME_NAMES.plinko);
+    await this.huntHit(u, uid, { t: "plinko", k }, v);
     return { path, k, mult, win: Math.round(v * mult) };
   }
 
@@ -421,6 +489,7 @@ export class Game {
     const res = [0, 1, 2].map(() => SLOT_SYMS[randInt(SLOT_SYMS.length)]);
     const mult = this.L.slotsMult(res);
     await this.payout(u, uid, SLOT_BET * mult, GAME_NAMES.slots);
+    await this.huntHit(u, uid, { t: "slots", three: res[0] === res[1] && res[1] === res[2] }, SLOT_BET);
     return { res, mult, win: Math.round(SLOT_BET * mult) };
   }
 
