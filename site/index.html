@@ -109,6 +109,10 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 .hspot{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.07);margin-bottom:8px}.hspot .he{font-size:30px;width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:rgba(0,0,0,.25)}.hspot.no .he{filter:grayscale(1) brightness(.5)}.hspot small{display:block;color:var(--muted);font-size:12px}
 .hfly{position:fixed;left:50%;top:50%;z-index:90;font-size:90px;pointer-events:none;transform:translate(-50%,-50%) scale(.2);animation:hfly 1.9s cubic-bezier(.2,1.2,.4,1) forwards;filter:drop-shadow(0 0 22px #ffe08a)}
 @keyframes hfly{18%{transform:translate(-50%,-50%) scale(1.25) rotate(-10deg)}45%{transform:translate(-50%,-50%) scale(1) rotate(8deg)}100%{transform:translate(calc(-50% + 30vw),calc(-50% - 44vh)) scale(.25);opacity:.2}}
+.gpb{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:800 15px Nunito,sans-serif;cursor:pointer}.gpb .gi{width:36px;height:36px;font-size:22px;flex:0 0 auto}
+#gpk{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);display:none;align-items:flex-end}#gpk.show{display:flex}
+#gpk .gpw{width:100%;max-height:78vh;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--sea2),var(--deep));border-radius:22px 22px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-sizing:border-box}
+#gpk .gpl{overflow-y:auto}#gpk .gpr{cursor:pointer}#gpk .gpr.on{background:rgba(255,255,255,.1);border-radius:12px}#gpk .gpr .gi{width:44px;height:44px;font-size:26px}
 .gfimg{flex:0 0 auto;margin-left:8px;cursor:pointer}.gfimg .gi{width:40px;height:40px;font-size:24px}
 .gfbig .gi{width:160px;height:160px;font-size:90px;margin:6px auto}
 .g-drop{background:linear-gradient(120deg,rgba(150,90,255,.85),rgba(90,60,210,.8));color:#fff}
@@ -1191,7 +1195,7 @@ give(){return `<div class="card"><div class="ad-h">⭐ Выдать звёзды
  <button class="btn sand" onclick="adGive()">Выдать</button></div>
  <div class="card"><div class="ad-h">🎁 Выдать подарок по ID</div>
  <div class="field"><input id="ggId" placeholder="Telegram ID игрока" inputmode="numeric"></div>
- <div class="field"><select id="ggS">${GIFTS().filter(g=>!isStar(g)).map(g=>`<option value="${g.slug}">${g.name} · ${fmt(g.price)} ★</option>`).join('')}</select></div>
+ <div class="field">${gpBtn('ggS',GIFTS().filter(g=>!isStar(g)).map(g=>g.slug))}</div>
  <button class="btn" onclick="adGiveGift()">Выдать подарок</button></div>
  <div class="card"><div class="ad-h">🎫 Выдать билеты</div><div class="field"><input id="tId" placeholder="Telegram ID" inputmode="numeric"><input id="tAmt" placeholder="Кол-во" type="number" style="max-width:90px"></div><button class="btn ghost" onclick="adTick()">Выдать билеты</button></div>`},
 access(){return `<div class="card"><div class="ad-h">🔑 Доступ к панели</div><p class="sub" style="text-align:left;margin:0 0 10px">Владелец <b>@${OWNER}</b> — доступ всегда. Можно выдать доступ другим по Telegram ID.</p>
@@ -1250,6 +1254,18 @@ users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
 };
 function ensureUser(id){id=String(id).trim();if(!/^\d{3,15}$/.test(id)){toast('Неверный ID');return null}return id}
 /* список подарков в админке: сортировка и просмотр картинки */
+/* выбор подарка с картинками и поиском (вместо обычного выпадающего списка) */
+const GP={};
+function gpLabel(id){const P=GP[id],g=P&&P.v&&giftBy(P.v);return P&&P.ph&&!P.keep?`<span style="flex:1;text-align:left">${P.ph}</span><span>▾</span>`:g?`${gi(g)}<span style="flex:1;text-align:left">${esc(g.name)}<small style="display:block;color:var(--muted)">★ ${fmt(g.price)}</small></span><span>▾</span>`:'<span style="flex:1">—</span>'}
+function gpBtn(id,slugs,sel,after,ph){const v=sel||(ph?'':slugs[0]||'');GP[id]={slugs,v,after,ph};return `<input type="hidden" id="${id}" value="${esc(v)}"><button type="button" class="gpb" id="${id}_b" onclick="gpOpen('${id}')">${gpLabel(id)}</button>`}
+function gpOpen(id){const P=GP[id];if(!P)return;let o=$('#gpk');if(!o){o=document.createElement('div');o.id='gpk';document.body.appendChild(o)}
+ const L=P.slugs.map(giftBy).filter(Boolean).sort((a,b)=>b.price-a.price);
+ o.innerHTML=`<div class="gpw"><div class="row" style="align-items:center;gap:8px;margin-bottom:8px"><input id="gpq" placeholder="🔍 Поиск подарка" style="flex:1;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:700 15px Nunito,sans-serif;outline:none" oninput="const q=this.value.trim().toLowerCase();document.querySelectorAll('#gpk .gpr').forEach(r=>r.style.display=!q||r.dataset.n.includes(q)?'':'none')"><button class="btn sm ghost" style="flex:0 0 auto" onclick="gpClose()">✕</button></div>
+  <div class="gpl">${L.map(g=>`<div class="grow gpr ${g.slug===P.v?'on':''}" data-n="${esc(g.name.toLowerCase())}" onclick="gpPick('${id}','${g.slug}')">${gi(g)}<div class="nm">${esc(g.name)}</div><b class="star">★ ${fmt(g.price)}</b></div>`).join('')}</div></div>`;
+ o.classList.add('show');o.onclick=e=>{if(e.target===o)gpClose()}}
+function gpClose(){const o=$('#gpk');if(o)o.classList.remove('show')}
+function gpPick(id,v){const P=GP[id];if(!P)return;P.v=v;const inp=$('#'+id);if(inp)inp.value=v;gpClose();
+ if(P.after){try{new Function('v',P.after)(v)}catch(e){console.log(e)}return}P.keep=1;const b=$('#'+id+'_b');if(b)b.innerHTML=gpLabel(id)}
 function gfSorted(){const k=S.gfSort||'price',L=GIFT_LIST.slice(),pr=x=>{const g=giftBy(x[0]);return g?g.price:x[2]},ty=x=>{const g=giftBy(x[0])||{};return isStar(g)?3:g.reg?2:g.m?1:0};
  if(k==='name')return L.sort((a,b)=>a[1].localeCompare(b[1]));
  if(k==='type')return L.sort((a,b)=>ty(a)-ty(b)||pr(b)-pr(a));
@@ -1296,14 +1312,14 @@ function ceRender(){const c=ceGet(S.ceKey);const top=document.querySelector('#sh
  ${S.ceAuto?`<div class="card" style="background:rgba(255,210,63,.18)"><b>Сейчас: авто-режим</b><br><small style="color:var(--muted)">Шансы подбираются сами под RTP. Ниже — текущий состав, измените его и нажмите «Сохранить», чтобы задать вручную.</small></div>`:''}
  <div class="card">
   ${c.free?'':`<div class="field"><span style="align-self:center;width:90px;font-weight:800">Цена ★</span><input id="ceP" type="number" value="${c.p}" oninput="ceStats()"></div>`}
-  <div class="field"><span style="align-self:center;width:90px;font-weight:800">Обложка</span><select id="ceC">${GIFTS().filter(g=>!isStar(g)).map(g=>`<option value="${g.slug}" ${g.slug===c.g.slug?'selected':''}>${g.name}</option>`).join('')}</select></div>
+  <div class="field"><span style="align-self:center;width:90px;font-weight:800">Обложка</span>${gpBtn('ceC',GIFTS().filter(g=>!isStar(g)).map(g=>g.slug),c.g.slug)}</div>
   ${c.free?'':`<div class="grow" style="border:0"><div class="nm">Метка «Лимит»</div><button class="sw ${c.l?'on':''}" id="ceL" onclick="this.classList.toggle('on')"></button></div>
   <div class="grow" style="border:0"><div class="nm">Скрыть кейс</div><button class="sw ${c.hidden?'on':''}" id="ceH" onclick="this.classList.toggle('on')"></button></div>`}
  </div>
  <div class="card"><div class="ad-h">Содержимое <small style="background:var(--sea)" id="ceCnt">${S.ceItems.length}</small></div>
   <p class="sub" style="text-align:left;margin:0 0 6px">Вес — относительный шанс. Процент считается автоматически.</p>
   <div id="ceList">${S.ceItems.map(([s,w],i)=>{const g=giftBy(s);if(!g)return'';return `<div class="grow">${gi(g)}<div class="nm">${g.name}<small style="display:block;color:var(--muted);font-size:12px">★ ${fmt(g.price)} · <b id="cePct${i}" style="color:var(--lagoon)"></b></small></div><input type="number" step="0.01" min="0" value="${w}" style="width:72px" oninput="S.ceItems[${i}][1]=Math.max(0,+this.value||0);ceStats()"><button class="btn sm ghost" style="padding:6px 10px" onclick="S.ceItems.splice(${i},1);ceRender()">✕</button></div>`}).join('')||'<div class="empty">Пусто — добавьте подарки</div>'}</div>
-  <div class="field" style="margin-top:10px"><select id="ceAdd">${GIFTS().filter(g=>!S.ceItems.some(([s])=>s===g.slug)).map(g=>`<option value="${g.slug}">${g.name} · ★ ${fmt(g.price)}</option>`).join('')}</select><button class="btn sm sand" onclick="S.ceItems.push([ceAdd.value,1]);ceRender()">＋</button></div>
+  <div class="field" style="margin-top:10px">${gpBtn('ceAdd',GIFTS().filter(g=>!S.ceItems.some(([s])=>s===g.slug)).map(g=>g.slug),'',"S.ceItems.push([v,1]);ceRender()",'⊕ Добавить подарок')}</div>
   <div class="row"><button class="btn sm ghost" style="flex:1" onclick="ceEqual()">Шансы поровну</button><button class="btn sm ghost" style="flex:1" onclick="ceFitRtp()">Подогнать под RTP ${R('cases')*100|0}%</button></div>
  </div>
  <div class="kpi"><div><b id="ceEV">—</b><small>Средний выигрыш</small></div><div><b id="ceRTP">—</b><small>RTP кейса</small></div></div>
