@@ -170,6 +170,14 @@ export class Store {
       } catch (e) { console.log("mig nftton", e); }
       await state.storage.put("mig:nftton1", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: включаем тёмную тему (как просил владелец)
+      if (await state.storage.get("mig:darktheme")) return;
+      try { const raw = await state.storage.get("settings");
+        const st = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {}; st.theme = "dark";
+        await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st);
+      } catch (e) { console.log("mig dark", e); }
+      await state.storage.put("mig:darktheme", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";

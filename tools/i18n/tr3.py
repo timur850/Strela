@@ -76,6 +76,8 @@ T = {
 "📦 Открыть кейс": "📦 Open case",
 "🛠 Включить перерыв": "🛠 Turn on maintenance",
 "не число": "NaN",
+"🌌 Тёмная": "🌌 Dark",
+"Подать заявку": "Apply",
 "(креатив — от": "(creative — from",
 "1 млн": "1M",
 "YouTube Shorts — половина ставки": "YouTube Shorts — half rate",
