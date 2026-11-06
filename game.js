@@ -2,7 +2,13 @@
 // Здесь хранятся баланс, билеты и подарки игроков, и здесь же решается результат каждой игры.
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
-const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar } = globalThis.STRELA;
+const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS } = globalThis.STRELA;
+// онлайн по играм: кто был в игре за последние 5 минут (в памяти, без записи в базу)
+const ONLINE = new Map(), ON_TTL = 5 * 60e3;
+const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
+const GAME_IDS = new Set(["cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
+function onMark(g, uid) { if (!GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
+function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
 const REF_CASE_NEED = 5;
 const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за билеты
@@ -66,7 +72,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -194,6 +200,7 @@ export class Game {
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
+    if (op === "online") { if (d && d.g) onMark(String(d.g), uid); return { ok: true, on: onCounts() }; }
     if (op === "tour") { const p = await this.tourPrev(3); return { ok: true, ...(await this.tourTop(10)), prev: p && { end: p.end, top: p.top.map(r => ({ n: r.n, v: r.v })) } }; }
     this.uid = uid;
     const u = await this.user(uid, name);
@@ -204,6 +211,7 @@ export class Game {
     this._hf = null; this._op = op; this.huntEnsure(u);
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
+    if (OP_GAME[op]) onMark(OP_GAME[op], uid);
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
@@ -214,6 +222,13 @@ export class Game {
   }
 
   op_me() { return {}; }
+  async op_level_claim(u) {                      // забрать награду за следующий достигнутый уровень
+    const next = (u.lvl || 0) + 1, L = LEVELS[next], t = (u.ps && u.ps.t) || 0;
+    if (!L) fail("Все уровни уже пройдены");
+    if (t < L[1]) fail(`Нужен оборот ${L[1]} ★`);
+    u.lvl = next; u.bal += L[2]; await this.stat("lvl", L[2]);
+    return { got: L[2], lvl: next, name: L[0] };
+  }
   async op_wallet(u, uid) {                      // мои заявки на вывод, которые ещё не выполнены
     const q = await this.s.list({ prefix: "wdq:", limit: 1000 }), open = [];
     for (const [, w] of q) if (w && w.uid === uid) open.push({ id: w.id, s: w.slug, n: w.gname, a: w.price, t: w.t });
