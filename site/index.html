@@ -173,7 +173,8 @@ body.dark .tlogo{display:flex;flex-direction:row;align-items:center;gap:7px;line
 body.dark .pill{margin-left:auto;padding:7px 9px;gap:4px;cursor:pointer;flex:0 0 auto}body.dark .pill .plus,body.dark .pill.t{display:none}body.dark .pill .caret{display:inline;font-style:normal;color:var(--muted);margin-top:-6px}
 body.dark .tdep{display:block;flex:0 0 auto;border:0;border-radius:999px;padding:10px 12px;background:linear-gradient(135deg,#6f86ff,#7b5cf5);color:#fff;font:800 14px Nunito,sans-serif;box-shadow:0 6px 18px rgba(111,124,255,.45);cursor:pointer}
 body.dark .tava{display:grid;width:38px;height:38px;border-width:2px;cursor:pointer}body.dark .tava::before{font-size:17px}
-@media(max-width:340px){body.dark .tln{display:none}}
+@media(max-width:430px){body.dark .tln{display:none}body.dark .pill .caret{display:none}body.dark .tdep{padding:10px 11px;font-size:13.5px}}
+body.dark .top{overflow:hidden}body.dark .pill{min-width:0;flex-shrink:1}body.dark .pill b{overflow:hidden;text-overflow:ellipsis}
 body.dark .nav{padding:7px;border-radius:32px}
 body.dark .nav button{flex-direction:row;justify-content:center;font:800 14.5px Nunito,sans-serif;padding:13px 4px;border-radius:24px}
 body.dark .nav button span{display:none}body.dark .nav button[data-t="profile"]{display:none}
@@ -243,12 +244,12 @@ body.dark .g-chick{background:radial-gradient(90% 80% at 50% 30%,#ffb627,#7a3a06
 
 /* ===== Заработок: «Поставь в ник» ===== */
 .nkh{border-radius:28px;padding:18px;border:1px solid rgba(80,180,255,.45);background:radial-gradient(120% 90% at 0% 0%,rgba(42,171,238,.28),transparent 60%),linear-gradient(160deg,#1d2a4a,#1a1e33);box-shadow:0 0 26px rgba(42,171,238,.15);margin-bottom:6px}
-.nkt{display:flex;align-items:center;gap:12px}.nkt>div{flex:1;min-width:0}.nkt b{display:block;font:800 20px/1.15 Unbounded,Nunito,sans-serif}.nkt small{color:var(--muted);font-weight:700}
+.nkt{display:flex;align-items:center;gap:12px}.nkt>div{flex:1;min-width:0}.nkt b{display:block;font:800 18px/1.2 Unbounded,Nunito,sans-serif;overflow-wrap:anywhere}.nkt small{color:var(--muted);font-weight:700}
 .nka{flex:0 0 auto;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#37b6f6,#1f87d6);font:900 30px Unbounded,Nunito,sans-serif;color:#fff;box-shadow:0 6px 16px rgba(42,171,238,.45)}
-.nkt em{flex:0 0 auto;font-style:normal;font:900 14px Unbounded,Nunito,sans-serif;color:#7cc8ff;border:1px solid rgba(80,180,255,.45);background:rgba(42,171,238,.12);border-radius:14px;padding:8px 10px;max-width:110px;text-align:center;line-height:1.2}
+.nke{display:inline-block;margin-top:12px;font-style:normal;font:900 15px Unbounded,Nunito,sans-serif;color:#7cc8ff;border:1px solid rgba(80,180,255,.45);background:rgba(42,171,238,.12);border-radius:14px;padding:8px 12px;white-space:nowrap}
 .nkp{color:var(--muted);font-weight:700;font-size:13px;margin:14px 2px 8px}
 .nkr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.nkr>div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:18px;background:rgba(10,14,30,.45);border:1px solid var(--line)}
-.nkr>div.on{border-color:#5fb8ff;box-shadow:0 0 14px rgba(95,184,255,.35)}.nkr b{font:900 17px Unbounded,Nunito,sans-serif}.nkr small{font-size:10.5px;color:var(--muted);font-weight:800;text-align:center}
+.nkr>div.on{border-color:#5fb8ff;box-shadow:0 0 14px rgba(95,184,255,.35)}.nkr b{font:900 17px Unbounded,Nunito,sans-serif}.nkr small{font-size:10px;color:var(--muted);font-weight:800;text-align:center;white-space:nowrap;letter-spacing:-.2px}
 .nks{font:800 22px Unbounded,Nunito,sans-serif!important;text-align:left!important;margin:20px 4px 12px!important}
 .nkc{border-radius:26px;padding:16px;margin-bottom:12px;border:1px solid var(--line);background:var(--glass)}
 .nkc.cur{border-color:rgba(123,124,255,.6);background:linear-gradient(160deg,rgba(111,134,255,.14),var(--glass))}.nkc.lock{opacity:.6}.nkc.done{border-color:rgba(60,224,138,.35)}
@@ -1114,7 +1115,7 @@ function hms(ms){ms=Math.max(0,ms);const h=Math.floor(ms/36e5),m=Math.floor(ms%3
 function nickNextDay(){const k=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Kyiv'}));const n=new Date(k);n.setHours(24,0,0,0);return n-k}
 function earnHub(){const N=NICK(),E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2])),nk=U().nick,tier=nickTier(),max=Math.max(...N.r);
  const s1=!!(nk&&nk.s),held=s1?Date.now()-nk.s:0,s2=s1&&held>=864e5,today=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Kyiv'}),got=s2&&nk.day===today;
- const nick=N.on===false?'':`<div class="nkh"><div class="nkt"><span class="nka">@</span><div><b>Поставь в ник ${esc(N.tag)}</b><small>3 этапа · на баланс</small></div><em>до ${fmt(max)} <span class="star">★</span> в день</em></div>
+ const nick=N.on===false?'':`<div class="nkh"><div class="nkt"><span class="nka">@</span><div><b>Поставь в ник ${esc(N.tag)}</b><small>3 этапа · на баланс</small></div></div><em class="nke">до ${fmt(max)} <span class="star">★</span> в день</em>
   <p class="nkp">Награда в день зависит от вашего рейтинга</p>
   <div class="nkr">${N.r.map((v,i)=>`<div class="${i===tier?'on':''}"><b>${fmt(v)} <span class="star">★</span></b>${medal(NICK_LV[i],30)}<small>${NICK_T[i]}</small></div>`).join('')}</div></div>
  <h2 class="nks">Этапы</h2>
