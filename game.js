@@ -111,7 +111,7 @@ export class Game {
       u.fdb = Date.now();
       if (b > 0) { u.bal += b; this.hist(u, { k: "dep", m: "bonus", a: b }); }
     }
-    u.depN = (u.depN || 0) + 1;
+    u.depN = (u.depN || 0) + 1; if (u.depTot != null) u.depTot += Math.round(a);
     return b;
   }
   async refBonus(u, amount) {
@@ -159,6 +159,19 @@ export class Game {
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
+  async depTotal(u, uid) {                        // сколько ★ игрок пополнил реальными платежами (кэш в u.depTot)
+    if (u.depTot != null) return u.depTot;
+    let sum = 0;
+    for (const pre of ["pay:", "ton:", "cp:"]) {
+      let after = null;
+      for (let k = 0; k < 30; k++) {
+        const page = await this.s.list({ prefix: pre, limit: 1000, ...(after ? { startAfter: after } : {}) });
+        for (const [, raw] of page) { const x = typeof raw === "string" ? JSON.parse(raw) : raw; if (x && String(x.uid) === String(uid) && (pre !== "pay:" || x.claimed !== false)) sum += +x.a || 0; }
+        if (page.size < 1000) break; after = [...page.keys()].pop();
+      }
+    }
+    u.depTot = sum; return sum;
+  }
   lockedTake(u, slug) {                           // забирает из инвентаря «заблокированный» экземпляр? (NFT из бесплатного кейса)
     const lk = (u.freeLock || []).filter(s => s === slug).length, have = u.inv.filter(s => s === slug).length;
     if (lk && lk >= have) { u.freeLock.splice(u.freeLock.indexOf(slug), 1); return true; }
@@ -185,7 +198,8 @@ export class Game {
     if (t && !t.monthly && now < t.end) { const [ms, me] = monthBounds(now); t.start = ms; t.end = me; t.monthly = 1; await this.s.put("tour", t); }
     if (!t || now >= t.end) {
       if (t && Object.keys(t.rows || {}).length) {
-        const P = this.tourPrizes(), top = Object.entries(t.rows).filter(([id]) => !this.isStaffId(id)).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, P.length);
+        const P = this.tourPrizes(), cand = Object.entries(t.rows).filter(([id]) => !this.isStaffId(id)).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v), top = [];
+        for (const c of cand) { if (top.length >= P.length) break; const w = await this.s.get("u:" + c.id); if (w && (await this.depTotal(w, c.id)) > 0) { await this.s.put("u:" + c.id, w); top.push(c); } }   // призы — только тем, кто пополнял
         t.won = [];
         for (let i = 0; i < top.length; i++) {          // призы — сразу в инвентарь победителям
           const w = await this.s.get("u:" + top[i].id); if (!w) continue;
@@ -258,6 +272,17 @@ export class Game {
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
+    if (op === "nick_due") {                       // кого перепроверить по тегу в нике (раз в 4 ч на игрока)
+      const now = Date.now(), ids = [];
+      for (const [k, t] of await this.s.list({ prefix: "nk:" })) { if (+t <= now) ids.push(k.slice(3)); if (ids.length >= 25) break; }
+      return { ok: true, ids };
+    }
+    if (op === "nick_drop") {                      // тег убран — сбросить прогресс
+      const u = await this.s.get("u:" + d.id); await this.s.delete("nk:" + d.id);
+      if (u && u.nick) { u.nick = null; await this.s.put("u:" + d.id, u); return { ok: true, dropped: true }; }
+      return { ok: true };
+    }
+    if (op === "nick_ok") { await this.s.put("nk:" + d.id, Date.now() + 4 * 36e5); return { ok: true }; }
     if (op === "remind_due") {                    // кому пора напомнить про бесплатный кейс (вызывает только cron)
       if (this.st.remind === false) return { ok: true, ids: [] };
       const now = Date.now(), ids = [], del = [];
@@ -321,10 +346,11 @@ export class Game {
     if (d.act === "start") {
       if (!d.ok) fail(d.why || "Тег не найден");
       if (!u.nick || !u.nick.s) u.nick = { s: Date.now(), day: "" };
+      await this.s.put("nk:" + uid, Date.now() + 4 * 36e5);
       return { nick: u.nick };
     }
     if (!u.nick || !u.nick.s) fail("Сначала пройди этап 1");
-    if (!d.ok) { u.nick = null; return { lost: true, why: (d.why || "Тег убран") + " — прогресс сброшен, начни заново" }; }
+    if (!d.ok) { u.nick = null; await this.s.delete("nk:" + uid); return { lost: true, why: (d.why || "Тег убран") + " — прогресс сброшен, начни заново" }; }
     if (Date.now() - u.nick.s < 864e5) fail("Подожди 24 часа с начала");
     const day = dayKey(); if (u.nick.day === day) fail("Сегодня награда уже получена — приходи завтра");
     const r = this.nickReward(u); u.nick.day = day; u.bal += r; await this.stat("nick", r);
@@ -780,6 +806,8 @@ export class Game {
     const i = this.invIndex(u, d.i, d.slug), g = this.L.giftBy(u.inv[i]);
     if (!g || isStar(g)) fail("Этот подарок нельзя вывести");
     const minWd = Math.max(0, Math.round(this.st.minWd ?? 100));
+    const needDep = Math.max(0, Math.round(this.st.wdNeedDep ?? 100));     // вывод — только после пополнения
+    if (needDep && !this.isStaff) { const dt = await this.depTotal(u, uid); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
     if (g.price < minWd) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)

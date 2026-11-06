@@ -318,6 +318,19 @@ function agoRu(ms) { const s = Math.max(1, Math.round(ms / 1000)); const pl = (n
   if (s < 60) return `${s} ${pl(s, "секунду", "секунды", "секунд")} назад`; const m = Math.round(s / 60); if (m < 60) return `${m} ${pl(m, "минуту", "минуты", "минут")} назад`;
   const h = Math.round(m / 60); return `${h} ${pl(h, "час", "часа", "часов")} назад`; }
 const kfmt = n => n >= 1e6 ? +(n / 1e6).toFixed(1) + "M" : n >= 1e4 ? +(n / 1e3).toFixed(1) + "K" : String(n);
+async function nickRecheck(env) {               // фоновая проверка «Поставь в ник»: тег убран — прогресс сброшен
+  const r = await op(env, "nick_due", "0", "", {}, false); if (!r || !r.ok || !r.ids.length) return;
+  const st = await loadSettings(env), nk = st.nick || {}, bn = await botName(env);
+  const tag = String(nk.tag || ("@" + (bn || "StrelaCase_bot"))).trim().toLowerCase(), bioNeed = String(nk.bio || nk.tag || ("@" + (bn || "StrelaCase_bot"))).trim().toLowerCase();
+  for (const id of r.ids) {
+    const c = await tg(env, "getChat", { chat_id: Number(id) });
+    if (!c.ok) { await op(env, "nick_ok", "0", "", { id }, false); continue; }    // не смогли проверить — попробуем позже
+    const name = [c.result.first_name, c.result.last_name].filter(Boolean).join(" ").toLowerCase(), bio = String(c.result.bio || "").toLowerCase();
+    if (name.includes(tag) && bio.includes(bioNeed)) await op(env, "nick_ok", "0", "", { id }, false);
+    else { const x = await op(env, "nick_drop", "0", "", { id }, false);
+      if (x && x.dropped) { try { await tg(env, "sendMessage", { chat_id: Number(id), text: `⚠️ Тег ${nk.tag || "@" + bn} пропал из имени или описания — прогресс «Поставь в ник» сброшен. Верни тег и начни заново в разделе «Заработок».` }); } catch (e) {} } }
+  }
+}
 async function remindFree(env, origin) {
   const r = await op(env, "remind_due", "0", "", {}, false);
   if (!r || !r.ok || !r.ids.length) return;
@@ -498,6 +511,7 @@ export default {
     const origin = (await (await store(env).fetch("https://s/origin")).text()) || DEFAULT_ORIGIN;
     if (!origin) return;
     try { await remindFree(env, origin); } catch (e) { console.log("remind", e); }
+    try { await nickRecheck(env); } catch (e) { console.log("nick", e); }
     const w = await tg(env, "getWebhookInfo", {});
     if (w.ok && hookBad(w.result, origin)) {
       const hookKey = (await sha256hex("hook:" + env.BOT_TOKEN)).slice(0, 32);

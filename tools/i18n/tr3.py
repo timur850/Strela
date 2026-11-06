@@ -93,6 +93,12 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+'🔒 Вывод только после пополнения': '🔒 Withdraw only after a top-up',
+'★ — сколько игрок должен пополнить за всё время, чтобы выводить (0 — без условия)': '★ — how much a player must top up in total to withdraw (0 — no condition)',
+'🔒 Вывод доступен после пополнения от {0} ★ за всё время': '🔒 Withdrawals unlock after topping up {0} ★ in total',
+'Вывод доступен после пополнения от {0} ★ (пополнено {1} ★). Подарок можно продать или сыграть им': 'Withdrawals unlock after topping up {0} ★ (topped up {1} ★). You can sell the gift or play with it',
+'⚠️ Тег {0} пропал из имени или описания — прогресс «Поставь в ник» сброшен. Верни тег и начни заново в разделе «Заработок».': '⚠️ Tag {0} disappeared from your name or bio — «Put in name» progress reset. Put it back and start again in «Earn».',
+
 '🏆 Турнир месяца': '🏆 Monthly tournament',
 'Оборот в турнире': 'Tournament turnover',
 '⛔ Убран из турнира': '⛔ Removed from tournament',
