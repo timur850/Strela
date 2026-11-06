@@ -323,7 +323,7 @@ async function remindFree(env, origin) {
   if (!r || !r.ok || !r.ids.length) return;
   const w = r.win, mask = id => String(id).slice(0, Math.max(3, String(id).length - 3)) + "***";
   const win = w ? `⚡ ${agoRu(Date.now() - w.t)} игрок id ${mask(w.id)} выиграл ${w.gift ? w.gift + " за " : ""}${kfmt(w.a)} ⭐\n\n` : "";
-  const text = `🎁 Твой бесплатный кейс снова доступен!\n\n${win}Заходи и испытай свою удачу 👇`;
+  const text = `🎁 Твой бесплатный кейс снова доступен!\n\nЗаходи и испытай свою удачу 👇`;
   const kb = { inline_keyboard: [[{ text: "🎁 Открыть кейс", web_app: { url: origin + "/" } }]] };
   for (const id of r.ids) { try { await tg(env, "sendMessage", { chat_id: Number(id), text, reply_markup: kb }); } catch (e) {} }
 }
