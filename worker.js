@@ -161,6 +161,15 @@ export class Store {
       } catch (e) { console.log("mig drop50", e); }
       await state.storage.put("mig:drop50", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: цены NFT теперь по Fragment × курс бота — снимаем ручные цены NFT
+      if (await state.storage.get("mig:nftton1")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw; const T = globalThis.STRELA.NFT_TON || {};
+          if (st.prices) for (const k of Object.keys(st.prices)) if (T[k]) delete st.prices[k];
+          await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); }
+      } catch (e) { console.log("mig nftton", e); }
+      await state.storage.put("mig:nftton1", 1);
+    });
   }
   async fetch(req) {
     const key = new URL(req.url).pathname.slice(1) || "settings";
