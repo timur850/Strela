@@ -2,11 +2,11 @@
 // Здесь хранятся баланс, билеты и подарки игроков, и здесь же решается результат каждой игры.
 // Мини-апп только показывает анимацию того, что вернул сервер, поэтому подделать выигрыш нельзя.
 import "./site/logic.js";
-const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS } = globalThis.STRELA;
+const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS, CHICK_D } = globalThis.STRELA;
 // онлайн по играм: кто был в игре за последние 5 минут (в памяти, без записи в базу)
 const ONLINE = new Map(), ON_TTL = 5 * 60e3;
-const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
-const GAME_IDS = new Set(["cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
+const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
+const GAME_IDS = new Set(["chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
 function onMark(g, uid) { if (!GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
 function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
@@ -15,7 +15,7 @@ const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за би�
 const FREE_NFT_REFS = 5;  // NFT из ежедневного кейса выводится после стольких приглашённых  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
 
 const MAX_BET = 1_000_000;
-const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
+const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", chick: "Цыпа", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
 
 // честный случайный генератор (криптостойкий)
 const rand = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); return (a[0] * 2 ** 21 + (a[1] >>> 11)) / 2 ** 53; };
@@ -72,7 +72,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -228,6 +228,26 @@ export class Game {
     if (t < L[1]) fail(`Нужен оборот ${L[1]} ★`);
     u.lvl = next; u.bal += L[2]; await this.stat("lvl", L[2]);
     return { got: L[2], lvl: next, name: L[0] };
+  }
+  // «Поставь в ник»: этап 1 — тег в имени и био, этап 2 — держать 24 ч, этап 3 — награда раз в день (зависит от уровня)
+  nickReward(u) {
+    const r = (this.st.nick && Array.isArray(this.st.nick.r) ? this.st.nick.r : [2, 5, 10, 20]).map(v => Math.max(0, Math.round(+v || 0)));
+    const t = (u.ps && u.ps.t) || 0; let i = 0; while (i + 1 < LEVELS.length && t >= LEVELS[i + 1][1]) i++;
+    return r[i === 0 ? 0 : i <= 2 ? 1 : i <= 4 ? 2 : 3] || 0;
+  }
+  async op_nick(u, uid, d) {                      // вызывает только сервер: d.ok — тег найден в имени и био
+    if (this.st.nick && this.st.nick.on === false) fail("Задание сейчас выключено");
+    if (d.act === "start") {
+      if (!d.ok) fail(d.why || "Тег не найден");
+      if (!u.nick || !u.nick.s) u.nick = { s: Date.now(), day: "" };
+      return { nick: u.nick };
+    }
+    if (!u.nick || !u.nick.s) fail("Сначала пройди этап 1");
+    if (!d.ok) { u.nick = null; return { lost: true, why: (d.why || "Тег убран") + " — прогресс сброшен, начни заново" }; }
+    if (Date.now() - u.nick.s < 864e5) fail("Подожди 24 часа с начала");
+    const day = dayKey(); if (u.nick.day === day) fail("Сегодня награда уже получена — приходи завтра");
+    const r = this.nickReward(u); u.nick.day = day; u.bal += r; await this.stat("nick", r);
+    return { got: r, nick: u.nick };
   }
   async op_wallet(u, uid) {                      // мои заявки на вывод, которые ещё не выполнены
     const q = await this.s.list({ prefix: "wdq:", limit: 1000 }), open = [];
@@ -518,6 +538,43 @@ export class Game {
     await this.s.delete(k); await this.payout(u, uid, g.bet * mult, GAME_NAMES.mines);
     await this.huntHit(u, uid, { t: "mines", open: g.open.length }, g.bet);
     return { mult, win: Math.round(g.bet * mult), bombs: g.bombs };
+  }
+
+  // ---- Цыпа: переходи дорогу, на каждой полосе множитель растёт, забрать можно в любой момент ----
+  async op_chick_state(u, uid) { const g = await this.s.get("g:chick:" + uid); return { g: g ? { d: g.d, bet: g.bet, step: g.step } : null }; }
+  async op_chick_bet(u, uid, d) {
+    const k = "g:chick:" + uid, old = await this.s.get(k);
+    if (old) {                                   // брошенный забег: пройденные полосы — забираем, не начинал — возврат
+      await this.s.delete(k);
+      if (old.step) await this.payout(u, uid, old.bet * this.L.chickMult(old.d, old.step), GAME_NAMES.chick);
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); }
+    }
+    const df = [0, 1, 2, 3].includes(+d.d) ? +d.d : 0, v = bet(d.bet); if (!v) fail("Неверная ставка");
+    await this.charge(u, v);
+    await this.s.put(k, { d: df, bet: v, step: 0 });
+    return { d: df, step: 0 };
+  }
+  async op_chick_step(u, uid) {
+    const k = "g:chick:" + uid, g = await this.s.get(k);
+    if (!g) fail("Сначала сделай ставку");
+    const [p, lanes] = CHICK_D[g.d] || CHICK_D[0];
+    if (rand() >= p) { await this.s.delete(k); return { dead: true, step: g.step + 1 }; }
+    g.step++;
+    const mult = this.L.chickMult(g.d, g.step);
+    if (g.step >= lanes) {                       // дошла до конца — выигрыш сам
+      await this.s.delete(k); await this.payout(u, uid, g.bet * mult, GAME_NAMES.chick);
+      return { step: g.step, mult, done: true, win: Math.round(g.bet * mult) };
+    }
+    await this.s.put(k, g);
+    return { step: g.step, mult };
+  }
+  async op_chick_cash(u, uid) {
+    const k = "g:chick:" + uid, g = await this.s.get(k);
+    if (!g) fail("Нет активной игры");
+    if (!g.step) fail("Сделай хотя бы один шаг");
+    const mult = this.L.chickMult(g.d, g.step);
+    await this.s.delete(k); await this.payout(u, uid, g.bet * mult, GAME_NAMES.chick);
+    return { mult, win: Math.round(g.bet * mult), step: g.step };
   }
 
   // ---- plinko ----

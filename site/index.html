@@ -192,6 +192,65 @@ body.dark .nav .badge{top:2px;right:6%}
 .live .track{padding-top:9px}.ld.pin{order:-1}.ld.pin::after{content:'NFT';position:absolute;top:-6px;left:50%;transform:translateX(-50%);font:900 8px Nunito,sans-serif;background:linear-gradient(135deg,#ffcf3a,#ff8a3d);color:#3a2000;border-radius:5px;padding:0 4px}
 .ld.pin{background:radial-gradient(circle,rgba(255,207,58,.35),transparent 70%);border-radius:12px;padding:6px 4px 0}
 
+/* ===== Цыпа ===== */
+.g-chick{background:linear-gradient(135deg,#ffcf3a,#ff8a1f)}
+body.dark .g-chick{background:radial-gradient(90% 80% at 50% 30%,#ffb627,#7a3a06)}
+.cr-top{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.cr-top>div{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:9px 10px;text-align:center}
+.cr-top small{display:block;color:var(--muted);font-weight:800;font-size:12px}.cr-top b{font:900 18px Unbounded,Nunito,sans-serif}
+#crX{color:#ffcf3a}#crW{color:#3ce08a}
+.cr-road{position:relative;height:min(320px,48vh);min-height:250px;border-radius:26px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;border:1px solid rgba(255,255,255,.1);
+ background:#2a2d3b;box-shadow:inset 0 0 0 6px rgba(0,0,0,.15),0 10px 30px rgba(0,0,0,.35)}
+.cr-road::-webkit-scrollbar{display:none}
+.cr-world{position:relative;display:flex;height:100%;width:max-content;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 30%,transparent 70%,rgba(0,0,0,.15)),repeating-linear-gradient(90deg,#2b2e3d 0 3px,#2d3040 3px 6px)}
+.cr-side{flex:0 0 96px;position:relative;display:grid;place-items:center;background:repeating-linear-gradient(0deg,#5d6380 0 30px,#545a75 30px 32px),#5d6380;box-shadow:inset -6px 0 0 #8a90ad,inset 6px 0 0 #8a90ad}
+.cr-side.st{background:linear-gradient(90deg,#3fae5a,#2f8f48 70%,#8a90ad 70%,#8a90ad 76%,#5d6380 76%);box-shadow:none}
+.cr-side.fin{flex-basis:110px;background:radial-gradient(circle at 50% 50%,rgba(255,207,58,.45),transparent 60%),repeating-linear-gradient(45deg,#2a2d3b 0 14px,#f4f4f4 14px 28px);box-shadow:inset 6px 0 0 #8a90ad}
+.cr-flag{position:absolute;top:12px;left:8px;font:900 11px Unbounded,Nunito,sans-serif;color:#fff;background:rgba(0,0,0,.35);padding:3px 8px;border-radius:8px;letter-spacing:.5px}
+.cr-gold{font-size:46px;filter:drop-shadow(0 0 14px rgba(255,207,58,.8));animation:crFloat 2s ease-in-out infinite}
+.cr-lane{flex:0 0 94px;position:relative;display:grid;place-items:center;border-right:3px dashed rgba(255,255,255,.28)}
+.cr-lane:last-of-type{border-right:0}
+.cr-mh{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#6f748c,#3b3f52 60%,#2b2e3d);box-shadow:inset 0 0 0 4px #23263a,inset 0 0 0 7px #575c75,0 6px 10px rgba(0,0,0,.35);transition:.3s}
+.cr-mh b{font:900 14px Unbounded,Nunito,sans-serif;color:#e8eaff;text-shadow:0 1px 2px #000}
+.cr-lane.next .cr-mh{box-shadow:inset 0 0 0 4px #23263a,inset 0 0 0 7px #8b9cff,0 0 18px rgba(139,156,255,.7);animation:crPulse 1.1s ease-in-out infinite}
+.cr-lane.safe .cr-mh{background:radial-gradient(circle at 40% 35%,#ffe680,#ffb800 60%,#c98200);box-shadow:inset 0 0 0 4px #a86a00,0 0 20px rgba(255,190,0,.55)}
+.cr-lane.safe .cr-mh b{color:#3a2400;text-shadow:none}
+.cr-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%) scale(0);font-size:30px;transition:transform .35s cubic-bezier(.3,1.6,.5,1);z-index:3}
+.cr-lane.safe .cr-bar{transform:translateX(-50%) scale(1)}
+.cr-chick{position:absolute;left:0;top:50%;width:64px;height:64px;margin-top:-40px;z-index:4;pointer-events:none}
+.cr-chick img{width:100%;height:100%;display:block;filter:drop-shadow(0 8px 8px rgba(0,0,0,.45))}
+.cr-chick.hop img{animation:crHop .45s ease}
+.cr-chick.win img{animation:crWin .9s ease 2}
+.cr-chick.dead img{filter:grayscale(1) brightness(.6);transform:scaleY(.35) translateY(60%) rotate(8deg);transition:transform .2s}
+.cr-boom{position:absolute;inset:-14px;display:grid;place-items:center;font-size:58px;animation:crBoom .6s ease-out}
+.cr-car{position:absolute;top:-90px;transform:translateX(-50%);z-index:3;animation:crDrive 1.6s linear forwards;pointer-events:none}
+.cr-car span{display:block;font-size:54px;transform:rotate(-90deg);filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+.cr-car.hit{z-index:5}
+@keyframes crDrive{to{top:calc(100% + 20px)}}
+@keyframes crHop{0%{transform:translateY(0)}40%{transform:translateY(-26px) scale(1.06,.94)}100%{transform:translateY(0)}}
+@keyframes crWin{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-22px) rotate(-8deg)}60%{transform:translateY(-10px) rotate(8deg)}}
+@keyframes crPulse{50%{transform:scale(1.06)}}
+@keyframes crFloat{50%{transform:translateY(-6px)}}
+@keyframes crBoom{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ===== Заработок: «Поставь в ник» ===== */
+.nkh{border-radius:28px;padding:18px;border:1px solid rgba(80,180,255,.45);background:radial-gradient(120% 90% at 0% 0%,rgba(42,171,238,.28),transparent 60%),linear-gradient(160deg,#1d2a4a,#1a1e33);box-shadow:0 0 26px rgba(42,171,238,.15);margin-bottom:6px}
+.nkt{display:flex;align-items:center;gap:12px}.nkt>div{flex:1;min-width:0}.nkt b{display:block;font:800 20px/1.15 Unbounded,Nunito,sans-serif}.nkt small{color:var(--muted);font-weight:700}
+.nka{flex:0 0 auto;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#37b6f6,#1f87d6);font:900 30px Unbounded,Nunito,sans-serif;color:#fff;box-shadow:0 6px 16px rgba(42,171,238,.45)}
+.nkt em{flex:0 0 auto;font-style:normal;font:900 14px Unbounded,Nunito,sans-serif;color:#7cc8ff;border:1px solid rgba(80,180,255,.45);background:rgba(42,171,238,.12);border-radius:14px;padding:8px 10px;max-width:110px;text-align:center;line-height:1.2}
+.nkp{color:var(--muted);font-weight:700;font-size:13px;margin:14px 2px 8px}
+.nkr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.nkr>div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:18px;background:rgba(10,14,30,.45);border:1px solid var(--line)}
+.nkr>div.on{border-color:#5fb8ff;box-shadow:0 0 14px rgba(95,184,255,.35)}.nkr b{font:900 17px Unbounded,Nunito,sans-serif}.nkr small{font-size:10.5px;color:var(--muted);font-weight:800;text-align:center}
+.nks{font:800 22px Unbounded,Nunito,sans-serif!important;text-align:left!important;margin:20px 4px 12px!important}
+.nkc{border-radius:26px;padding:16px;margin-bottom:12px;border:1px solid var(--line);background:var(--glass)}
+.nkc.cur{border-color:rgba(123,124,255,.6);background:linear-gradient(160deg,rgba(111,134,255,.14),var(--glass))}.nkc.lock{opacity:.6}.nkc.done{border-color:rgba(60,224,138,.35)}
+.nkch{display:flex;align-items:center;gap:12px;margin-bottom:10px}.nkch b{display:block;font:800 17px/1.2 Unbounded,Nunito,sans-serif}.nkch small{color:var(--muted);font-weight:700}.nkc.done .nkch small{color:#3ce08a}
+.nkbx{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.nkbx>div{padding:12px;border-radius:18px;border:1px solid var(--line);background:rgba(10,14,30,.35);cursor:pointer;min-width:0}
+.nkbx small{display:block;color:var(--muted);font-weight:700;font-size:12.5px;margin-bottom:8px}.nkbx b{font:800 15px Nunito,sans-serif;word-break:break-word}
+.nktm{font:900 34px Unbounded,Nunito,sans-serif;text-align:center;letter-spacing:1px;margin:4px 0}
+.brow.tt{border-color:rgba(95,227,208,.45);background:linear-gradient(120deg,rgba(37,244,238,.14),rgba(30,34,56,.6) 45%,rgba(254,44,85,.16))}.brow.tt em{color:#ffcf3a;border-color:rgba(255,207,58,.4);background:rgba(255,207,58,.1)}
+.brow img.sq{object-fit:contain;padding:4px;box-sizing:border-box}
+
 .rbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 0 10px;background:transparent}body.dark .rbar{background:linear-gradient(180deg,#151829 75%,transparent)}
 .rchips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.rchips::-webkit-scrollbar{display:none}
 .rch{flex:0 0 auto;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:800 15px Nunito,sans-serif;padding:10px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
@@ -493,8 +552,8 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=2437a408"></script>
-<script src="logic.js?v=24442335"></script>
+<script src="i18n.js?v=a7506159"></script>
+<script src="logic.js?v=7198dc70"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -515,11 +574,11 @@ const REG_IMG={"5170145012310081615": "data:image/webp;base64,UklGRlwYAABXRUJQVl
 let OWNERS=['PODONOK_UC_1','Sdelka_ton','StrelaCase_bot_support']; // владельцы админки (username без @)
 const OWNER=OWNERS.join(', @');
 const isOwnerName=u=>OWNERS.some(o=>o.toLowerCase()===(u||'').toLowerCase());
-const DEF={cp:{on:true,rate:70,min:1,ready:false},upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
+const DEF={nick:{on:true,tag:'',bio:'',r:[2,5,10,20]},cp:{on:true,rate:70,min:1,ready:false},upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,chick:95},pvpFee:5,tonWallet:'',tonRate:150,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -573,7 +632,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -587,7 +646,7 @@ async function srv(op,body,o){o=o||{};
 
 /* ===== лента выигрышей (общая для всех, хранится у бота) ===== */
 S.feed=[];
-const GNAME={caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',pvp:'PvP',slots:'Слоты',upgrade:'Апгрейд',contracts:'Контракты'};
+const GNAME={chick:'Цыпа',caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',pvp:'PvP',slots:'Слоты',upgrade:'Апгрейд',contracts:'Контракты'};
 function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.curCase?'Кейс '+S.curCase.n:(GNAME[t]||'Игра')}
 function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);return;
  if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
@@ -628,7 +687,7 @@ Object.assign(GICON,{dig:'img/dig.webp',cases:'img/gift.webp',free:'img/gift.web
 const GAMES=[
  ['drop','g-drop','📦','Ежедневный дроп','Бесплатный кейс раз в день'],['hunt','g-hunt','🗺️','Охота за сокровищами','Найди 5 тайников — открой сундук'],['earn','g-earn','🎬','Заработок','Снимай ролики — получай звёзды'],['free','g-free','🎁','Бесплатно','Бесплатные кейсы'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
  ['upgrade','g-up','🧜‍♀️','Апгрейд','Улучшите свои подарки'],['crash','g-crash','🏄','Краш','<span class="tag">Онлайн</span>'],
- ['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],
+ ['chick','g-chick','🐥','Цыпа','Переведи цыпу через дорогу'],['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],
  ['contracts','g-contr','📜','Контракты','Объедините подарки'],['eggs','g-eggs','🥥','Яйца','6 кейсов'],
  ['pvp','g-pvp','⛱️','PvP','<span class="tag">Онлайн</span>'],['slots','g-slots','🎰','Слоты','3 кейса'],['dig','g-dig','⛏️','Шахта','<span class="tag">Новое</span>'],
 ];
@@ -672,7 +731,8 @@ profile(){
   <p class="sub" style="margin-top:14px">Ваш ID: ${ME.id}</p>`;
 },
 cases(){return casesPage()},
-earn(){return earnPage()},
+earn(){return earnHub()},
+earntt(){return earnPage()},
 bonus(){return bonusPage()},
 admin(){return adminView()}
 };
@@ -705,7 +765,8 @@ const G={
 deposit(){setTimeout(()=>{if((S.wt||'dep')==='dep'&&S.dm==='ton'&&$('#dep'))tonOpen()});return walletPage()},
 cases(){return casesPage()},
 drop(){dropOpen();return null},
-earn(){return earnPage()},
+earn(){return earnHub()},
+earntt(){return earnPage()},
 hunt(){huntOpen();return null},
 free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED)}/${REF_NEED}</i>`).replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
@@ -737,6 +798,13 @@ dig(){return `<h1>Шахта</h1><div class="digbox"><canvas id="digc"></canvas>
  <button class="btn sand" id="dbtn" style="margin-top:10px" onclick="digGo()">⛏ Копать</button></div>
  <div class="card"><div class="ad-h">Сколько даёт блок при твоей ставке</div><div class="digleg" id="dleg"></div>
  <p class="sub" style="text-align:left;margin:8px 0 0">В начале рулетка выдаёт кирку: каменная ♥100, железная ♥150, алмазная ♥250 (шансы: ${digTierP().map(v=>Math.round(v*100)+'%').join(' / ')}). Каждый удар отнимает 1 ♥, твёрдые блоки ломаются дольше. Верстак улучшает кирку на уровень, а алмазную — чинит до полной. TNT взрывает блоки в зоне 3×4.</p></div>`},
+chick(){const D=globalThis.STRELA.CHICK_D[CR.d];return `<div class="cr-top"><div><small>Множитель</small><b id="crX">x1.00</b></div><div><small>Следующая</small><b id="crN">x${chickM(CR.d,1).toFixed(2)}</b></div><div><small>Выигрыш</small><b id="crW">0 <span class="star">★</span></b></div></div>
+ <div class="cr-road" id="crRoad"></div>
+ <div class="seg cr-seg" id="crSeg" style="margin:12px 0">${['Легко','Средне','Сложно','Хардкор'].map((n,i)=>`<button class="${CR.d===i?'on':''}" onclick="crDiff(${i})">${n}</button>`).join('')}</div>
+ <div class="card" style="margin-bottom:10px"><div class="row" style="align-items:center;gap:6px"><span class="star">★</span><input id="crBet" type="number" inputmode="numeric" value="${CR.bet||100}" onfocus="if(CR.on)this.blur()" style="flex:1;min-width:0;background:none;border:0;color:var(--text);font:900 20px Nunito,sans-serif;outline:none">
+ <button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(.5)">½</button><button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(2)">×2</button><button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(0,100)">+100</button></div></div>
+ <div class="row" style="gap:8px"><button class="btn sand" id="crGo" onclick="crAct()">Играть</button><button class="btn ghost" id="crCash" onclick="crCash()" style="display:none">Забрать</button></div>
+ <p class="sub" id="crInfo">Шанс пройти полосу ${Math.round(D[0]*100)}% · полос ${D[1]} · максимум x${fmt(chickM(CR.d,D[1]))}</p>`},
 mines(){return `<div class="mgrid" id="mg"></div>
  <div class="seg" style="margin:14px 0">${[3,5,7].map(n=>`<button ${n==5?'class="on"':''} onclick="mSize(this,${n})">${n}x${n}</button>`).join('')}</div>
  <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
@@ -776,12 +844,12 @@ addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style
 
 /* ================== РОУТЕР ================== */
 const SUBT={tasks:'bonus',contests:'bonus',tour:'bonus'};
-function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',S.stack[S.stack.length-1]==='earn'||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display=S.stack.length||sub?'none':'block';topExtra()}
+function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',['earn','earntt'].includes(S.stack[S.stack.length-1])||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display=S.stack.length||sub?'none':'block';topExtra()}
 function topExtra(){const l=$('#tlogo');if(l&&!l.dataset.n){const p=APP_NAME.split(' ');l.innerHTML=`${esc(p[0])}`}
  const a=$('#tava');if(a&&!a.dataset.ok){a.dataset.ok=1;const ph=TU&&TU.photo_url;a.innerHTML=ph?`<img src="${esc(ph)}" alt="" onerror="this.remove()">`:'';a.dataset.l=(ME.name||'?').replace('@','')[0].toUpperCase();a.style.setProperty('--h',hue(ME.name||'?'))}
  const nf=$('#navFree');if(nf)nf.style.display=FREE_KEYS().length?'':'none';const ne=$('#navEarn');if(ne)ne.style.display=(ADM.earn||{}).on!==false?'':'none'}
 function tMove(i,d){const j=i+d;if(j<0||j>=ADM.tasks.length)return;[ADM.tasks[i],ADM.tasks[j]]=[ADM.tasks[j],ADM.tasks[i]];saveAdm();setTab('admin')}
-function setTab(t){S.tab=t;S.stack=[];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t||b.dataset.t===SUBT[t]));stopAll();render(T[t]());if(t==='tour'){tick();loadTour()}if(t==='earn')earnMine()}
+function setTab(t){S.tab=t;S.stack=[];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t||b.dataset.t===SUBT[t]));stopAll();render(T[t]());if(t==='tour'){tick();loadTour()}if(t==='earn')nickTick()}
 function open_(id){if(ADM.off[id]){toast('Игра временно отключена');return}if(GAMES.some(x=>x[0]===id))onPing(id);const h=G[id]();if(h===null)return;closeSheet();stopAll();S.stack.push(id);render(h);init(id)}
 function rerender(){const id=S.stack[S.stack.length-1];render(G[id]())}
 function goBack(){if(!S.stack.length&&SUBT[S.tab])return setTab(SUBT[S.tab]);stopAll();S.spinTok=(S.spinTok||0)+1;S.stack.pop();if(S.stack.length){const id=S.stack[S.stack.length-1];render(G[id]());init(id)}else setTab(S.tab)}
@@ -795,9 +863,9 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  $('#drw').innerHTML=`<div class="dh"><img src="img/gift.webp" alt=""><div><b>${esc(APP_NAME)}</b><small>${esc(ME.username?'@'+ME.username:(ME.name||'Игрок'))}</small></div></div>
  <div class="bal"><div><span class="star">★</span> ${fmt(u.bal||0)}</div><div>🎫 ${fmt(u.tick||0)}</div></div>
  <button class="btn sand" style="margin-bottom:6px" onclick="menuGo(()=>open_('deposit'))">Пополнить</button>
- <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('contests','🎁','Конкурсы')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
+ <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
  <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
- <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
+ <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('chick','🐥','Цыпа')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
  <div class="sec">🌐 Язык / Language</div><div class="row" style="gap:6px;padding:0 4px"><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:1" onclick="setLang('ru')">🇷🇺 RU</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:1" onclick="setLang('en')">🇬🇧 EN</button></div>
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
  ${SOCIALS().map(x=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<button class="mi" onclick='menuGo(()=>openUrl(${esc(JSON.stringify(x.url))}))'><i>${t[0]}</i>${esc(x.name||t[1])}</button>`}).join('')}`;
@@ -809,7 +877,7 @@ function menuClose(){$('#drwBg').classList.remove('show')}
  document.addEventListener('touchmove',e=>{if(cx!=null&&cx-e.touches[0].clientX>60){cx=null;menuClose()}},{passive:true})})();
 function sheet(h){$('#sheet').innerHTML='<button class="x" onclick="closeSheet()">✕</button>'+h;$('#sheetBg').classList.add('show')}
 function closeSheet(){$('#sheetBg').classList.remove('show')}
-function init(id){if(id==='dig')digInit();({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashInit,pvp:pvpInit,earn:earnMine})[id]?.()}
+function init(id){if(id==='dig')digInit();({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashInit,pvp:pvpInit,earntt:earnMine,earn:nickTick,chick:crInit})[id]?.()}
 let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelAnimationFrame(S.raf)}
 
 function tick(){const end=(S.tour&&S.tour.end)||Date.now()+7*864e5;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
@@ -956,7 +1024,6 @@ function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).l
  ${FREE_KEYS().length?row("S.ccat='free';setTab('cases')",'🎁','linear-gradient(135deg,#f0b43a,#c0640a)','Бесплатные кейсы','Открывай каждый день','FREE','gold'):''}
  ${row("setTab('tasks')",'📋','linear-gradient(135deg,#6f86ff,#7b5cf5)','Задания','Получай 🎫 билеты за подписки',left?`${left} новых`:'✓')}
  ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир','Топ по обороту за неделю','Неделя')}
- ${row("setTab('contests')",'🎉','linear-gradient(135deg,#ff7aa8,#c03a7a)','Розыгрыши','Подарки бесплатно','')}
  ${ADM.off.hunt?'':row("open_('hunt')",'🗺️','linear-gradient(135deg,#1fb59a,#0b6a60)','Охота за сокровищами','Найди 5 тайников за неделю','')}
  ${(ADM.drop||{}).on!==false&&!ADM.off.drop?row("open_('drop')",'📦','linear-gradient(135deg,#8a5cff,#4a2aa0)','Ежедневный дроп','Бесплатный приз раз в день',''):''}
  ${row("setTab('profile')",'🤝','linear-gradient(135deg,#3fb6ff,#1f6fe0)','Пригласить друга','10% с пополнений друзей','10 %')}`}
@@ -1012,6 +1079,36 @@ const fmtK=n=>n>=1e6?(n/1e6).toLocaleString('ru-RU')+' млн':fmt(n);
 function earnCalc(kind,views,url){const r=EARN().rows.find(x=>x[0]===kind)||EARN().rows[0];if(views<r[2])return 0;const P=[[1e3,r[3][0]],[1e5,r[3][1]],[1e6,r[3][2]]];let v;
  if(views<=1e3)v=P[0][1]*views/1e3;else if(views<=1e5)v=P[0][1]+(P[1][1]-P[0][1])*(views-1e3)/(1e5-1e3);else if(views<=1e6)v=P[1][1]+(P[2][1]-P[1][1])*(views-1e5)/(1e6-1e5);else v=P[2][1]*views/1e6;
  if(EARN().half&&/youtu/i.test(url||''))v/=2;return Math.round(v)}
+/* ===== Заработок: «Поставь в ник» + ролики ===== */
+const NICK_T=['Новичок','Iron–Bronze','Silver–Gold','Platinum+'],NICK_LV=[0,1,3,5];
+const NICK=()=>{const n=Object.assign({on:true,tag:'',bio:'',r:[2,5,10,20]},ADM.nick||{});n.tag=n.tag||('@'+BOT_USERNAME);n.bio=n.bio||n.tag;return n};
+function nickTier(){const i=lvlOf((U().ps||{}).t||0);return i===0?0:i<=2?1:i<=4?2:3}
+function hms(ms){ms=Math.max(0,ms);const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4),s=Math.floor(ms%6e4/1e3);return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':')}
+function nickNextDay(){const k=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Kyiv'}));const n=new Date(k);n.setHours(24,0,0,0);return n-k}
+function earnHub(){const N=NICK(),E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2])),nk=U().nick,tier=nickTier(),max=Math.max(...N.r);
+ const s1=!!(nk&&nk.s),held=s1?Date.now()-nk.s:0,s2=s1&&held>=864e5,today=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Kyiv'}),got=s2&&nk.day===today;
+ const nick=N.on===false?'':`<div class="nkh"><div class="nkt"><span class="nka">@</span><div><b>Поставь в ник ${esc(N.tag)}</b><small>3 этапа · на баланс</small></div><em>до ${fmt(max)} <span class="star">★</span> в день</em></div>
+  <p class="nkp">Награда в день зависит от вашего уровня</p>
+  <div class="nkr">${N.r.map((v,i)=>`<div class="${i===tier?'on':''}"><b>${fmt(v)} <span class="star">★</span></b>${medal(NICK_LV[i],30)}<small>${NICK_T[i]}</small></div>`).join('')}</div></div>
+ <h2 class="nks">Этапы</h2>
+ <div class="nkc ${s1?'done':'cur'}"><div class="nkch"><span class="sq">🪪</span><div><b>Добавьте ${esc(N.tag)} в имя и описание</b><small>Этап 1 · ${s1?'✓ Выполнен':'Текущий'}</small></div></div>
+  <div class="nkbx"><div onclick="copyText('${esc(N.tag)}')"><small>В имя или фамилию</small><b>${esc(N.tag)}</b></div><div onclick="copyText('${esc(N.bio)}')"><small>В описание (био)</small><b>${esc(N.bio)}</b></div></div>
+  ${s1?'':`<button class="btn sand" onclick="nickAct('start')">Готово</button><p class="sub" style="font-size:12px;margin:8px 0 0">Нажмите на текст, чтобы скопировать. Настройки Telegram → Изменить профиль</p>`}</div>
+ <div class="nkc ${!s1?'lock':s2?'done':'cur'}"><div class="nkch"><span class="sq">⏳</span><div><b>Держите 24 часа</b><small>Этап 2 · ${!s1?'🔒':s2?'✓ Выполнен':'Текущий'}</small></div></div>
+  ${s1&&!s2?`<div class="nktm" id="nkTm" data-end="${nk.s+864e5}">${hms(nk.s+864e5-Date.now())}</div>`:''}</div>
+ <div class="nkc ${!s2?'lock':'cur'}"><div class="nkch"><span class="sq">🎁</span><div><b>Получайте награду каждый день</b><small>Этап 3 · ${!s2?'🔒':'Пока тег стоит'}</small></div></div>
+  ${s2?(got?`<div class="nktm" id="nkTm2">${hms(nickNextDay())}</div><p class="sub" style="margin:0">до следующей награды</p>`:`<button class="btn sand" onclick="nickAct('claim')">Забрать ${fmt(N.r[tier])} <span class="star">★</span></button>`):''}
+  <p class="sub" style="font-size:12px;margin:8px 0 0">Уберёте тег — прогресс сбросится</p></div>`;
+ return `<h1 class="wh">Заработок</h1>${nick}
+ <h2 class="nks">Как получить ещё</h2>
+ ${(ADM.earn||{}).on===false?'':`<div class="brow tt" onclick="open_('earntt')"><img class="sq" src="${GICON.earn}" alt=""><div><b>Ролики в TikTok и Shorts</b><small>за 1 000 000 просмотров</small></div><em>до ${fmt(top)} <span class="star">★</span></em></div>`}
+ <div class="brow" onclick="setTab('profile')"><span class="sq" style="background:linear-gradient(135deg,#3fb6ff,#1f6fe0)">🤝</span><div><b>Пригласить друга</b><small>10% с пополнений друзей</small></div><em>10 %</em></div>`}
+function nickTick(){timers.push(setInterval(()=>{const a=$('#nkTm');if(a){const left=+a.dataset.end-Date.now();a.textContent=hms(left);if(left<=0&&S.tab==='earn'&&!S.stack.length)setTab('earn')}const b=$('#nkTm2');if(b)b.textContent=hms(nickNextDay())},1000))}
+async function nickAct(act){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');if(busy)return;busy=true;
+ const j=await API('api/nick',{act}).catch(()=>null);busy=false;if(j&&j.me)sync(j.me);
+ if(!j||!j.ok){toast((j&&j.err)||'Ошибка');return}
+ if(j.lost)toast(j.why);else if(act==='start')toast('Этап 1 выполнен ✅ Держите тег 24 часа');else if(j.got){toast(`+${fmt(j.got)} ★`);try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}
+ const sc=view.scrollTop;if(S.stack[S.stack.length-1]==='earn')rerender();else if(S.tab==='earn'&&!S.stack.length)setTab('earn');view.scrollTop=sc}
 function earnPage(){const E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2]));
  const steps=['Снимите ролик на любую тему, от 10 секунд','Вставьте в середину баннер '+APP_NAME+' со звуком','Выложите ролик в TikTok или YouTube Shorts','Наберите просмотры: от '+fmt(Math.min(...E.rows.map(r=>r[2])))+' (креатив — от '+fmt((E.rows.find(r=>r[0]==='creative')||E.rows[0])[2])+')','Запишите экран телефона: статистика видео со всех разделов, включая географию по странам','Подайте заявку кнопкой ниже'];
  const rules=['Баннер со звуком, не меньше 25% экрана, не в углу','Видео длиннее минуты: баннер на каждую минуту','Заявка в течение 7 дней после публикации','Нужна запись экрана с телефона со всей статистикой, скриншотов мало','Без рекламы других проектов','За одно видео одна заявка'];
@@ -1207,6 +1304,44 @@ async function mClick(i,el){if(!M.on||el.dataset.o||M.busy)return;M.busy=1;el.da
  if(!j.safe){el.className='mcell bad';el.textContent='🦀';M.on=0;M.bombs=new Set(j.bombs);toast('Краб! Ставка сгорела');reveal();$('#mbtn').textContent='Сделать ставку';lockSeg();return}
  el.className='mcell ok';el.textContent='🐚';M.open++;$('#mx').textContent='x'+j.mult.toFixed(2);$('#mbtn').textContent=`Забрать ★ ${fmt(M.bet*j.mult)}`;
  if(j.done){toast(`Все ракушки! +${fmt(j.win)} ★`);loadFeed();M.on=0;M.bombs=new Set(j.bombs);reveal();$('#mbtn').textContent='Сделать ставку';lockSeg()}}
+/* ===== Цыпа: переведи через дорогу ===== */
+let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';
+const CHICK_IMG='<img src="img/chick.svg" alt="" draggable="false">';
+function chickM(d,k){const D=globalThis.STRELA.CHICK_D[d],r=(ADM.rtp&&ADM.rtp.chick!=null?ADM.rtp.chick:95)/100;return k?Math.floor(r/Math.pow(D[0],k)*100)/100:1}
+function crBuild(){const road=$('#crRoad');if(!road)return;const N=globalThis.STRELA.CHICK_D[CR.d][1];
+ road.innerHTML=`<div class="cr-world" id="crWorld"><div class="cr-side st"><span class="cr-flag">START</span></div>${Array.from({length:N},(_,k)=>`<div class="cr-lane${k<CR.step?' safe':''}${k===CR.step?' next':''}" data-i="${k+1}"><div class="cr-bar">🚧</div><div class="cr-mh"><b>x${chickM(CR.d,k+1).toFixed(2)}</b></div></div>`).join('')}<div class="cr-side fin"><span class="cr-gold">🏆</span></div><div class="cr-chick" id="crChick">${CHICK_IMG}</div></div>`;
+ crPlace(0)}
+function crLaneX(k){const w=$('#crWorld');if(!w)return 0;const el=k?w.querySelector(`.cr-lane[data-i="${k}"]`):w.querySelector('.cr-side.st');return el?el.offsetLeft+el.offsetWidth/2:0}
+function crPlace(anim){const c=$('#crChick'),road=$('#crRoad');if(!c||!road)return;const x=crLaneX(CR.step);c.style.transition=anim?'transform .45s cubic-bezier(.3,1.4,.5,1)':'none';c.style.transform=`translateX(${x-32}px)`;
+ if(anim){c.classList.remove('hop');void c.offsetWidth;c.classList.add('hop')}
+ document.querySelectorAll('.cr-lane.next').forEach(e=>e.classList.remove('next'));const nx=document.querySelector(`.cr-lane[data-i="${CR.step+1}"]`);if(nx&&CR.on)nx.classList.add('next');
+ road.scrollTo({left:Math.max(0,x-road.clientWidth*.3),behavior:anim?'smooth':'auto'});crHud()}
+function crHud(){const m=chickM(CR.d,CR.step),N=globalThis.STRELA.CHICK_D[CR.d][1];const x=$('#crX');if(!x)return;x.textContent='x'+m.toFixed(2);
+ $('#crN').textContent=CR.step<N?'x'+chickM(CR.d,CR.step+1).toFixed(2):'—';$('#crW').innerHTML=`${fmt(CR.on&&CR.step?Math.round(CR.bet*m):0)} <span class="star">★</span>`;
+ const g=$('#crGo'),c=$('#crCash');if(CR.on){g.textContent='Вперёд ➜';c.style.display='';c.disabled=!CR.step;c.innerHTML=CR.step?`Забрать ${fmt(Math.round(CR.bet*m))} <span class="star">★</span>`:'Забрать'}else{g.textContent='Играть';c.style.display='none'}
+ const sg=$('#crSeg');if(sg){sg.style.opacity=CR.on?.45:1;sg.style.pointerEvents=CR.on?'none':''}}
+function crCar(lane,hit){const w=$('#crWorld');if(!w)return;const L=w.querySelector(`.cr-lane[data-i="${lane}"]`);if(!L||(L.classList.contains('safe')&&!hit))return;
+ const c=document.createElement('div');c.className='cr-car'+(hit?' hit':'');c.innerHTML=`<span>${['🚗','🚕','🚙','🚓','🚐','🛻'][Math.random()*6|0]}</span>`;c.style.left=(L.offsetLeft+L.offsetWidth/2)+'px';
+ c.style.animationDuration=(hit?.5:1.2+Math.random()*1.3)+'s';w.appendChild(c);c.addEventListener('animationend',()=>c.remove())}
+function crInit(){CR.on=0;CR.step=0;crBuild();
+ timers.push(setInterval(()=>{if(document.hidden||!$('#crWorld'))return;const N=globalThis.STRELA.CHICK_D[CR.d][1],from=CR.step+2;if(from>N)return;crCar(from+Math.floor(Math.random()*Math.min(6,N-from+1)))},550));
+ srv('chick_state',{},{quiet:1}).then(j=>{if(j&&j.g&&$('#crRoad')){CR.on=1;CR.d=j.g.d;CR.bet=j.g.bet;CR.step=j.g.step;const b=$('#crBet');if(b)b.value=CR.bet;
+  document.querySelectorAll('#crSeg button').forEach((x,i)=>x.classList.toggle('on',i===CR.d));crBuild();toast('Продолжаем забег 🐥')}})}
+function crDiff(d){if(CR.on)return;CR.d=d;CR.bet=Math.round(+($('#crBet')||{}).value||CR.bet);rerender();crBuild()}
+function crBetK(k,add){if(CR.on)return;const i=$('#crBet');let v=Math.round(+i.value||0);v=add?v+add:Math.max(1,Math.round(v*k));i.value=v}
+function crReset(ms){setTimeout(()=>{if($('#crRoad')&&!CR.on){CR.step=0;crBuild()}},ms)}
+async function crAct(){if(CR.busy)return;
+ if(!CR.on){const v=Math.round(+$('#crBet').value);if(!(v>0))return toast('Введите ставку');CR.busy=1;const j=await srv('chick_bet',{bet:v,d:CR.d},{lock:1});CR.busy=0;if(!j)return;
+  CR.on=1;CR.bet=v;CR.step=0;crBuild();return}
+ CR.busy=1;const j=await srv('chick_step',{},{});if(!j){CR.busy=0;return}
+ if(j.dead){const lane=j.step,c=$('#crChick');c.style.transition='transform .35s ease';c.style.transform=`translateX(${crLaneX(lane)-32}px)`;
+  setTimeout(()=>crCar(lane,1),150);setTimeout(()=>{c.classList.add('dead');c.insertAdjacentHTML('beforeend','<span class="cr-boom">💥</span>');try{tg.HapticFeedback.notificationOccurred('error')}catch(e){}
+   toast('Цыпу сбила машина! Ставка сгорела');CR.on=0;CR.step=0;crHud();crReset(1700);CR.busy=0},560);return}
+ CR.step=j.step;const L=document.querySelector(`.cr-lane[data-i="${j.step}"]`);if(L)L.classList.add('safe');crPlace(1);try{tg.HapticFeedback.impactOccurred('light')}catch(e){}
+ if(j.done){toast(`Цыпа дошла! +${fmt(j.win)} ★`);loadFeed();CR.on=0;crHud();const c=$('#crChick');c&&c.classList.add('win');crReset(2200)}
+ setTimeout(()=>CR.busy=0,320)}
+async function crCash(){if(!CR.on||!CR.step||CR.busy)return;CR.busy=1;const j=await srv('chick_cash',{},{lock:1});CR.busy=0;if(!j)return;
+ toast(`+${fmt(j.win)} ★ (x${j.mult.toFixed(2)})`);try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}loadFeed();CR.on=0;crHud();const c=$('#crChick');c&&c.classList.add('win');crReset(1800)}
 function reveal(){document.querySelectorAll('.mcell').forEach((c,i)=>{if(!c.dataset.o){c.style.opacity=.55;c.textContent=M.bombs?.has(i)?'🦀':'🐚'}})}
 /* plinko */
 let P={risk:0,balls:[]};
@@ -1275,7 +1410,7 @@ S.adTab='stats';
 const rtpOf=k=>ADM.rtp[k]??(k==='contract'?ADM.rtp.upgrade:undefined)??90;
 const upPrevTxt=()=>{const r=rtpOf('upgrade'),m=ADM.upMax||95;return 'Шанс сейчас: '+[2,3,5,10,20].map(x=>'x'+x+' → '+(Math.min(m,r/x)).toFixed(1).replace(/\.0$/,'')+'%').join(' · ')};
 function upPrev(){const e=$('#upPrev');if(e)e.textContent=upPrevTxt()}
-const GNAMES={dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты'};
+const GNAMES={chick:'Цыпа',dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
 const DIG={k:1,speed:1};const DIG_SPD={1:1,2:1.7,3:2.8};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
@@ -1513,7 +1648,7 @@ cases(){const row=(c,k)=>`<div class="grow" style="cursor:pointer;opacity:${c.hi
   <div class="field"><input id="fgN" type="number" min="0" max="20" placeholder="Сколько чатов" value="${GATE().shares}" style="max-width:120px"><input id="fgC" placeholder="@канал (пусто — без подписки)" value="${GATE().channel?'@'+esc(GATE().channel):''}"></div>
   <button class="btn sand" onclick="ADM.freeGate={hours:Math.max(1,Math.min(168,Math.round(+$('#fgH').value||24))),on:$('#fgOn').checked,shares:Math.max(0,Math.min(20,Math.round(+$('#fgN').value||0))),channel:$('#fgC').value.trim()};saveAdm(1);setTab('admin')">Сохранить</button></div>
  <div class="card"><div class="ad-h">➕ Новый кейс</div><div class="field"><input id="ncN" placeholder="Название"><input id="ncP" type="number" placeholder="Цена ★" style="max-width:110px"></div><button class="btn sand" onclick="ceCreate()">Создать кейс</button></div>`},
-earn(){const E=EARN();setTimeout(earnAdmLoad,0);return `<div class="card"><div class="ad-h">🎬 Заявки за ролики <small id="eaCnt" style="background:var(--coral)">…</small></div><div id="eaList"><div class="empty">Загрузка…</div></div></div>
+earn(){const E=EARN();setTimeout(earnAdmLoad,0);return nickAdm()+`<div class="card"><div class="ad-h">🎬 Заявки за ролики <small id="eaCnt" style="background:var(--coral)">…</small></div><div id="eaList"><div class="empty">Загрузка…</div></div></div>
  <div class="card"><div class="ad-h">⚙️ Раздел «Заработок»</div>
  <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="eaOn" ${E.on!==false?'checked':''}> Показывать игрокам</label>
  <label class="row" style="align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="eaHalf" ${E.half?'checked':''}> YouTube Shorts — половина ставки</label>
@@ -1576,6 +1711,14 @@ function gfSorted(){const k=S.gfSort||'price',L=GIFT_LIST.slice(),pr=x=>{const g
  if(k==='type')return L.sort((a,b)=>ty(a)-ty(b)||pr(b)-pr(a));
  return L.sort((a,b)=>pr(b)-pr(a))}
 function gfZoom(s){const g=giftBy(s);if(!g)return;sheet(`<div style="text-align:center"><div class="gfbig">${gi(g)}</div><h2>${esc(g.name)}</h2><p class="sub"><span class="star">★</span> ${fmt(g.price)}</p><button class="btn sand" onclick="closeSheet()">Закрыть</button></div>`)}
+function nickAdm(){const N=NICK();return `<div class="card"><div class="ad-h">🏷 «Поставь в ник»</div><p class="sub" style="text-align:left">Игрок ставит тег в имя/фамилию и текст в описание профиля, держит 24 ч и получает награду каждый день, пока тег стоит. Проверка — через Telegram.</p>
+ <div class="row" style="align-items:center;margin-bottom:8px"><b style="flex:1">Включено</b><button class="sw ${N.on!==false?'on':''}" id="nkOn" onclick="this.classList.toggle('on')"></button></div>
+ <div class="field"><span class="sub" style="align-self:center;width:84px">В имя</span><input id="nkT" placeholder="${esc(N.tag)}" value="${esc((ADM.nick||{}).tag||'')}"></div>
+ <div class="field"><span class="sub" style="align-self:center;width:84px">В био</span><input id="nkB" placeholder="${esc(N.bio)}" value="${esc((ADM.nick||{}).bio||'')}"></div>
+ <p class="sub" style="text-align:left;margin:4px 0">Награда в день по уровню игрока (★):</p>
+ <div class="field">${NICK_T.map((t,i)=>`<label style="flex:1;font-size:11px;font-weight:800">${t}<input id="nkR${i}" type="number" min="0" value="${N.r[i]}" style="width:100%"></label>`).join('')}</div>
+ <button class="btn sand" onclick="nickSave()">Сохранить</button></div>`}
+function nickSave(){ADM.nick={on:$('#nkOn').classList.contains('on'),tag:$('#nkT').value.trim().slice(0,30),bio:$('#nkB').value.trim().slice(0,60),r:[0,1,2,3].map(i=>Math.max(0,Math.round(+$('#nkR'+i).value||0)))};saveAdm(1);toast('Сохранено ✅')}
 function earnSave(){const E=EARN();ADM.earn={on:$('#eaOn').checked,half:$('#eaHalf').checked,channel:$('#eaCh').value.trim(),rows:E.rows.map((r,i)=>[r[0],$('#eaN'+i).value.trim()||r[1],Math.max(0,Math.round(+$('#eaM'+i).value||0)),[0,1,2].map(k=>Math.max(0,Math.round(+$('#eaR'+i+'_'+k).value||0)))])};saveAdm(1);setTab('admin');toast('Сохранено ✅')}
 async function earnAdmLoad(){const el=$('#eaList');if(!el)return;const j=await adApi('earn_list',{});if(!j||!$('#eaList'))return;S.eaL=j.list;const K={gameplay:'Геймплей',gifts:'Подарки',creative:'Креатив'},nw=j.list.filter(x=>x.st==='new');
  $('#eaCnt').textContent=nw.length;

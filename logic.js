@@ -21,7 +21,9 @@ const EGGS=[['jellybunny','3 кокоса',249],['ionicdryer','3 кокоса',2
 const PM0=[[5.6,2.1,1.1,1,.5,1,1.1,2.1,5.6],[13,3,1.3,.7,.4,.7,1.3,3,13],[29,4,1.5,.3,.2,.3,1.5,4,29]];
 const BIN=[1,8,28,56,70,56,28,8,1].map(x=>x/256);   // шансы лунок plinko (8 рядов)
 const SLOT_SYMS=['🍉','🥥','🐚','🌺','🍹','💎'];
-const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,dig:90}; // как в админке по умолчанию
+const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,dig:90,chick:95};
+/* Цыпа: [шанс пройти полосу, число полос] по сложности */
+const CHICK_D=[[.9,20],[.8,16],[.7,12],[.55,9]]; // как в админке по умолчанию
 const PVP_BETS=[100,500,2500], SLOT_BET=100, CRASH_K=.12;
 /* задания по умолчанию (пока админ не сохранил свои) */
 const DEF_TASKS=[
@@ -86,6 +88,7 @@ function makeLogic(getADM,rand){
  const plinkoBin=()=>{let k=0;for(let i=0;i<8;i++)if(rand()<.5)k++;return k};
  /* мины */
  const minesBombs=n=>Math.max(1,Math.round(n*n/5));
+ const chickMult=(d,k)=>{const D=CHICK_D[d]||CHICK_D[0];return k?Math.floor(R('chick')/Math.pow(D[0],k)*100)/100:1};
  const minesMult=(n,open)=>{const N=n*n,k=minesBombs(n);let p=1;for(let i=0;i<open;i++)p*=(N-k-i)/(N-i);return R('mines')/p};
  /* слоты */
  const slotsMult=res=>{const u=new Set(res).size;return (u===1?10:u===2?2:0)*R('slots')/.9};
@@ -95,7 +98,7 @@ function makeLogic(getADM,rand){
  /* краш: P(дойти до x) = RTP/x */
  const crashPoint=()=>Math.max(1,Math.floor(100*R('crash')/(1-rand()))/100);
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
- return {R,UP_MAX,GIFTS,giftBy,pickGift,prizePool,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,slotsMult,upChance,crashPoint,crashMult};
+ return {R,UP_MAX,GIFTS,giftBy,pickGift,prizePool,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,chickMult,slotsMult,upChance,crashPoint,crashMult};
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */
@@ -139,5 +142,5 @@ function digRun(rand,K,tp,force){const p=digTierP(tp),r=rand();const tier=force!
 function digPay(ev,bet,unit){let s=0;for(const e of ev)if(e.e==='b'&&e.v)s+=e.v;return Math.round(bet*s*unit)}
 /* уровни игрока: по обороту (сумме ставок), награда за каждый новый уровень */
 const LEVELS=[['Новичок',0,0],['Iron',1000,10],['Bronze',5000,40],['Silver',20000,150],['Gold',60000,400],['Platinum',200000,1200],['Diamond',600000,3500]];
-G.STRELA={LEVELS,digGen,digSim,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
+G.STRELA={LEVELS,CHICK_D,digGen,digSim,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
 })(globalThis);
