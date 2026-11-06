@@ -1,0 +1,7 @@
+# не кешировать код приложения: после обновления игроки сразу получают новую версию
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
