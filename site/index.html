@@ -276,6 +276,12 @@ body.dark .g-chick{background:radial-gradient(90% 80% at 50% 30%,#ffb627,#7a3a06
 .gbb.on{border-style:solid;border-color:#ffcf3a;background:rgba(255,207,58,.15)}.gbb .gbi{width:32px;height:32px;display:block}.gbb .gbi .gi{width:32px;height:32px;font-size:20px}
 .gbb i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff5d7a;font:900 10px/18px Nunito;font-style:normal;text-align:center}
 input.gbv{color:#ffcf3a!important}.gbp{display:block;margin-top:4px;font-weight:900;font-size:13px}
+.tpz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.tp{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 6px 12px;border-radius:22px;background:var(--glass);border:1px solid var(--line);text-align:center}
+.tp .gi{width:72px;height:72px;font-size:44px}.tp b{font:800 13px Nunito,sans-serif;line-height:1.15}.tp small{font-weight:800;color:var(--muted);font-size:12px}
+.tp .tpm{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:24px}
+.tp.p1{border-color:rgba(255,207,58,.65);background:linear-gradient(180deg,rgba(255,207,58,.18),var(--glass));box-shadow:0 0 18px rgba(255,207,58,.2);order:2;transform:translateY(-8px)}
+.tp.p2{order:1;border-color:rgba(205,215,235,.5)}.tp.p3{order:3;border-color:rgba(205,127,50,.55)}
 .rbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 0 10px;background:transparent}body.dark .rbar{background:linear-gradient(180deg,#151829 75%,transparent)}
 .rchips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.rchips::-webkit-scrollbar{display:none}
 .rch{flex:0 0 auto;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:800 15px Nunito,sans-serif;padding:10px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
@@ -577,7 +583,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=2fdf5f0e"></script>
+<script src="i18n.js?v=75aa4721"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -722,13 +728,6 @@ games(){
   return `<div class="brand"><div class="lg lgimg"><img src="img/gift.webp" alt=""></div><h1>${esc(APP_NAME.split(' ')[0].toUpperCase())}<span>${esc(APP_NAME.split(' ').slice(1).join(' ').toUpperCase())}</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
   socialsRow()+'<div class="tiles">'+GAMES.filter(x=>!ADM.off[x[0]]&&(x[0]!=='free'||FREE_KEYS().length)&&(x[0]!=='drop'||(ADM.drop||{}).on!==false)&&(x[0]!=='earn'||(ADM.earn||{}).on!==false)).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<span class="onl" data-g="${id}"${S.on&&S.on[id]?'':' hidden'}><i></i>${S.on&&S.on[id]?onTxt(S.on[id]):''}</span><div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('')+'</div>';
 },
-contests(){
-  const box=(p,a,b)=>`<div class="card"><div class="grid3">${p.map(s=>{const g=giftBy(s);return `<div class="prize">${gi(g)}<div><b class="star">★</b> <b>${fmt(g.price)}</b></div></div>`}).join('')}</div>
-  <div class="row" style="margin:14px 0"><div class="stat"><b>${a}</b><small>Призы</small></div><div class="stat"><b>${b}</b><small>Участники</small></div></div>
-  <button class="btn ghost" onclick="open_('raffle')">Участвовать</button></div>`;
-  return `<h1>Розыгрыши</h1><p class="sub">Выигрывайте подарки абсолютно бесплатно!</p>`+
-  box(['ionicdryer','sleighbell','candycane'],12,826)+box(['kissedfrog','crystalball','hexpot'],21,615);
-},
 tasks(){const d=U().done||{},st=U().started||{};const L=TASKS();
   return `<p class="sub">Выполняйте задания и получайте билеты 🎫 — их можно использовать для открытия бесплатного кейса</p>
   <div class="card list">${L.map(t=>`<div class="it"><div class="av" style="background:rgba(255,255,255,.15);font-size:22px">${esc(t.e)}</div><div class="nm">${esc(t.t)}<small>🎫 ${t.r}</small></div>${d[t.id]?'<button class="btn sm ghost" disabled>✓</button>':`<button class="btn sm ${st[t.id]?'sand':''}" onclick="doTask('${t.id}')">${st[t.id]?'Проверить':'Начать'}</button>`}</div>`).join('')||'<div class="empty">Заданий пока нет</div>'}</div>`;
@@ -737,13 +736,11 @@ tour(){
   const gl=GIFTS().filter(g=>!isStar(g));
   const feed=S.feed.slice(0,15);
   return `<div class="card"><div class="ad-h">🔥 Последние выигрыши <small style="background:var(--palm)">LIVE</small></div><div class="list">${feed.length?feed.map(feedRow).join(''):'<div class="empty">Пока никто не выигрывал — будь первым!</div>'}</div></div>
-  <h1>Турнир</h1><p class="sub">Каждую неделю топ игроков по обороту игр получают призы</p>
+  <h1>Турнир месяца</h1><p class="sub">Топ-3 игрока по обороту за месяц получают NFT — призы приходят в инвентарь сами</p>
   <div class="card timer" id="timer"></div>
-  <div class="card"><p class="sub" style="margin-top:0">Эти подарки получат случайные пользователи из топ 1000</p>
-  <div class="grid3">${[['candycane','x50'],['sleighbell','x25'],['ionicdryer','x5']].map(([s,x])=>`<div class="prize">${gi(giftBy(s))}<b>${x}</b></div>`).join('')}</div></div>
-  ${S.tour&&S.tour.prev&&S.tour.prev.top.length?`<div class="card"><div class="ad-h">🏅 Победители прошлой недели</div><div class="list">${S.tour.prev.top.map((r,i)=>`<div class="it"><b style="width:22px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div></div>`).join('')}</div></div>`:''}
-  <div class="card list">${(S.tour&&S.tour.top.length)?S.tour.top.map((r,i)=>`<div class="it"${String(r.id)===String(ME.id)?' style="background:rgba(255,210,63,.15);border-radius:12px"':''}><b style="width:22px;color:var(--muted)">${i+1}</b><div class="av" style="background:hsl(${hue(r.n||'?')},65%,50%)">${esc((r.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${gl.length?`<span style="width:34px;height:34px;display:inline-block">${gi(gl[i%gl.length])}</span>`:''}</div>`).join(''):`<div class="empty">${S.tour?'Турнир только начался — сделай ставку и стань первым!':'Загрузка…'}</div>`}
-  <div class="it me"><b style="width:22px">100+</b><div class="av" style="background:var(--sand);color:#4a2c00">Вы</div><div class="nm">Вы<small><span class="star">★</span> 0</small></div></div></div>`;
+  <div class="tpz">${TOUR_P().map((sl,i)=>{const g=giftBy(sl);return g?`<div class="tp p${i+1}"><span class="tpm">${['🥇','🥈','🥉'][i]||i+1}</span>${gi(g)}<b>${esc(g.name)}</b><small><span class="star">★</span> ${fmt(g.price)}</small></div>`:''}).join('')}</div>
+  ${S.tour&&S.tour.prev&&S.tour.prev.top.length?`<div class="card"><div class="ad-h">🏅 Победители прошлого месяца</div><div class="list">${S.tour.prev.top.map((r,i)=>{const w=(S.tour.prev.won||[]).find(x=>x.place===i+1),g=w&&giftBy(w.prize);return `<div class="it"><b style="width:22px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}</div>`}).join('')}</div></div>`:''}
+  <div class="card list">${(S.tour&&S.tour.top.length)?S.tour.top.map((r,i)=>{const g=i<TOUR_P().length&&giftBy(TOUR_P()[i]);return `<div class="it"${String(r.id)===String(ME.id)?' style="background:rgba(255,210,63,.15);border-radius:12px"':''}><b style="width:22px;color:var(--muted)">${i+1}</b><div class="av" style="background:hsl(${hue(r.n||'?')},65%,50%)">${esc((r.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${g?`<span style="width:34px;height:34px;display:inline-block">${gi(g)}</span>`:''}</div>`}).join(''):`<div class="empty">${S.tour?'Турнир только начался — сделай ставку и стань первым!':'Загрузка…'}</div>`}</div>`;
 },
 profile(){
   const inv=U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
@@ -860,15 +857,13 @@ pvp(){return `<div class="wheel-wrap"><div class="pin">🔻</div><div class="whe
  <button class="btn sand" onclick="pvpBet()">Сделать ставку</button>`},
 slots(){return `<h1>Слоты</h1><div class="card" style="margin-top:14px"><div class="reels">${[0,1,2].map(i=>`<div class="reel" id="r${i}">🍉</div>`).join('')}</div><p class="sub" style="margin:0">3 одинаковых — x${(10*R('slots')/.9).toFixed(1)} · 2 одинаковых — x${(2*R('slots')/.9).toFixed(1)}</p></div>
  <button class="btn sand" onclick="spinSlots()">Крутить за ★ 100</button>`},
-raffle(){return `<h1>Розыгрыш</h1><p class="sub">Участники</p><div class="card list">${['semmu','nup','Darkol','Женя','vlad','chxtvxrg','Светлана','Herry','malbag','Hunter'].map((n,i)=>`<div class="it"><div class="av" style="background:hsl(${i*37},70%,50%)">${n[0].toUpperCase()}</div><div class="nm">${n}<small>Candy Cane</small></div><span style="width:34px;height:34px;display:inline-block">${gi(giftBy('candycane'))}</span></div>`).join('')}</div>
- <button class="btn sand" onclick="toast('Вы участвуете! 🌴')">Участвовать</button>`},
 addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style="background:rgba(255,90,95,.3)"><b>Не дарите подарки с Telegram маркета!</b><br><small style="color:var(--muted)">Отправляйте подарки только напрямую со своего аккаунта</small></div>
  <div class="card steps">${[['Откройте аккаунт '+'@'+GIFT_ACC,'Сюда принимаются все подарки'],['Отправьте ему подарок','Модель, фон и символ не учитываются'],['Подарок добавится в профиль','В течении нескольких минут']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
  <button class="btn" onclick="closeSheet();openUrl('https://t.me/'+GIFT_ACC)">Перейти</button>`);return null},
 };
 
 /* ================== РОУТЕР ================== */
-const SUBT={tasks:'bonus',contests:'bonus',tour:'bonus'};
+const SUBT={tasks:'bonus',tour:'bonus'};
 function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',['earn','earntt'].includes(S.stack[S.stack.length-1])||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display=S.stack.length||sub?'none':'block';topExtra()}
 function topExtra(){const l=$('#tlogo');if(l&&!l.dataset.n){const p=APP_NAME.split(' ');l.innerHTML=`${esc(p[0])}`}
  const a=$('#tava');if(a&&!a.dataset.ok){a.dataset.ok=1;const ph=TU&&TU.photo_url;a.innerHTML=ph?`<img src="${esc(ph)}" alt="" onerror="this.remove()">`:'';a.dataset.l=(ME.name||'?').replace('@','')[0].toUpperCase();a.style.setProperty('--h',hue(ME.name||'?'))}
@@ -1054,7 +1049,7 @@ function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).l
  return `<h1 class="wh">Бонусы</h1>${fdbCard(1)}
  ${FREE_KEYS().length?row("S.ccat='free';setTab('cases')",'🎁','linear-gradient(135deg,#f0b43a,#c0640a)','Бесплатные кейсы','Открывай каждый день','FREE','gold'):''}
  ${row("setTab('tasks')",'📋','linear-gradient(135deg,#6f86ff,#7b5cf5)','Задания','Получай 🎫 билеты за подписки',left?`${left} новых`:'✓')}
- ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир','Топ по обороту за неделю','Неделя')}
+ ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир месяца','Топ-3 по обороту получают NFT','Месяц')}
  ${ADM.off.hunt?'':row("open_('hunt')",'🗺️','linear-gradient(135deg,#1fb59a,#0b6a60)','Охота за сокровищами','Найди 5 тайников за неделю','')}
  ${(ADM.drop||{}).on!==false&&!ADM.off.drop?row("open_('drop')",'📦','linear-gradient(135deg,#8a5cff,#4a2aa0)','Ежедневный дроп','Бесплатный приз раз в день',''):''}
  ${row("setTab('profile')",'🤝','linear-gradient(135deg,#3fb6ff,#1f6fe0)','Пригласить друга','10% с пополнений друзей','10 %')}`}
@@ -1603,12 +1598,13 @@ function adminView(){
 }
 /* ===== графики по дням ===== */
 S.chK=S.chK||'dep';S.chN=S.chN||14;
+const TOUR_P=()=>(S.tour&&S.tour.prizes)||['mythmask','jinglebells','snowmittens'];
 const CH_KINDS=[['dep','Пополнения','#ffb43a'],['bets','Оборот','#3fa7ff'],['profit','Профит','#3dff8b'],['new','Новые игроки','#ff6aa8']];
 function tourPrevCard(P){const d=t=>new Date(t).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
- if(!P||!P.top.length)return `<div class="card"><div class="ad-h">🏆 Итоги турнира прошлой недели</div><div class="empty">Прошлая неделя ещё не закончилась или в ней не было ставок</div></div>`;
- return `<div class="card"><div class="ad-h">🏆 Итоги турнира прошлой недели <small style="background:var(--sea)">${P.count}</small></div>
+ if(!P||!P.top.length)return `<div class="card"><div class="ad-h">🏆 Итоги турнира прошлого месяца</div><div class="empty">Прошлый месяц ещё не закончился или в нём не было ставок</div></div>`;
+ return `<div class="card"><div class="ad-h">🏆 Итоги турнира прошлого месяца <small style="background:var(--sea)">${P.count}</small></div>
  <p class="sub" style="text-align:left;margin:0 0 6px">${d(P.start)} – ${d(P.end)} · по обороту ставок. Нажми на ID, чтобы открыть чат с игроком.</p>
- <div class="list">${P.top.map((r,i)=>`<div class="it"><b style="width:26px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="nm">${/^@\w+$/.test(r.n||'')?`<a href="https://t.me/${esc(r.n.slice(1))}" onclick="event.preventDefault();openUrl('https://t.me/${esc(r.n.slice(1))}')" style="color:#fff">${esc(r.n)}</a>`:`${esc(r.n||'Игрок')} <small style="color:var(--muted)">(нет юзернейма)</small>`}<small><a href="tg://user?id=${esc(r.id)}" style="color:var(--lagoon)">ID ${esc(r.id)}</a></small></div><b class="star">${fmt(r.v)} ★</b></div>`).join('')}</div>
+ <div class="list">${P.top.map((r,i)=>`<div class="it"><b style="width:26px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="nm">${/^@\w+$/.test(r.n||'')?`<a href="https://t.me/${esc(r.n.slice(1))}" onclick="event.preventDefault();openUrl('https://t.me/${esc(r.n.slice(1))}')" style="color:#fff">${esc(r.n)}</a>`:`${esc(r.n||'Игрок')} <small style="color:var(--muted)">(нет юзернейма)</small>`}<small><a href="tg://user?id=${esc(r.id)}" style="color:var(--lagoon)">ID ${esc(r.id)}</a></small></div>${(()=>{const w=(P.won||[]).find(x=>x.place===i+1);return w?`<span title="выдано" style="width:30px;height:30px;display:inline-block;margin-right:6px">${gi(giftBy(w.prize))}</span>`:''})()}<b class="star">${fmt(r.v)} ★</b></div>`).join('')}</div>${(P.won||[]).length?'<p class="sub" style="text-align:left;margin:6px 0 0">✅ Призы выданы победителям в инвентарь автоматически</p>':''}
  <button class="btn sm ghost" style="margin-top:8px" onclick="tourCopy()">📋 Скопировать список</button></div>`}
 function tourCopy(){const P=S.adm&&S.adm.tourPrev;if(!P)return;const t=P.top.map((r,i)=>`${i+1}. ${r.n||'Игрок'} — ID ${r.id} — ${r.v} ★`).join('\n');try{navigator.clipboard.writeText(t).then(()=>toast('Скопировано ✅'),()=>sheet(`<h2>Список</h2><textarea style="width:100%;height:300px">${esc(t)}</textarea>`))}catch(e){sheet(`<h2>Список</h2><textarea style="width:100%;height:300px">${esc(t)}</textarea>`)}}
 function chartCard(days){const by={};days.forEach(d=>by[d.d]=d);const N=S.chN,today=new Date(),pts=[];

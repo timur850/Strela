@@ -26,6 +26,12 @@ class GameError extends Error {}
 const fail = m => { throw new GameError(m); };
 
 const KYIV = "Europe/Kyiv";
+function kyivOff(t) { try { const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: KYIV, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(t).map(x => [x.type, +x.value])); return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(t / 1000) * 1000; } catch { return 0; } }
+function monthBounds(t = Date.now()) {          // [начало месяца, начало следующего] по Киеву
+  const k = new Date(t + kyivOff(t)), y = k.getUTCFullYear(), m = k.getUTCMonth();
+  const at = (yy, mm) => { const g = Date.UTC(yy, mm, 1); return g - kyivOff(g - kyivOff(g)); };
+  return [at(y, m), at(y, m + 1)];
+}
 function dayKey(t = Date.now()) { try { return new Date(t).toLocaleDateString("sv-SE", { timeZone: KYIV }); } catch { return new Date(t).toISOString().slice(0, 10); } }
 // неделя с понедельника 00:00 UTC
 function weekStart(t = Date.now()) { const d = new Date(t); const day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day); }
@@ -155,14 +161,26 @@ export class Game {
   }
   hist(u, e) { u.hist = [{ ...e, t: Date.now() }, ...(u.hist || [])].slice(0, 40); }
   // ===== турнир: недельный оборот ставок реальных игроков =====
-  async tourGet() {
+  async tourGet() {                              // турнир на календарный месяц (по Киеву), топ-3 получают подарки
     const now = Date.now(); let t = await this.s.get("tour");
+    if (t && !t.monthly && now < t.end) { const [ms, me] = monthBounds(now); t.start = ms; t.end = me; t.monthly = 1; await this.s.put("tour", t); }
     if (!t || now >= t.end) {
-      if (t && Object.keys(t.rows || {}).length) await this.s.put("tour:prev", t);
-      t = { start: now, end: now + 7 * 864e5, rows: {} }; await this.s.put("tour", t);
+      if (t && Object.keys(t.rows || {}).length) {
+        const P = this.tourPrizes(), top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, P.length);
+        t.won = [];
+        for (let i = 0; i < top.length; i++) {          // призы — сразу в инвентарь победителям
+          const w = await this.s.get("u:" + top[i].id); if (!w) continue;
+          (w.inv = w.inv || []).push(P[i]); await this.s.put("u:" + top[i].id, w);
+          t.won.push({ ...top[i], prize: P[i], place: i + 1 });
+        }
+        await this.s.put("tour:prev", t);
+      }
+      const [ms, me] = monthBounds(now);
+      t = { start: ms, end: me, rows: {}, monthly: 1 }; await this.s.put("tour", t);
     }
     return t;
   }
+  tourPrizes() { const p = Array.isArray(this.st.tourPrizes) && this.st.tourPrizes.length ? this.st.tourPrizes : ["mythmask", "jinglebells", "snowmittens"]; return p.filter(x => this.L.giftBy(x)).slice(0, 10); }
   async tourAdd(u, n) {
     if (!this.uid || !(n > 0)) return;
     const t = await this.tourGet(), r = t.rows[this.uid] || [u.name, 0];
@@ -175,7 +193,7 @@ export class Game {
     if (!t || Date.now() < t.end) t = await this.s.get("tour:prev");
     if (!t || !t.rows) return null;
     const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
-    return { start: t.start, end: t.end, count: Object.keys(t.rows).length, top };
+    return { start: t.start, end: t.end, count: Object.keys(t.rows).length, top, won: t.won || [] };
   }
   async tourTop(k = 10) {
     const t = await this.tourGet();
@@ -215,7 +233,7 @@ export class Game {
       return this.admin(op.slice(6), d, isAdmin === true);
     }
     if (op === "online") { if (d && d.g) onMark(String(d.g), uid); return { ok: true, on: onCounts() }; }
-    if (op === "tour") { const p = await this.tourPrev(3); return { ok: true, ...(await this.tourTop(10)), prev: p && { end: p.end, top: p.top.map(r => ({ n: r.n, v: r.v })) } }; }
+    if (op === "tour") { await this.tourGet(); const p = await this.tourPrev(3); return { ok: true, ...(await this.tourTop(10)), prizes: this.tourPrizes(), prev: p && { end: p.end, top: p.top.map(r => ({ n: r.n, v: r.v })), won: (p.won || []).map(w => ({ n: w.n, v: w.v, prize: w.prize, place: w.place })) } }; }
     this.uid = uid;
     const u = await this.user(uid, name);
     const banned = (this.st.banned || []).map(String).includes(uid);
@@ -812,7 +830,7 @@ export class Game {
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
       const gstats = (await this.s.get("gstats")) || {};
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
-      const tourPrev = await this.tourPrev(50);
+      await this.tourGet(); const tourPrev = await this.tourPrev(50);
       if (tourPrev) for (const r of tourPrev.top) { const cu = await this.s.get("u:" + r.id); if (cu && cu.name && /^@/.test(cu.name)) r.n = cu.name; }   // актуальный @ из профиля
       return { ok: true, stats, gstats, days, tourPrev, total, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
