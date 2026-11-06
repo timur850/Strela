@@ -285,6 +285,7 @@ input.gbv{color:#ffcf3a!important}.gbp{display:block;margin-top:4px;font-weight:
 .tp .tpm{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:24px}
 .tp.p1{border-color:rgba(255,207,58,.65);background:linear-gradient(180deg,rgba(255,207,58,.18),var(--glass));box-shadow:0 0 18px rgba(255,207,58,.2);order:2;transform:translateY(-8px)}
 .tp.p2{order:1;border-color:rgba(205,215,235,.5)}.tp.p3{order:3;border-color:rgba(205,127,50,.55)}
+.rul p{text-align:left;margin:6px 0;font-size:13.5px;line-height:1.45;color:var(--text)}.rul p b{color:#9aa8ff}
 .rbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 0 10px;background:transparent}body.dark .rbar{background:linear-gradient(180deg,#151829 75%,transparent)}
 .rchips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.rchips::-webkit-scrollbar{display:none}
 .rch{flex:0 0 auto;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:800 15px Nunito,sans-serif;padding:10px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
@@ -586,7 +587,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=c5b279cd"></script>
+<script src="i18n.js?v=9e684d46"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -748,7 +749,7 @@ tour(){
 profile(){
   const inv=U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
   return `${profTop()}${statsBlock()}
-  <div class="card plist"><button onclick="fairSheet()"><i>🛡</i>Честная игра<em>›</em></button><button onclick="openUrl('https://t.me/'+SUPPORT)"><i>💬</i>Поддержка<em>›</em></button><button onclick="S.langOpen=!S.langOpen;setTab('profile')"><i>🌐</i>Язык · ${LANG==='en'?'English':'Русский'}<em>›</em></button></div>
+  <div class="card plist"><button onclick="rulesSheet()"><i>📜</i>Правила<em>›</em></button><button onclick="fairSheet()"><i>🛡</i>Честная игра<em>›</em></button><button onclick="openUrl('https://t.me/'+SUPPORT)"><i>💬</i>Поддержка<em>›</em></button><button onclick="S.langOpen=!S.langOpen;setTab('profile')"><i>🌐</i>Язык · ${LANG==='en'?'English':'Русский'}<em>›</em></button></div>
   ${S.langOpen?langCard():''}
   <div class="row" style="align-items:center;margin:18px 0 10px"><h1 style="font-size:22px;flex:1;text-align:left">Ваши подарки</h1>${U().inv.length?`<button class="btn sm ghost" onclick="sellAll()">Продать все</button>`:''}</div>
   ${U().inv.length&&MIN_WD()?`<p class="sub" style="margin:-4px 0 10px">📤 Вывод в Telegram — для подарков от ${fmt(MIN_WD())} ★</p>`:''}
@@ -1004,6 +1005,9 @@ function statsBlock(){const p=U().ps||{t:0,g:0,w:0,best:null,fav:{}},fav=Object.
  <div class="card pbest"><span class="sq">${bg?gi(bg):'🏆'}</span><div><small>Лучший выигрыш</small><b>${p.best?`${fmt(p.best.v)} <span class="star">★</span>`:'пока нет'}</b><small>${p.best?esc((bg?bg.name+' · ':'')+(p.best.g||'')):'выигрыши появятся здесь'}</small></div></div>
  <div class="pgrid"><div class="pst"><small>Оборот</small><b>${fmt(p.t||0)} <span class="star">★</span></b></div><div class="pst"><small>Игр сыграно</small><b>${fmt(p.g||0)}</b></div>
  <div class="pst"><small>Выигрышей</small><b>${fmt(p.w||0)}</b></div><div class="pst"><small>Любимая игра</small><b class="sm">${fav?esc(OPN[fav[0]]||fav[0]):'нет'}</b></div></div>`}
+async function rulesSheet(){sheet('<div class="empty">Загрузка…</div>');let R=null;try{R=await fetch('rules.json',{cache:'no-store'}).then(r=>r.json())}catch(e){}
+ if(!R)return sheet('<div class="empty">Не удалось загрузить правила</div>');
+ sheet(`<h2>📜 Правила</h2><p class="sub">Действуют с 06.11.2026</p>${R.map(([t,L])=>`<div class="card rul"><div class="ad-h">${esc(t)}</div>${L.map((x,i)=>`<p><b>${esc(t.split('.')[0])}.${i+1}.</b> ${esc(x)}</p>`).join('')}</div>`).join('')}<button class="btn sand" onclick="closeSheet()">Понятно</button>`)}
 function fairSheet(){sheet(`<h2>🛡 Честная игра</h2><p class="sub" style="text-align:left">Результат каждой игры считается на сервере, а не в телефоне — подменить его нельзя.<br><br>Шансы всех призов в кейсе видны во вкладке «🎁 Призы» перед открытием. В демо-режиме шансы такие же, как в настоящей игре.<br><br>Все пополнения зачисляются только после подтверждения платежа Telegram или сети TON.</p><button class="btn sand" onclick="closeSheet()">Понятно</button>`)}
 function wTabs(){return `<div class="wtabs">${[['dep','Пополнить'],['wd','Вывести'],['hist','История']].map(([k,t])=>`<button class="${(S.wt||'dep')===k?'on':''}" onclick="S.wt='${k}';S.wAt=0;rerender()">${t}</button>`).join('')}</div>`}
 const WM={stars:['⭐','Звёзды','Telegram Stars','от 1 ★','Мгновенно','linear-gradient(135deg,#ffcf3a,#f39a1e)'],ton:['💎','TON','TON · Tonkeeper, Wallet','от 0.1 TON','TON','linear-gradient(135deg,#3fb6ff,#1f6fe0)'],bonus:['🎁','Бонус','','','','linear-gradient(135deg,#ff6b9a,#c2185b)'],cp:['🤖','CryptoBot','CryptoBot · в долларах','USDT, TON, BTC и др. · от {min} $','$','linear-gradient(135deg,#2fa5ff,#1b6fd8)'],gift:['🎁','Подарком','Подарок','передайте на @{acc}','Передача','linear-gradient(135deg,#ff7aa8,#9b4dff)']};
