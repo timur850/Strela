@@ -224,14 +224,14 @@ export class Game {
   op_me() { return {}; }
   async op_level_claim(u) {                      // забрать награду за следующий достигнутый уровень
     const next = (u.lvl || 0) + 1, L = LEVELS[next], t = (u.ps && u.ps.t) || 0;
-    if (!L) fail("Все уровни уже пройдены");
+    if (!L) fail("Максимальный рейтинг уже получен");
     if (t < L[1]) fail(`Нужен оборот ${L[1]} ★`);
     u.lvl = next; u.bal += L[2]; await this.stat("lvl", L[2]);
     return { got: L[2], lvl: next, name: L[0] };
   }
   // «Поставь в ник»: этап 1 — тег в имени и био, этап 2 — держать 24 ч, этап 3 — награда раз в день (зависит от уровня)
   nickReward(u) {
-    const r = (this.st.nick && Array.isArray(this.st.nick.r) ? this.st.nick.r : [2, 5, 10, 20]).map(v => Math.max(0, Math.round(+v || 0)));
+    const r = (this.st.nick && Array.isArray(this.st.nick.r) ? this.st.nick.r : [3, 7, 15, 30]).map(v => Math.max(0, Math.round(+v || 0)));
     const t = (u.ps && u.ps.t) || 0; let i = 0; while (i + 1 < LEVELS.length && t >= LEVELS[i + 1][1]) i++;
     return r[i === 0 ? 0 : i <= 2 ? 1 : i <= 4 ? 2 : 3] || 0;
   }

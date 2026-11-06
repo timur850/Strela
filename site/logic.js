@@ -141,6 +141,6 @@ function digRun(rand,K,tp,force){const p=digTierP(tp),r=rand();const tier=force!
 // сумма выплаты: округляется только итог (у руд в мини-аппе — дробные значения)
 function digPay(ev,bet,unit){let s=0;for(const e of ev)if(e.e==='b'&&e.v)s+=e.v;return Math.round(bet*s*unit)}
 /* уровни игрока: по обороту (сумме ставок), награда за каждый новый уровень */
-const LEVELS=[['Новичок',0,0],['Iron',1000,10],['Bronze',5000,40],['Silver',20000,150],['Gold',60000,400],['Platinum',200000,1200],['Diamond',600000,3500]];
+const LEVELS=[['Рейтинг 1',0,0],['Рейтинг 2',1000,10],['Рейтинг 3',5000,40],['Рейтинг 4',20000,150],['Рейтинг 5',60000,400],['Рейтинг 6',200000,1200],['Рейтинг 7',600000,3500]];
 G.STRELA={LEVELS,CHICK_D,digGen,digSim,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
 })(globalThis);
