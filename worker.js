@@ -832,8 +832,8 @@ export default {
       return json(await op(env, "online", uid, "", { g: gname }, false));
     }
     if (path === "/api/feed" && req.method === "GET") {
-      const raw = await (await store(env).fetch("https://s/feed")).text();
-      return json(raw ? JSON.parse(raw).slice(0, 100) : []);
+      const r = await op(env, "feedget", "0", "", {}, false);
+      return json(r && r.ok ? r.list : []);
     }
     // всё остальное — сайт игры
     const res = await env.ASSETS.fetch(req);

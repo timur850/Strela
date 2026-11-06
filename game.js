@@ -5,10 +5,12 @@ import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS, CHICK_D } = globalThis.STRELA;
 // онлайн по играм: кто был в игре за последние 5 минут (в памяти, без записи в базу)
 const ONLINE = new Map(), ON_TTL = 5 * 60e3;
+const FEED_MIN = 50;
+const feedOk = (gift, amount) => (gift && !isStar(gift) && !gift.reg) || amount >= FEED_MIN;
 const GIFT_BET_OPS = new Set(["crash_bet", "mines_bet", "plinko", "chick_bet"]);
 const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
 const GAME_IDS = new Set(["chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
-function onMark(g, uid) { if (!GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
+function onMark(g, uid, staff) { if (staff || !GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
 function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
 const REF_CASE_NEED = 5;
@@ -122,7 +124,7 @@ export class Game {
   }
 
   async stat(k, v) {
-    if (!v) return;
+    if (!v || this.isStaff) return;
     const st = (await this.s.get("stats")) || { dep: 0, bets: 0, wins: 0 };
     st[k] = (st[k] || 0) + Math.round(v);
     await this.s.put("stats", st);
@@ -132,6 +134,7 @@ export class Game {
 
   // статистика по отдельной игре: сколько раз играли, сколько выиграли, сколько поставили и выплатили
   async gstat(game, betSum, paid) {
+    if (this.isStaff) return;
     const all = (await this.s.get("gstats")) || {};
     const g = all[game] || (all[game] = { n: 0, w: 0, bet: 0, pay: 0 });
     g.n++; if (paid > 0) g.w++;
@@ -140,7 +143,8 @@ export class Game {
   }
 
   async feed(u, uid, game, gift, amount) {
-    if (!(amount > 0)) return;
+    if (!(amount > 0) || this.isStaff) return;
+    if (!feedOk(gift, amount)) return;                 // в LIVE: только от 50 ★ и любые NFT
     const raw = await this.s.get("feed");
     const list = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : [];
     list.unshift({ n: u.name, id: uid, g: game, s: gift && !isStar(gift) ? gift.slug : "", a: Math.round(amount), t: Date.now() });
@@ -166,7 +170,7 @@ export class Game {
     if (t && !t.monthly && now < t.end) { const [ms, me] = monthBounds(now); t.start = ms; t.end = me; t.monthly = 1; await this.s.put("tour", t); }
     if (!t || now >= t.end) {
       if (t && Object.keys(t.rows || {}).length) {
-        const P = this.tourPrizes(), top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, P.length);
+        const P = this.tourPrizes(), top = Object.entries(t.rows).filter(([id]) => !this.isStaffId(id)).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, P.length);
         t.won = [];
         for (let i = 0; i < top.length; i++) {          // призы — сразу в инвентарь победителям
           const w = await this.s.get("u:" + top[i].id); if (!w) continue;
@@ -182,7 +186,7 @@ export class Game {
   }
   tourPrizes() { const p = Array.isArray(this.st.tourPrizes) && this.st.tourPrizes.length ? this.st.tourPrizes : ["mythmask", "jinglebells", "snowmittens"]; return p.filter(x => this.L.giftBy(x)).slice(0, 10); }
   async tourAdd(u, n) {
-    if (!this.uid || !(n > 0)) return;
+    if (!this.uid || !(n > 0) || this.isStaff) return;
     const t = await this.tourGet(), r = t.rows[this.uid] || [u.name, 0];
     r[0] = u.name; r[1] += Math.round(n); t.rows[this.uid] = r;
     await this.s.put("tour", t);
@@ -192,12 +196,12 @@ export class Game {
     let t = await this.s.get("tour");
     if (!t || Date.now() < t.end) t = await this.s.get("tour:prev");
     if (!t || !t.rows) return null;
-    const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
+    const top = Object.entries(t.rows).filter(([id]) => !this.isStaffId(id)).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
     return { start: t.start, end: t.end, count: Object.keys(t.rows).length, top, won: t.won || [] };
   }
   async tourTop(k = 10) {
     const t = await this.tourGet();
-    const top = Object.entries(t.rows).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
+    const top = Object.entries(t.rows).filter(([id]) => !this.isStaffId(id)).map(([id, [n, v]]) => ({ id, n, v })).sort((a, b) => b.v - a.v).slice(0, k);
     return { end: t.end, count: Object.keys(t.rows).length, top };
   }
   // выдать выигрыш звёздами
@@ -221,20 +225,31 @@ export class Game {
   }
 
   // ===== главная точка входа =====
-  async init() { this.st = await this.settings(); this.L = makeLogic(() => this.st, rand); }
+  async init() {
+    this.st = await this.settings(); this.L = makeLogic(() => this.st, rand);
+    // персонал (владельцы + админы): их игра не идёт в статистику, турнир, ленту, онлайн и общие фонды
+    const own = await this.s.list({ prefix: "ownerchat:" });
+    this.staff = new Set([...(this.st.admins || []).map(String), ...[...own.values()].map(String)]);
+  }
+  isStaffId(id) { return !!this.staff && this.staff.has(String(id)); }
 
   async run(op, uid, name, d, isAdmin) {
     await this.init();
     uid = String(uid);
     if (op.startsWith("pvp")) await this.pvpTick();   // до загрузки игрока: тик может начислить ему выигрыш
+    this.isStaff = false;
     if (op.startsWith("admin/")) {
       const ok = isAdmin === true || (isAdmin === "check" && (this.st.admins || []).map(String).includes(uid));
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
-    if (op === "online") { if (d && d.g) onMark(String(d.g), uid); return { ok: true, on: onCounts() }; }
+    if (op === "feedget") {                       // лента для игроков: без персонала, от 50 ★ или NFT
+      const raw = await this.s.get("feed"), list = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : [];
+      return { ok: true, list: list.filter(e => !this.isStaffId(e.id) && feedOk(e.s ? this.L.giftBy(e.s) : null, e.a)).slice(0, 100) };
+    }
+    if (op === "online") { if (d && d.g) onMark(String(d.g), uid, this.isStaffId(uid)); return { ok: true, on: onCounts() }; }
     if (op === "tour") { await this.tourGet(); const p = await this.tourPrev(3); return { ok: true, ...(await this.tourTop(10)), prizes: this.tourPrizes(), prev: p && { end: p.end, top: p.top.map(r => ({ n: r.n, v: r.v })), won: (p.won || []).map(w => ({ n: w.n, v: w.v, prize: w.prize, place: w.place })) } }; }
-    this.uid = uid;
+    this.uid = uid; this.isStaff = this.isStaffId(uid);
     const u = await this.user(uid, name);
     const banned = (this.st.banned || []).map(String).includes(uid);
     if (banned && op !== "me") fail("Аккаунт заблокирован");
@@ -248,7 +263,7 @@ export class Game {
     }
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
-    if (OP_GAME[op]) onMark(OP_GAME[op], uid);
+    if (OP_GAME[op]) onMark(OP_GAME[op], uid, this.isStaff);
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
@@ -421,7 +436,7 @@ export class Game {
     let r = rand() * c.prizes.reduce((a, x) => a + x[1], 0), v = c.prizes[0][0];
     for (const [a, w] of c.prizes) { if ((r -= w) <= 0) { v = a; break; } }
     H.claimed = true; await this.payout(u, uid, v, "Охота за сокровищами");
-    const k = "hunt:win:" + weekKey(), W = (await this.s.get(k)) || []; W.push({ n: u.name, v, t: Date.now() }); await this.s.put(k, W.slice(0, 50));
+    const k = "hunt:win:" + weekKey(), W = (await this.s.get(k)) || []; if (!this.isStaff) { W.push({ n: u.name, v, t: Date.now() }); await this.s.put(k, W.slice(0, 50)); }
     return { prize: v };
   }
 
@@ -442,7 +457,7 @@ export class Game {
     if (!ok.length) fail(c.period === "week" ? "Фонд недели закончился — новый дроп в понедельник" : "Фонд на сегодня закончился — новый дроп завтра");
     let r = rand() * ok.reduce((a, x) => a + x[1], 0), v = ok[0][0];
     for (const [a, wt] of ok) { if ((r -= wt) <= 0) { v = a; break; } }
-    p.spent += v; p.n++; await this.s.put(k, p);
+    if (!this.isStaff) { p.spent += v; p.n++; await this.s.put(k, p); }   // персонал не тратит общий фонд
     u.dropW = w; u.bal += v; await this.stat("drop", v); await this.feed(u, uid, "Дроп", null, v);
     return { prize: v, drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: true, end: c.end, period: c.period } };
   }
@@ -832,6 +847,7 @@ export class Game {
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
       await this.tourGet(); const tourPrev = await this.tourPrev(50);
       if (tourPrev) for (const r of tourPrev.top) { const cu = await this.s.get("u:" + r.id); if (cu && cu.name && /^@/.test(cu.name)) r.n = cu.name; }   // актуальный @ из профиля
+      for (const id of this.staff) if (all.has("u:" + id)) total--;
       return { ok: true, stats, gstats, days, tourPrev, total, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
