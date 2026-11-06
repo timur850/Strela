@@ -159,6 +159,11 @@ export class Game {
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
+  lockedTake(u, slug) {                           // забирает из инвентаря «заблокированный» экземпляр? (NFT из бесплатного кейса)
+    const lk = (u.freeLock || []).filter(s => s === slug).length, have = u.inv.filter(s => s === slug).length;
+    if (lk && lk >= have) { u.freeLock.splice(u.freeLock.indexOf(slug), 1); return true; }
+    return false;
+  }
   async unBet(u, uid, n) {                         // возврат ставки — убираем её и из оборота турнира / статистики игрока
     n = Math.round(n); if (!(n > 0) || !uid) return;
     const t = await this.tourGet(), r = t.rows[uid]; if (r) { r[1] = Math.max(0, r[1] - n); if (!r[1]) delete t.rows[uid]; await this.s.put("tour", t); }
@@ -506,9 +511,10 @@ export class Game {
     const a = L.giftBy(u.inv[i]), b = L.giftBy(String(d.target || ""));
     if (!a || !b || isStar(b) || !(b.price > a.price)) fail("Выбери подарок дороже своего");
     const ch = L.upChance(a.price, b.price);
+    const wasLocked = this.lockedTake(u, a.slug);
     u.inv.splice(i, 1); await this.stat("bets", a.price); await this.betNoCharge(u, a.price);
     const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
-    if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
+    if (won) { await this.giveGift(u, uid, b, GAME_NAMES.upgrade); if (wasLocked && !isStar(b)) (u.freeLock = u.freeLock || []).push(b.slug); }   // блок вывода переходит на новый подарок
     (u.glog = u.glog || []).unshift({ k: "up", a: a.slug, b: b.slug, ch: +ch.toFixed(2), roll: +roll.toFixed(2), won, t: Date.now() }); u.glog = u.glog.slice(0, 50);
     await this.gstat("upgrade", a.price, won ? b.price : 0);
     await this.huntHit(u, uid, { t: "upgrade", won, chance: ch }, a.price);
@@ -520,12 +526,14 @@ export class Game {
     const L = this.L, items = Array.isArray(d.items) ? d.items.map(String) : [];
     if (items.length < 2) fail("Выбери минимум 2 подарка");
     if (items.length > 30) fail("Максимум 30 подарков за раз");
+    let wasLocked = false; for (const s of new Set(items)) { const lk = (u.freeLock || []).filter(x => x === s).length, have = u.inv.filter(x => x === s).length, use = items.filter(x => x === s).length; if (lk && use > have - lk) wasLocked = true; }
     const inv = [...u.inv];
     for (const s of items) { const k = inv.indexOf(s); if (k < 0) fail("Подарок не найден, обнови страницу"); inv.splice(k, 1); }
     const sum = items.reduce((s, x) => s + ((L.giftBy(x) || {}).price || 0), 0);
     u.inv = inv; await this.stat("bets", sum); await this.betNoCharge(u, sum);
     const g = L.pickGift(sum, L.R("contract"));
     await this.giveGift(u, uid, g, GAME_NAMES.contract);
+    if (wasLocked && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);
     await this.gstat("contract", sum, g.price);
     await this.huntHit(u, uid, { t: "contract", n: items.length }, sum);
     return { prize: g.slug };
