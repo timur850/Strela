@@ -93,6 +93,7 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+"{0} онлайн": "{0} online",
 'Месяц': 'Month',
 'Прошлый месяц ещё не закончился или в нём не было ставок': "Last month isn't over yet or had no bets",
 'Топ-3 игрока по обороту за месяц получают NFT — призы приходят в инвентарь сами': 'Top 3 players by monthly turnover win NFTs — prizes go to inventory automatically',

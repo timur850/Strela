@@ -168,11 +168,12 @@ body.dark .btn{min-height:52px;font-size:16.5px}body.dark .btn.sm{min-height:40p
 .brow.gold{border-color:rgba(255,207,58,.45);background:linear-gradient(135deg,rgba(255,207,58,.14),rgba(255,255,255,.02))}.brow.gold em{color:#ffcf3a;border-color:rgba(255,207,58,.4);background:rgba(255,207,58,.12)}
 body.dark .top{justify-content:flex-start;gap:6px;padding:10px 12px 8px}
 body.dark .back{position:static;flex:0 0 auto;width:38px;height:38px;border-radius:50%}
-body.dark .tlogo{display:block;font:900 18px Unbounded,Nunito,sans-serif;letter-spacing:-.02em;cursor:pointer;white-space:nowrap}body.dark .tlogo b{color:#ffcf3a;font-weight:900}
+body.dark .tlogo{display:flex;flex-direction:column;line-height:1.05;font:900 18px Unbounded,Nunito,sans-serif;letter-spacing:-.02em;cursor:pointer;white-space:nowrap}
+.tlo{display:flex;align-items:center;gap:5px;font:800 11.5px Nunito,sans-serif;letter-spacing:0;color:#3ce08a;margin-top:3px}.tlo[hidden]{display:none}.tlo i{width:7px;height:7px;border-radius:50%;background:#3ce08a;box-shadow:0 0 6px #3ce08a;animation:blink 1.4s infinite}body.dark .tlogo b{color:#ffcf3a;font-weight:900}
 body.dark .pill{margin-left:auto;padding:7px 9px;gap:4px;cursor:pointer;flex:0 0 auto}body.dark .pill .plus,body.dark .pill.t{display:none}body.dark .pill .caret{display:inline;font-style:normal;color:var(--muted);margin-top:-6px}
 body.dark .tdep{display:block;flex:0 0 auto;border:0;border-radius:999px;padding:10px 12px;background:linear-gradient(135deg,#6f86ff,#7b5cf5);color:#fff;font:800 14px Nunito,sans-serif;box-shadow:0 6px 18px rgba(111,124,255,.45);cursor:pointer}
 body.dark .tava{display:grid;width:38px;height:38px;border-width:2px;cursor:pointer}body.dark .tava::before{font-size:17px}
-@media(max-width:390px){body.dark .tlogo{display:none}}
+@media(max-width:390px){body.dark .tln{display:none}body.dark .tlo{margin-top:0}}
 body.dark .nav{padding:7px;border-radius:32px}
 body.dark .nav button{flex-direction:row;justify-content:center;font:800 14.5px Nunito,sans-serif;padding:13px 4px;border-radius:24px}
 body.dark .nav button span{display:none}body.dark .nav button[data-t="profile"]{display:none}
@@ -583,7 +584,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=75aa4721"></script>
+<script src="i18n.js?v=471431e7"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -702,10 +703,11 @@ function liveUpdate(){const t=document.querySelector('.live .track');if(!t)retur
 function ttBanner(){if((ADM.earn||{}).on===false||ADM.off.earn)return '';const E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2]));
  return `<div class="ttb" onclick="open_('earn')"><img src="${GICON.earn}" alt=""><div><b>Ролики в TikTok и Shorts</b><span>до ${fmt(top)} <span class="star">★</span></span><small>за 1 000 000 просмотров · сними видео про ${esc(APP_NAME)}</small></div><em>›</em></div>`}
 function onTxt(n){return LANG==='en'?`${n} playing`:`${n} ${n%10===1&&n%100!==11?'играет':'играют'}`}
-function onRender(){document.querySelectorAll('.onl[data-g]').forEach(el=>{const n=(S.on||{})[el.dataset.g]||0;el.hidden=!n;if(n)el.innerHTML=`<i></i>${onTxt(n)}`})}
+function onAll(n){return LANG==='en'?`${fmt(n)} online`:`${fmt(n)} онлайн`}
+function onRender(){const t=$('#onTop');if(t){const n=(S.on||{}).app||0;t.hidden=!n;t.innerHTML=`<i></i>${onAll(n)}`}document.querySelectorAll('.onl[data-g]').forEach(el=>{const n=(S.on||{})[el.dataset.g]||0;el.hidden=!n;if(n)el.innerHTML=`<i></i>${onTxt(n)}`})}
 function onLoad(){fetch('api/online',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.on){S.on=j.on;onRender()}}).catch(()=>{})}
-function onPing(g){if(!(tg&&tg.initData))return;API('api/online',{g}).then(j=>{if(j&&j.on)S.on=j.on}).catch(()=>{})}
-setInterval(()=>{if(S.tab==='games'&&!S.stack.length&&!document.hidden)onLoad()},30e3);setTimeout(onLoad,800);
+function onPing(g){if(!(tg&&tg.initData))return;API('api/online',{g}).then(j=>{if(j&&j.on){S.on=j.on;onRender()}}).catch(()=>{})}
+setInterval(()=>{if(!document.hidden)onLoad()},30e3);setInterval(()=>{if(!document.hidden)onPing('app')},60e3);setTimeout(()=>{onPing('app');onLoad()},800);
 function liveInfo(k){const e=S.feed.find(x=>liveKey(x)===k);if(!e)return;const g=e.s?giftBy(e.s):null;toast(`${e.n||'Игрок'} — ${g?g.name+' ':''}+${fmt(e.a)} ★ · ${e.g||''} · ${ago(e.t)}`)}
 
 function bubbles(){let h='';for(let i=0;i<3;i++){const s=6+Math.random()*10;h+=`<i class="bubble" style="width:${s}px;height:${s}px;right:${20+Math.random()*90}px;bottom:${Math.random()*10}px;animation-delay:${Math.random()*6}s"></i>`}return h}
@@ -864,7 +866,7 @@ addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style
 /* ================== РОУТЕР ================== */
 const SUBT={tasks:'bonus',tour:'bonus'};
 function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',['earn','earntt'].includes(S.stack[S.stack.length-1])||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display=S.stack.length||sub?'none':'block';topExtra()}
-function topExtra(){const l=$('#tlogo');if(l&&!l.dataset.n){const p=APP_NAME.split(' ');l.innerHTML=`${esc(p[0])}`}
+function topExtra(){const l=$('#tlogo');if(l&&!l.dataset.n){const p=APP_NAME.split(' ');l.innerHTML=`<span class="tln">${esc(p[0])}</span><span class="tlo" id="onTop"${(S.on||{}).app?'':' hidden'}><i></i>${onAll((S.on||{}).app||0)}</span>`}
  const a=$('#tava');if(a&&!a.dataset.ok){a.dataset.ok=1;const ph=TU&&TU.photo_url;a.innerHTML=ph?`<img src="${esc(ph)}" alt="" onerror="this.remove()">`:'';a.dataset.l=(ME.name||'?').replace('@','')[0].toUpperCase();a.style.setProperty('--h',hue(ME.name||'?'))}
  const nf=$('#navFree');if(nf)nf.style.display=FREE_KEYS().length?'':'none';const ne=$('#navEarn');if(ne)ne.style.display=(ADM.earn||{}).on!==false?'':'none'}
 function tMove(i,d){const j=i+d;if(j<0||j>=ADM.tasks.length)return;[ADM.tasks[i],ADM.tasks[j]]=[ADM.tasks[j],ADM.tasks[i]];saveAdm();setTab('admin')}

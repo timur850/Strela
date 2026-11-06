@@ -9,7 +9,7 @@ const FEED_MIN = 50;
 const feedOk = (gift, amount) => (gift && !isStar(gift) && !gift.reg) || amount >= FEED_MIN;
 const GIFT_BET_OPS = new Set(["crash_bet", "mines_bet", "plinko", "chick_bet"]);
 const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
-const GAME_IDS = new Set(["chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
+const GAME_IDS = new Set(["app", "chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
 function onMark(g, uid, staff) { if (staff || !GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
 function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
@@ -264,6 +264,7 @@ export class Game {
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
     if (OP_GAME[op]) onMark(OP_GAME[op], uid, this.isStaff);
+    onMark("app", uid, this.isStaff);
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
