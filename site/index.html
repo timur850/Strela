@@ -173,7 +173,7 @@ body.dark .tlogo{display:flex;flex-direction:row;align-items:center;gap:7px;line
 body.dark .pill{margin-left:auto;padding:7px 9px;gap:4px;cursor:pointer;flex:0 0 auto}body.dark .pill .plus,body.dark .pill.t{display:none}body.dark .pill .caret{display:inline;font-style:normal;color:var(--muted);margin-top:-6px}
 body.dark .tdep{display:block;flex:0 0 auto;border:0;border-radius:999px;padding:10px 12px;background:linear-gradient(135deg,#6f86ff,#7b5cf5);color:#fff;font:800 14px Nunito,sans-serif;box-shadow:0 6px 18px rgba(111,124,255,.45);cursor:pointer}
 body.dark .tava{display:grid;width:38px;height:38px;border-width:2px;cursor:pointer}body.dark .tava::before{font-size:17px}
-@media(max-width:390px){body.dark .tln{display:none}}
+@media(max-width:340px){body.dark .tln{display:none}}
 body.dark .nav{padding:7px;border-radius:32px}
 body.dark .nav button{flex-direction:row;justify-content:center;font:800 14.5px Nunito,sans-serif;padding:13px 4px;border-radius:24px}
 body.dark .nav button span{display:none}body.dark .nav button[data-t="profile"]{display:none}
@@ -563,7 +563,7 @@ canvas{display:block;width:100%;border-radius:22px}
     <button class="back" id="back" onclick="goBack()">‹</button>
     <button class="back mbtn" id="mbtn" onclick="menuOpen()" aria-label="Меню">☰</button>
     <div class="tlogo" id="tlogo" onclick="setTab('games')"></div>
-    <div class="pill" onclick="if(document.body.classList.contains('dark'))menuOpen()"><span class="star">★</span><b id="bal">0</b><i class="caret">⌄</i><button class="plus" onclick="event.stopPropagation();open_('deposit')">Пополнить</button></div>
+    <div class="pill" onclick="if(document.body.classList.contains('dark')){S.wt='dep';open_('deposit')}"><span class="star">★</span><b id="bal">0</b><i class="caret">⌄</i><button class="plus" onclick="event.stopPropagation();open_('deposit')">Пополнить</button></div>
     <div class="pill t">🎫 <b id="tick">0</b></div>
     <button class="tdep" onclick="open_('deposit')">Пополнить</button>
     <div class="tava" id="tava" onclick="setTab('profile')"></div>
@@ -865,7 +865,7 @@ addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style
 
 /* ================== РОУТЕР ================== */
 const SUBT={tasks:'bonus',tour:'bonus'};
-function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',['earn','earntt'].includes(S.stack[S.stack.length-1])||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display=S.stack.length||sub?'none':'block';topExtra()}
+function render(html){const sub=!S.stack.length&&SUBT[S.tab];document.body.classList.toggle('earn-on',['earn','earntt'].includes(S.stack[S.stack.length-1])||(S.tab==='earn'&&!S.stack.length));view.innerHTML=html;view.scrollTop=0;$('#back').style.display=S.stack.length||sub?'block':'none';$('#mbtn').style.display='none';topExtra()}
 function topExtra(){const l=$('#tlogo');if(l&&!l.dataset.n){const p=APP_NAME.split(' ');l.innerHTML=`<span class="tln">${esc(p[0])}</span><span class="tlo" id="onTop"${(S.on||{}).app?'':' hidden'}><i></i>${onAll((S.on||{}).app||0)}</span>`}
  const a=$('#tava');if(a&&!a.dataset.ok){a.dataset.ok=1;const ph=TU&&TU.photo_url;a.innerHTML=ph?`<img src="${esc(ph)}" alt="" onerror="this.remove()">`:'';a.dataset.l=(ME.name||'?').replace('@','')[0].toUpperCase();a.style.setProperty('--h',hue(ME.name||'?'))}
  const nf=$('#navFree');if(nf)nf.style.display=FREE_KEYS().length?'':'none';const ne=$('#navEarn');if(ne)ne.style.display=(ADM.earn||{}).on!==false?'':'none'}
@@ -893,7 +893,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  $('#drwBg').classList.add('show');try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred('light')}catch(e){}}
 function menuClose(){$('#drwBg').classList.remove('show')}
 (()=>{let x0=null,y0=0;document.addEventListener('touchstart',e=>{const t=e.touches[0];x0=(t.clientX<28&&!$('#sheetBg').classList.contains('show'))?t.clientX:null;y0=t.clientY},{passive:true});
- document.addEventListener('touchmove',e=>{if(x0==null)return;const t=e.touches[0];if(t.clientX-x0>60&&Math.abs(t.clientY-y0)<50){x0=null;menuOpen()}},{passive:true});
+ document.addEventListener('touchmove',e=>{if(x0==null)return;const t=e.touches[0];if(t.clientX-x0>60&&Math.abs(t.clientY-y0)<50){x0=null;if(S.stack.length)goBack()}},{passive:true});
  let cx=null;document.addEventListener('touchstart',e=>{cx=$('#drwBg').classList.contains('show')?e.touches[0].clientX:null},{passive:true});
  document.addEventListener('touchmove',e=>{if(cx!=null&&cx-e.touches[0].clientX>60){cx=null;menuClose()}},{passive:true})})();
 function sheet(h){$('#sheet').innerHTML='<button class="x" onclick="closeSheet()">✕</button>'+h;$('#sheetBg').classList.add('show')}
