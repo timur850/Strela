@@ -273,8 +273,8 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
+const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine"]);   // ref_qualify / ref_pending вызывает только сервер
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -630,7 +630,17 @@ export default {
           if (d.gate.on && d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
         }
       }
-      return json(await op(env, name, u.id, uname(u), d));
+      const res = await op(env, name, u.id, uname(u), d);
+      if (name === "earn_apply" && res.ok && res.earn) {   // новая заявка на оплату ролика → владельцам и админам
+        const x = res.earn, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+        const K = { gameplay: "Геймплей", gifts: "Подарки Telegram", creative: "Креатив" };
+        const text = `🎬 <b>Заявка на оплату ролика</b>\n\n👤 ${e(uname(u))} · ID <code>${u.id}</code>\n📂 ${K[x.kind]}\n👁 Просмотры: <b>${x.views.toLocaleString("ru-RU")}</b>\n🔗 ${e(x.url)}` + (x.note ? `\n📝 ${e(x.note)}` : "") + `\n\nОплатить или отклонить: /admin → 🎬 Заработок`;
+        const st = await loadSettings(env), to = new Set();
+        for (const o of OWNERS) { const c = await getKey(env, "ownerchat:" + o.toLowerCase()); if (c) to.add(String(c)); }
+        for (const a of st.admins || []) to.add(String(a));
+        for (const chat of to) { try { await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "💬 Написать игроку", url: u.username ? "https://t.me/" + u.username : "tg://user?id=" + u.id }]] } }); } catch (er) {} }
+      }
+      return json(res);
     }
     // ===== кейс Friends: перепроверить приглашённых (вдруг появился NFT или уровень) =====
     if (path === "/api/refcheck" && req.method === "POST") {
@@ -697,6 +707,10 @@ export default {
       }
       // владелец — сразу; остальных админов проверяет само хранилище (без лишнего запроса)
       const res = await op(env, "admin/" + name, u.id, uname(u), d, isOwner(u.username) ? true : "check");
+      if (name === "earn_done" && res && res.ok && res.earn) {   // игроку — результат проверки ролика
+        const x = res.earn;
+        try { await tg(env, "sendMessage", { chat_id: Number(x.uid), text: x.st === "paid" ? `✅ Ролик оплачен: +${x.paid} ★ на баланс в ${NAME}. Спасибо!` : `❌ Заявка на оплату ролика отклонена` + (x.why ? `: ${x.why}` : ".") }); } catch (e) {}
+      }
       if (name === "stats" && res && res.tourPrev && res.tourPrev.top) {   // у кого нет @ — спрашиваем Telegram по ID
         await Promise.all(res.tourPrev.top.filter(r => !/^@/.test(r.n || "")).slice(0, 50).map(async r => {
           try { const c = await tg(env, "getChat", { chat_id: Number(r.id) }); if (c && c.ok && c.result && c.result.username) r.n = "@" + c.result.username; } catch (e) {}

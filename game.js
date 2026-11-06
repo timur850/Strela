@@ -283,6 +283,27 @@ export class Game {
     return { prize: g.slug, prizes: [g.slug] };
   }
 
+  // ---- заработок: заявки на оплату роликов TikTok / Shorts ----
+  async op_earn_apply(u, uid, d) {
+    const url = String(d.url || "").trim().slice(0, 300);
+    if (!/^https?:\/\/([\w-]+\.)*(tiktok\.com|youtube\.com|youtu\.be)\//i.test(url)) fail("Нужна ссылка на ролик TikTok или YouTube Shorts");
+    const views = Math.max(0, Math.min(1e9, Math.round(+d.views || 0)));
+    if (views < 1000) fail("Укажи просмотры — от 1 000");
+    const kind = ["gameplay", "gifts", "creative"].includes(d.kind) ? d.kind : "gameplay";
+    const mine = [...(await this.s.list({ prefix: "earn:" })).values()].filter(e => e.uid === uid);
+    if (mine.some(e => e.url === url)) fail("Заявка на этот ролик уже есть — за одно видео одна заявка");
+    if (mine.filter(e => e.st === "new").length >= 3) fail("У тебя уже 3 заявки на проверке — дождись ответа");
+    if (mine.some(e => Date.now() - e.t < 120000)) fail("Подожди пару минут перед следующей заявкой");
+    const id = Date.now().toString(36) + randInt(1e6).toString(36);
+    const e = { id, uid, name: u.name, url, views, kind, note: String(d.note || "").slice(0, 300), t: Date.now(), st: "new" };
+    await this.s.put("earn:" + id, e);
+    return { earn: e };
+  }
+  async op_earn_mine(u, uid) {
+    const L = [...(await this.s.list({ prefix: "earn:" })).values()].filter(e => e.uid === uid).sort((a, b) => b.t - a.t).slice(0, 20);
+    return { list: L.map(e => ({ url: e.url, views: e.views, kind: e.kind, t: e.t, st: e.st, paid: e.paid || 0, why: e.why || "" })) };
+  }
+
   // ---- охота за сокровищами ----
   huntCfg() { const c = this.st.hunt || {}; return { on: c.on !== false, minBet: Math.max(1, Math.round(c.minBet ?? 25)), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : HUNT_PRIZES }; }
   huntEnsure(u) {
@@ -641,6 +662,21 @@ export class Game {
     const id = String(d.id || "").trim();
     const needId = () => { if (!/^\d{3,15}$/.test(id)) fail("Неверный ID"); };
     const save = async u => { await this.s.put("u:" + id, u); return { ok: true, user: { id, ...this.view(u), name: u.name } }; };
+    if (op === "earn_list") {
+      const L = [...(await this.s.list({ prefix: "earn:" })).values()].sort((a, b) => (a.st === "new") - (b.st === "new") || b.t - a.t).reverse().slice(0, 100);
+      return { ok: true, list: L };
+    }
+    if (op === "earn_done") {
+      const k = "earn:" + String(d.eid || ""), e = await this.s.get(k); if (!e) fail("Заявка не найдена");
+      if (e.st !== "new") fail("Заявка уже обработана");
+      if (d.pay) {
+        const a = Math.round(+d.amount); if (!(a > 0)) fail("Укажи сумму");
+        const u = await this.user(e.uid); u.bal += a; await this.s.put("u:" + e.uid, u); await this.stat("earn", a);
+        e.st = "paid"; e.paid = a;
+      } else { e.st = "rejected"; e.why = String(d.why || "").slice(0, 200); }
+      e.done = Date.now(); await this.s.put(k, e);
+      return { ok: true, earn: e };
+    }
     if (op === "give") { needId(); const a = Math.round(+d.amount); if (!a) fail("Укажи количество"); const u = await this.user(id); u.bal = Math.max(0, u.bal + a); return save(u); }
     if (op === "tick") { needId(); const a = Math.round(+d.amount); if (!a) fail("Укажи количество"); const u = await this.user(id); u.tick = Math.max(0, u.tick + a); return save(u); }
     if (op === "gift") { needId(); const g = this.L.giftBy(String(d.slug || "")); if (!g) fail("Нет такого подарка"); const u = await this.user(id); if (isStar(g)) u.bal += g.price; else u.inv.push(g.slug); return save(u); }
