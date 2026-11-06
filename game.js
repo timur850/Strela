@@ -66,7 +66,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u) }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -126,7 +126,14 @@ export class Game {
     if (!(n > 0)) fail("Неверная ставка");
     if (u.bal < n) fail("Недостаточно звёзд");
     u.bal -= n; await this.stat("bets", n); await this.tourAdd(u, n);
+    const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
+    ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
+  psWin(u, v, slug, game) {
+    const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
+    ps.w++; if (!ps.best || v > ps.best.v) ps.best = { v: Math.round(v), s: slug || "", g: game || "" };
+  }
+  hist(u, e) { u.hist = [{ ...e, t: Date.now() }, ...(u.hist || [])].slice(0, 40); }
   // ===== турнир: недельный оборот ставок реальных игроков =====
   async tourGet() {
     const now = Date.now(); let t = await this.s.get("tour");
@@ -158,12 +165,12 @@ export class Game {
   // выдать выигрыш звёздами
   async payout(u, uid, n, game) {
     n = Math.round(n); if (!(n > 0)) return;
-    u.bal += n; await this.stat("wins", n); await this.feed(u, uid, game, null, n);
+    u.bal += n; await this.stat("wins", n); await this.feed(u, uid, game, null, n); this.psWin(u, n, "", game);
   }
   // выдать подарок (звёзды — сразу на баланс)
   async giveGift(u, uid, g, game) {
     if (isStar(g)) return this.payout(u, uid, g.price, game);
-    u.inv.push(g.slug); await this.stat("wins", g.price); await this.feed(u, uid, game, g, g.price);
+    u.inv.push(g.slug); await this.stat("wins", g.price); await this.feed(u, uid, game, g, g.price); this.psWin(u, g.price, g.slug, game);
   }
   invIndex(u, i, slug) {
     i = Number(i);
@@ -194,7 +201,7 @@ export class Game {
     if (banned && op !== "me") fail("Аккаунт заблокирован");
     const fn = this["op_" + op];
     if (!fn) fail("Неизвестное действие");
-    this._hf = null; this.huntEnsure(u);
+    this._hf = null; this._op = op; this.huntEnsure(u);
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
@@ -207,6 +214,11 @@ export class Game {
   }
 
   op_me() { return {}; }
+  async op_wallet(u, uid) {                      // мои заявки на вывод, которые ещё не выполнены
+    const q = await this.s.list({ prefix: "wdq:", limit: 1000 }), open = [];
+    for (const [, w] of q) if (w && w.uid === uid) open.push({ id: w.id, s: w.slug, n: w.gname, a: w.price, t: w.t });
+    return { open };
+  }
   // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
   async op_ref_qualify(u, uid, d) {
     if (u.refq || !u.ref) return { done: false };
@@ -619,7 +631,7 @@ export class Game {
     if (fee) { u.bal -= fee; await this.stat("fee", fee); }
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, fee, t: Date.now(), st: "new" });
-    await this.s.put("wd:" + uid, Date.now());
+    await this.s.put("wd:" + uid, Date.now()); this.hist(u, { k: "wd", id, s: g.slug, a: g.price, fee });
     return { wd: { id, slug: g.slug, name: g.name, price: g.price, tgid: g.tgid || null } };
   }
   async op_withdraw_done(u, uid, d) {           // бот сам отправил подарок — закрываем заявку
@@ -632,6 +644,7 @@ export class Game {
     if (!w || w.uid !== uid || w.st !== "new") return {};
     await this.s.delete(k); await this.s.delete("wd:" + uid); u.inv.push(w.slug);
     if (w.fee) u.bal = (u.bal || 0) + w.fee;     // комиссию возвращаем
+    u.hist = (u.hist || []).filter(h => h.id !== w.id);
     return {};
   }
 
@@ -643,7 +656,7 @@ export class Game {
     if (p.uid !== uid) fail("Чужой платёж");
     if (p.claimed) return { got: 0, already: true };
     p.claimed = true; await this.s.put(key, JSON.stringify(p));
-    u.bal += p.a; await this.stat("dep", p.a); await this.refBonus(u, p.a);
+    u.bal += p.a; await this.stat("dep", p.a); await this.refBonus(u, p.a); this.hist(u, { k: "dep", m: "stars", a: p.a });
     return { got: p.a };
   }
   async op_credit_ton(u, uid, d) {          // вызывает только сервер после проверки сети
@@ -653,7 +666,7 @@ export class Game {
     const a = Math.max(0, Math.floor(+d.a || 0));
     await this.s.put(key, JSON.stringify({ uid, ton: d.ton, a, hash: d.hash, t: Date.now() }));
     if (d.hash) await this.s.put("tonh:" + d.hash, 1);
-    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a);
+    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a); this.hist(u, { k: "dep", m: "ton", a, ton: d.ton });
     return { got: a, ton: d.ton };
   }
 
