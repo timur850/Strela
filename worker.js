@@ -608,7 +608,7 @@ export default {
       if (b.update_type === "invoice_paid" && b.payload) {
         const i = b.payload, uid = String(i.payload || "").split(":")[0];
         if (uid) { const r = await cpCredit(env, i, { id: uid });
-          if (r.ok && r.got) { try { await tg(env, "sendMessage", { chat_id: Number(uid), text: `✅ Оплата через CryptoBot получена: +${r.got} ⭐ на баланс ${NAME}` }); } catch (e) {} } }
+          if (r.ok && r.got) { try { await tg(env, "sendMessage", { chat_id: Number(uid), text: `✅ Оплата через CryptoBot получена: +${r.got} ⭐ на баланс ${NAME}` + (r.bonus ? `\n🎁 Бонус за первое пополнение: +${r.bonus} ⭐` : "") }); } catch (e) {} } }
       }
       return new Response("ok");
     }

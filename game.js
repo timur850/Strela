@@ -72,7 +72,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -92,6 +92,19 @@ export class Game {
     return { bound: true };
   }
   // 10% от пополнений приглашённого — пригласившему
+  // бонус за первое пополнение: один раз, только с настоящего платежа (звёзды / TON / CryptoBot)
+  fdbCfg() { const c = this.st.fdb || {}; return { on: c.on !== false, min: Math.max(1, +c.min || 100), pct: Math.max(0, Math.min(100, +c.pct || 10)), max: Math.max(0, +c.max || 300) }; }
+  fdbOk(u) { return !u.fdb && !(u.depSum > 0 && !u.depN); }      // кто пополнял ещё до этой функции — не считается «первым»
+  depDone(u, a) {
+    const c = this.fdbCfg(); let b = 0;
+    if (c.on && this.fdbOk(u) && a >= c.min) {
+      b = Math.min(c.max, Math.floor(a * c.pct / 100));
+      u.fdb = Date.now();
+      if (b > 0) { u.bal += b; this.hist(u, { k: "dep", m: "bonus", a: b }); }
+    }
+    u.depN = (u.depN || 0) + 1;
+    return b;
+  }
   async refBonus(u, amount) {
     if (!u.ref || !(amount > 0)) return;
     u.depSum = (u.depSum || 0) + Math.round(amount);
@@ -728,8 +741,8 @@ export class Game {
     if (p.uid !== uid) fail("Чужой платёж");
     if (p.claimed) return { got: 0, already: true };
     p.claimed = true; await this.s.put(key, JSON.stringify(p));
-    u.bal += p.a; await this.stat("dep", p.a); await this.refBonus(u, p.a); this.hist(u, { k: "dep", m: "stars", a: p.a });
-    return { got: p.a };
+    u.bal += p.a; await this.stat("dep", p.a); this.hist(u, { k: "dep", m: "stars", a: p.a }); const bonus = this.depDone(u, p.a); await this.stat("fdb", bonus); await this.refBonus(u, p.a);
+    return { got: p.a, bonus };
   }
   async op_credit_ton(u, uid, d) {          // вызывает только сервер после проверки сети
     const key = "ton:" + d.memo;
@@ -738,8 +751,8 @@ export class Game {
     const a = Math.max(0, Math.floor(+d.a || 0));
     await this.s.put(key, JSON.stringify({ uid, ton: d.ton, a, hash: d.hash, t: Date.now() }));
     if (d.hash) await this.s.put("tonh:" + d.hash, 1);
-    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a); this.hist(u, { k: "dep", m: "ton", a, ton: d.ton });
-    return { got: a, ton: d.ton };
+    u.bal += a; await this.stat("dep", a); this.hist(u, { k: "dep", m: "ton", a, ton: d.ton }); const bonus = this.depDone(u, a); await this.stat("fdb", bonus); await this.refBonus(u, a);
+    return { got: a, ton: d.ton, bonus };
   }
 
   async op_credit_cp(u, uid, d) {           // вызывает только сервер после проверки счёта в CryptoBot
@@ -747,8 +760,8 @@ export class Game {
     if (await this.s.get(key)) return { got: 0, already: true };
     const a = Math.max(0, Math.floor(+d.a || 0));
     await this.s.put(key, JSON.stringify({ uid, a, usd: d.usd, t: Date.now() }));
-    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a); this.hist(u, { k: "dep", m: "cp", a, usd: d.usd });
-    return { got: a, usd: d.usd };
+    u.bal += a; await this.stat("dep", a); this.hist(u, { k: "dep", m: "cp", a, usd: d.usd }); const bonus = this.depDone(u, a); await this.stat("fdb", bonus); await this.refBonus(u, a);
+    return { got: a, usd: d.usd, bonus };
   }
 
   // ===== админка =====
