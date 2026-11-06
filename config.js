@@ -2,7 +2,7 @@
 export const CONFIG = {
   NAME: "STRELA CASE",                      // название в боте и мини-аппе
   OWNERS: ["PODONOK_UC_1", "Sdelka_ton", "StrelaCase_bot_support"],   // владельцы админки (username без @)
-  SUPPORT: "@PODONOK_UC_1",                 // контакт поддержки
+  SUPPORT: "@StrelaCase_bot_support",                 // контакт поддержки
   GIFT_ACC: "StrelaCase_bot_support",                   // аккаунт, куда игроки отправляют подарки (без @)
   BOT_TOKEN: "",                            // пусто = берётся секрет BOT_TOKEN из Cloudflare
   // бесплатный кейс (раз в 24 ч): сначала поделиться ссылкой в N чатов и подписаться на канал. Меняется в админке
