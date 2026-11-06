@@ -670,6 +670,15 @@ export class Game {
     return { got: a, ton: d.ton };
   }
 
+  async op_credit_cp(u, uid, d) {           // вызывает только сервер после проверки счёта в CryptoBot
+    const key = "cp:" + d.id;
+    if (await this.s.get(key)) return { got: 0, already: true };
+    const a = Math.max(0, Math.floor(+d.a || 0));
+    await this.s.put(key, JSON.stringify({ uid, a, usd: d.usd, t: Date.now() }));
+    u.bal += a; await this.stat("dep", a); await this.refBonus(u, a); this.hist(u, { k: "dep", m: "cp", a, usd: d.usd });
+    return { got: a, usd: d.usd };
+  }
+
   // ===== админка =====
   async admin(op, d, owner) {
     const id = String(d.id || "").trim();

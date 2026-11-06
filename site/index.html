@@ -107,6 +107,7 @@ body{font-family:Nunito,system-ui,sans-serif;color:var(--text);background:#05507
 @keyframes dwin{from{transform:scale(.6);opacity:0}}@keyframes dspin{to{transform:rotate(360deg)}}
 input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;accent-color:#ffb43a;flex:0 0 auto}
 /* пополнение */
+.dmeth.m4{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px}.dmeth.m4 .dm{min-height:104px!important;padding:12px 4px!important}.dmeth.m4 .dmi{font-size:36px!important}.dmeth.m4 .dm b{font-size:12px!important}
 .dmeth{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .dm{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 12px;border-radius:22px;border:2px solid var(--line);background:var(--glass);color:var(--text);text-align:left;cursor:pointer;min-height:118px;font-family:Nunito,sans-serif}
 .dm.on{border-color:#7b7cff;background:linear-gradient(160deg,rgba(111,134,255,.22),rgba(123,92,245,.12));box-shadow:0 0 0 4px rgba(111,124,255,.15)}
@@ -479,7 +480,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=2df2cc03"></script>
+<script src="i18n.js?v=5ef2db43"></script>
 <script src="logic.js?v=1ff4ae8d"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -501,11 +502,11 @@ const REG_IMG={"5170145012310081615": "data:image/webp;base64,UklGRlwYAABXRUJQVl
 let OWNERS=['PODONOK_UC_1','Sdelka_ton','StrelaCase_bot_support']; // владельцы админки (username без @)
 const OWNER=OWNERS.join(', @');
 const isOwnerName=u=>OWNERS.some(o=>o.toLowerCase()===(u||'').toLowerCase());
-const DEF={upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
+const DEF={cp:{on:true,rate:70,min:1,ready:false},upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90},pvpFee:5,tonWallet:'',tonRate:150,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -863,7 +864,7 @@ function depTab(b,i){b.parentNode.querySelectorAll('button').forEach(x=>x.classL
 /* ===== профиль / кошелёк / бонусы в стиле RubUP ===== */
 function avaHtml(cls){const ph=TU&&TU.photo_url,n=(ME.name||'?').replace('@','');return `<div class="${cls}" style="--h:${hue(ME.name||'?')}" data-l="${esc((n[0]||'?').toUpperCase())}">${ph?`<img src="${esc(ph)}" alt="" onerror="this.remove()">`:''}</div>`}
 function profTop(){const u=U();return `<div class="card ptop"><div class="prow">${avaHtml('pava')}<div><b>${esc(ME.name||'Игрок')}</b><small>ID ${esc(ME.id)}</small></div></div>
- <div class="pbal"><small>Баланс</small><div><span class="star">★</span> ${fmt(u.bal||0)}</div>${u.tick?`<small>🎫 ${fmt(u.tick)} билетов</small>`:''}</div>
+ <div class="pbal"><small>Баланс</small><div><span class="star">★</span> ${fmt(u.bal||0)}</div><small>≈ ${usd(u.bal||0)} $</small>${u.tick?`<small>🎫 ${fmt(u.tick)} билетов</small>`:''}</div>
  <div class="row"><button class="btn sand" onclick="S.wt='dep';open_('deposit')">Пополнить</button><button class="btn ghost" onclick="S.wt='wd';open_('deposit')">Вывести</button></div></div>
  <div class="card pfr"><div class="pfh"><span class="sq">🤝</span><div><b>Друзья</b><small>Получайте 10% с их пополнений и 🎫 за каждых 3 друзей</small></div><button class="btn sm sand" onclick="shareRef()">Пригласить</button></div>
  <div class="row" style="margin:12px 0 10px"><div class="pst"><small>Приглашено</small><b>${fmt(u.refCount||0)}</b></div><div class="pst"><small>Заработано</small><b>${fmt(u.refEarn||0)} <span class="star">★</span></b></div></div>
@@ -876,23 +877,42 @@ function statsBlock(){const p=U().ps||{t:0,g:0,w:0,best:null,fav:{}},fav=Object.
  <div class="pst"><small>Выигрышей</small><b>${fmt(p.w||0)}</b></div><div class="pst"><small>Любимая игра</small><b class="sm">${fav?esc(OPN[fav[0]]||fav[0]):'нет'}</b></div></div>`}
 function fairSheet(){sheet(`<h2>🛡 Честная игра</h2><p class="sub" style="text-align:left">Результат каждой игры считается на сервере, а не в телефоне — подменить его нельзя.<br><br>Шансы всех призов в кейсе видны во вкладке «🎁 Призы» перед открытием. В демо-режиме шансы такие же, как в настоящей игре.<br><br>Все пополнения зачисляются только после подтверждения платежа Telegram или сети TON.</p><button class="btn sand" onclick="closeSheet()">Понятно</button>`)}
 function wTabs(){return `<div class="wtabs">${[['dep','Пополнить'],['wd','Вывести'],['hist','История']].map(([k,t])=>`<button class="${(S.wt||'dep')===k?'on':''}" onclick="S.wt='${k}';rerender()">${t}</button>`).join('')}</div>`}
-const WM={stars:['⭐','Звёзды','Telegram Stars','от 1 ★','Мгновенно','linear-gradient(135deg,#ffcf3a,#f39a1e)'],ton:['💎','Крипто','TON · Tonkeeper, Wallet','от 0.1 TON','TON','linear-gradient(135deg,#3fb6ff,#1f6fe0)'],gift:['🎁','Подарком','Подарок','передайте на @{acc}','Передача','linear-gradient(135deg,#ff7aa8,#9b4dff)']};
-function wMeth(cur,keys,fn){return `<div class="dmeth">${keys.map(k=>`<button class="dm ${cur===k?'on':''}" onclick="${fn}('${k}')"><span class="dmi">${WM[k][0]}</span><b>${WM[k][1]}</b></button>`).join('')}</div>`}
-function wOpt(k,sub,badge){const m=WM[k];return `<div class="wopt"><i class="ck">✓</i><span class="woi" style="background:${m[5]}">${m[0]}</span><div><b>${m[2]}</b><small>${esc(sub??m[3].replace('{acc}',GIFT_ACC))}</small></div>${badge??m[4]?`<em>${badge??m[4]}</em>`:''}</div>`}
+const WM={stars:['⭐','Звёзды','Telegram Stars','от 1 ★','Мгновенно','linear-gradient(135deg,#ffcf3a,#f39a1e)'],ton:['💎','TON','TON · Tonkeeper, Wallet','от 0.1 TON','TON','linear-gradient(135deg,#3fb6ff,#1f6fe0)'],cp:['🤖','CryptoBot','CryptoBot · в долларах','USDT, TON, BTC и др. · от {min} $','$','linear-gradient(135deg,#2fa5ff,#1b6fd8)'],gift:['🎁','Подарком','Подарок','передайте на @{acc}','Передача','linear-gradient(135deg,#ff7aa8,#9b4dff)']};
+function wMeth(cur,keys,fn){return `<div class="dmeth${keys.length>3?' m4':''}">${keys.map(k=>`<button class="dm ${cur===k?'on':''}" onclick="${fn}('${k}')"><span class="dmi">${WM[k][0]}</span><b>${WM[k][1]}</b></button>`).join('')}</div>`}
+function wOpt(k,sub,badge){const m=WM[k];return `<div class="wopt"><i class="ck">✓</i><span class="woi" style="background:${m[5]}">${m[0]}</span><div><b>${m[2]}</b><small>${esc(sub??m[3].replace('{acc}',GIFT_ACC).replace('{min}',CP().min))}</small></div>${badge??m[4]?`<em>${badge??m[4]}</em>`:''}</div>`}
 function depMeth(k){S.dm=k;rerender()}
+const CP=()=>Object.assign({on:true,rate:70,min:1},ADM.cp||{}),cpOn=()=>CP().on!==false&&!!CP().ready;
+function cpStars(v){return Math.floor((+v||0)*CP().rate)}
+function cpSet(v,typing){const n=Math.round((+v||0)*100)/100;S.cpUsd=Math.max(0,Math.min(1000,n));const i=$('#cpU');if(i&&!typing)i.value=S.cpUsd||'';const o=$('#cpS');if(o)o.textContent=fmt(cpStars(S.cpUsd));const b=$('#cpGo');if(b)b.textContent=`Оплатить ${S.cpUsd||0} $`}
+function cpForm(){const v=S.cpUsd??5;return `<div class="wlab"><b>Сумма</b><small>1 $ = ${fmt(CP().rate)} <span class="star">★</span></small></div>
+ <div class="winp"><input id="cpU" type="number" inputmode="decimal" min="${CP().min}" max="1000" step="0.5" value="${v}" oninput="cpSet(this.value,1)" onblur="cpSet(this.value)"><span style="font:900 36px Unbounded,Nunito,sans-serif;color:#3fb6ff">$</span></div>
+ <p class="sub" style="margin:6px 0 12px;text-align:left">Получите <b style="color:var(--text)"><span id="cpS">${fmt(cpStars(v))}</span> <span class="star">★</span></b> · оплата USDT, TON, BTC, ETH и др.</p>
+ <div class="dchips">${[1,3,5,10,25,50].filter(x=>x>=CP().min).map(x=>`<button onclick="cpSet(${x})">${x} $</button>`).join('')}</div>
+ <button class="btn sand dgo" id="cpGo" onclick="cpPay()">Оплатить ${v} $</button>
+ ${S.cpInv?`<div class="card wq" style="text-align:center"><b>⏳ Ждём оплату ${S.cpInv.usd} $</b><p class="sub">После оплаты в @CryptoBot звёзды зачислятся сами</p><div class="row"><button class="btn ghost" onclick="cpOpen()">Открыть счёт</button><button class="btn sand" onclick="cpCheck(1)">Я оплатил</button></div></div>`:''}`}
+function cpOpen(){const u=S.cpInv&&S.cpInv.url;if(!u)return;try{if(tg&&/^https:\/\/t\.me\//.test(u))return tg.openTelegramLink(u)}catch(e){}openUrl(u)}
+async function cpPay(){const usd=S.cpUsd??5;if(!(usd>=CP().min))return toast(`Минимум ${CP().min} $`);if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');if(busy)return;busy=true;
+ const j=await API('api/cp/create',{usd}).catch(()=>null);busy=false;if(!j||!j.ok)return toast((j&&j.err)||'Не удалось создать счёт');
+ S.cpInv={id:j.id,url:j.url,usd:j.usd,a:j.a,t:Date.now()};cpOpen();rerender();clearInterval(S.cpT);S.cpT=setInterval(()=>cpCheck(0),5000)}
+async function cpCheck(manual){const inv=S.cpInv;if(!inv){clearInterval(S.cpT);return}if(Date.now()-inv.t>36e5){clearInterval(S.cpT);S.cpInv=null;return}
+ const j=await API('api/cp/check',{id:inv.id}).catch(()=>null);if(!j)return;
+ if(j.ok&&j.got){clearInterval(S.cpT);S.cpInv=null;credited(j,'CryptoBot');if(S.stack[S.stack.length-1]==='deposit')rerender();return}
+ if(j.already||(j.err&&!j.wait)){clearInterval(S.cpT);S.cpInv=null;if(j.me)sync(j.me);if(manual||!j.already)toast(j.err);if(S.stack[S.stack.length-1]==='deposit')rerender();return}
+ if(manual)toast('Оплата ещё не пришла — подожди немного')}
 function walletPage(){const t=S.wt||'dep';let h=`<h1 class="wh">Кошелёк</h1>${wTabs()}<div class="wbox">`;
- if(t==='dep'){const k=S.dm||'stars';h+=wMeth(k,['stars','ton','gift'],'depMeth')+wOpt(k);
+ if(t==='dep'){const ms=['stars','ton',...(cpOn()?['cp']:[]),'gift'],k=ms.includes(S.dm)?S.dm:'stars';h+=wMeth(k,ms,'depMeth')+wOpt(k);
   if(k==='stars')h+=`<div class="wlab"><b>Сумма</b><small>Баланс: ${fmt(U().bal||0)} <span class="star">★</span></small></div><div class="winp"><input id="damt" type="number" inputmode="numeric" min="1" max="10000" value="${dAmt}" oninput="setAmt(this.value,1)" onblur="setAmt(this.value)"><span class="star">★</span></div>
    <p class="sub" id="dusd" style="margin:6px 0 12px;text-align:left">≈ ${usd(dAmt)}$ · от 1 до 10 000 ★</p>
    <div class="dchips">${[50,100,250,500,1000,5000].map(v=>`<button onclick="setAmt(${v})"><span class="star">★</span> ${fmt(v)}</button>`).join('')}</div><button class="btn sand dgo" onclick="deposit()">Пополнить</button>`;
   else if(k==='ton')h+=`<div id="dep"></div>`;
+  else if(k==='cp')h+=cpForm();
   else h+=`<p class="wtxt">Отправьте подарок на <b>@${esc(GIFT_ACC)}</b> — он появится в вашем <a onclick="setTab('profile')">инвентаре</a>. Его можно продать за звёзды или поставить в апгрейд.</p><button class="btn sand dgo" onclick="open_('addgift')">Выбрать подарок</button>`}
  else if(t==='wd'){const inv=U().inv.map((sl,i)=>[giftBy(sl),i]).filter(([g])=>g&&!isStar(g)&&g.price>=MIN_WD());
   h+=wMeth('gift',['gift'],'void')+wOpt('gift','в ваш Telegram',WD_FEE()?`${WD_FEE()} %`:'')+`<div class="wlab"><b>Ваши подарки</b><small>Доступно: ${inv.length}</small></div>
   ${inv.length?`<div class="inv">${inv.map(([g,i])=>`<div class="case">${gi(g)}<small>${esc(g.name)}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="askWithdraw(${i})">Вывести</button></div>`).join('')}</div>`:`<p class="wtxt">Нет подарков для вывода. Вывод — для подарков от ${fmt(MIN_WD())} ★${WD_FEE()?`, комиссия ${WD_FEE()}%`:''}.</p>`}
   <div class="card wq"><b>Заявки на вывод</b>${S.wopen&&S.wopen.length?`<div class="list" style="margin-top:8px">${S.wopen.map(w=>`<div class="it"><span style="width:38px;height:38px;display:inline-block">${gi(giftBy(w.s))}</span><div class="nm">${esc(w.n||w.s)}<small>${ago(w.t)} · в обработке</small></div><b><span class="star">★</span> ${fmt(w.a)}</b></div>`).join('')}</div>`:`<div class="wqe"><span>🧾</span><div><p>${S.wopen?'Заявок пока нет':'Загрузка…'}</p><button class="btn ghost" onclick="S.wt='hist';rerender()">История выводов ›</button></div></div>`}</div>`;
   if(!S.wLoad){S.wLoad=1;srv('wallet',{},{quiet:1}).then(j=>{S.wLoad=0;if(j){S.wopen=j.open||[];if(S.stack[S.stack.length-1]==='deposit'&&S.wt==='wd'){const sc=view.scrollTop;rerender();view.scrollTop=sc}}})}}
- else{const H=U().hist||[];h+=H.length?`<div class="list">${H.map(e=>{const g=e.s?giftBy(e.s):null,dep=e.k==='dep';return `<div class="it"><span class="woi sm" style="background:${dep?(e.m==='ton'?WM.ton[5]:WM.stars[5]):WM.gift[5]}">${dep?(e.m==='ton'?'💎':'⭐'):'🎁'}</span><div class="nm">${dep?(e.m==='ton'?'Пополнение TON':'Пополнение Stars'):'Вывод · '+esc(g?g.name:e.s)}<small>${new Date(e.t).toLocaleString(LANG==='en'?'en-GB':'ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${e.fee?` · комиссия ${fmt(e.fee)} ★`:''}</small></div><b style="color:${dep?'#3ce08a':'var(--text)'}">${dep?'+':''}${fmt(e.a)} <span class="star">★</span></b></div>`}).join('')}</div>`:`<p class="wtxt" style="text-align:center">История пока пустая — здесь будут пополнения и выводы</p>`}
+ else{const H=U().hist||[];h+=H.length?`<div class="list">${H.map(e=>{const g=e.s?giftBy(e.s):null,dep=e.k==='dep';return `<div class="it"><span class="woi sm" style="background:${dep?(WM[e.m]||WM.stars)[5]:WM.gift[5]}">${dep?(WM[e.m]||WM.stars)[0]:'🎁'}</span><div class="nm">${dep?(e.m==='ton'?'Пополнение TON':e.m==='cp'?`CryptoBot · ${e.usd} $`:'Пополнение Stars'):'Вывод · '+esc(g?g.name:e.s)}<small>${new Date(e.t).toLocaleString(LANG==='en'?'en-GB':'ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${e.fee?` · комиссия ${fmt(e.fee)} ★`:''}</small></div><b style="color:${dep?'#3ce08a':'var(--text)'}">${dep?'+':''}${fmt(e.a)} <span class="star">★</span></b></div>`}).join('')}</div>`:`<p class="wtxt" style="text-align:center">История пока пустая — здесь будут пополнения и выводы</p>`}
  return h+'</div>'}
 function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).length,row=(on,ic,bg,t,sub,pill,cls='')=>`<div class="brow ${cls}" onclick="${on}"><span class="sq" style="background:${bg}">${ic}</span><div><b>${t}</b><small>${sub}</small></div>${pill?`<em>${pill}</em>`:''}</div>`;
  return `<h1 class="wh">Бонусы</h1>
@@ -1345,7 +1365,7 @@ function adminView(){
   <div class="field"><input id="mtTxt" placeholder="Текст для игроков (необязательно)" value="${esc(MT.text||'')}"></div>
   <button class="btn ${MT.on?'sand':'ghost'}" onclick="maintToggle()">${MT.on?'✅ Выключить перерыв':'🛠 Включить перерыв'}</button></div>`;
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]();
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]()+(S.adTab==='pay'?(setTimeout(()=>cpAdmLoad()),''):'');
 }
 /* ===== графики по дням ===== */
 S.chK=S.chK||'dep';S.chN=S.chN||14;
@@ -1386,6 +1406,12 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="ad-h" style="margin-top:14px">🎁 Бонус новым игрокам</div>
  <div class="field"><input id="pSB" type="number" placeholder="★ при входе" value="${ADM.startBal||0}"><span class="sub" style="align-self:center">★</span><input id="pST" type="number" placeholder="🎫" value="${ADM.startTick||0}" style="max-width:80px"><span class="sub" style="align-self:center">🎫</span></div>
  <button class="btn sand" onclick="paySave()">Сохранить</button></div>
+ <div class="card"><div class="ad-h">🤖 CryptoBot (оплата в $)</div><div id="cpSt" class="sub" style="text-align:left">Проверяю подключение…</div>
+ <p class="sub" style="text-align:left;font-size:13px">1) Открой @CryptoBot → Crypto Pay → Create App → скопируй API Token.<br>2) Вставь его ниже и сохрани (виден только владельцу, игрокам не уходит).<br>3) В приложении CryptoBot → Webhooks → включи и вставь адрес ниже — тогда оплата зачисляется мгновенно, даже если игрок закрыл приложение.</p>
+ <div class="field"><input id="cpTok" type="password" placeholder="API Token из @CryptoBot" autocomplete="off"></div>
+ <div class="field"><input id="cpR" type="number" min="1" value="${CP().rate}"><span class="sub" style="align-self:center">★ за 1 $</span><input id="cpM" type="number" min="0.1" step="0.1" value="${CP().min}" style="max-width:80px"><span class="sub" style="align-self:center">мин. $</span></div>
+ <div class="row" style="align-items:center;margin-bottom:10px"><b style="flex:1">Показывать игрокам</b><button class="sw ${CP().on!==false?'on':''}" id="cpOnT" onclick="this.classList.toggle('on')"></button></div>
+ <div class="row"><button class="btn sand" onclick="cpAdmSave()">Сохранить</button><button class="btn ghost" style="flex:0 0 auto" onclick="cpAdmSave(1)">🗑 Токен</button></div></div>
  <div class="card"><div class="ad-h">⭐ Звёзды</div><p class="sub" style="text-align:left">Оплата звёздами идёт через счёт Telegram прямо в бота. Звёзды копятся на балансе бота: @BotFather → бот → Bot Settings → Balance (вывод через Fragment).</p></div>`},
 tasks(){return `<div class="card"><div class="ad-h">📜 Задания <small style="background:var(--sea)">${ADM.tasks.length}</small></div><p class="sub" style="text-align:left;margin:0">Что делать игроку, куда вести и сколько билетов давать. Изменения сохраняются сразу.</p></div>
  ${ADM.tasks.map((t,i)=>`<div class="card" style="opacity:${t.on?1:.55}">
@@ -1587,6 +1613,11 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
+function cpAdmLoad(d){API('api/admin/cp_token',d||{}).then(j=>{const e=$('#cpSt');if(!j||!j.ok){if(e)e.textContent='⚠️ '+((j&&j.err)||'ошибка');if(d&&j&&j.err)toast(j.err);return}
+ const ready=!!j.set;if(!!CP().ready!==ready){ADM.cp=Object.assign(CP(),{ready});saveAdm(1)}
+ if(e)e.innerHTML=ready?`✅ Подключено${j.app?': <b>'+esc(j.app)+'</b>':''} · токен ${esc(j.mask)}${j.env?' (из секрета Cloudflare)':''}<br>Вебхук: <b style="user-select:all;word-break:break-all">${esc(j.hook)}</b>`:`❌ Токен не задан — игроки не видят CryptoBot<br>Вебхук: <b style="user-select:all;word-break:break-all">${esc(j.hook)}</b>`;if(d)toast(ready?'CryptoBot подключён ✅':'Токен удалён')}).catch(()=>{})}
+function cpAdmSave(off){const t=$('#cpTok').value.trim(),r=Math.round(+$('#cpR').value),m=+$('#cpM').value;ADM.cp=Object.assign(CP(),{rate:r>0?r:CP().rate,min:m>0?m:CP().min,on:$('#cpOnT').classList.contains('on')});saveAdm(1);
+ if(off){if(confirm('Удалить токен CryptoBot? Игроки перестанут видеть оплату в $'))cpAdmLoad({token:''});return}if(t)cpAdmLoad({token:t});else toast('Сохранено')}
 function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);let warn='';const mw=Math.round(+$('#pMW').value||0);if(mw>10000&&!confirm('Минимальный вывод '+fmt(mw)+' ★ — точно? (обычно 50–500)'))return;
  /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
  if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';

@@ -282,7 +282,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test"]);
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -294,6 +294,21 @@ async function seenOwner(env, u) {
   if (!u || !u.username || !isOwner(u.username)) return;
   const k = "ownerchat:" + u.username.toLowerCase();
   if (!(await getKey(env, k))) await putKey(env, k, String(u.id));
+}
+// ---- Crypto Pay (@CryptoBot): токен хранится отдельно от общих настроек (их видят все игроки) ----
+async function cpToken(env) { return (env.CRYPTOPAY_TOKEN || (await getKey(env, "cpToken")) || "").trim(); }
+const cpRate = cp => Math.max(1, Number(cp && cp.rate) || 70);     // ★ за 1 $
+async function cpApi(token, method, params) {
+  const host = token.startsWith("test") ? "testnet-pay.crypt.bot" : "pay.crypt.bot";
+  return fetch(`https://${host}/api/${method}`, { method: "POST", headers: { "Crypto-Pay-API-Token": token, "Content-Type": "application/json" }, body: JSON.stringify(params || {}) })
+    .then(r => r.json()).catch(e => ({ ok: false, error: { name: String(e.message || e) } }));
+}
+async function cpCredit(env, i, u) {          // звёзды зашиты в payload при создании счёта — подменить нельзя
+  const [uid, a] = String(i.payload || "").split(":");
+  if (uid !== String(u.id) || !(Number(a) > 0)) return { ok: false, err: "Неверный счёт" };
+  const r = await op(env, "credit_cp", uid, u.username ? "@" + u.username : (u.first_name || ""), { id: String(i.invoice_id), a: Number(a), usd: Number(i.amount) || 0 });
+  if (r.ok && r.already) return { ok: false, err: "Уже зачислено", already: true };
+  return r;
 }
 const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
 const putKey = (env, k, v) => store(env).fetch("https://s/" + k, { method: "POST", body: typeof v === "string" ? v : JSON.stringify(v) });
@@ -544,6 +559,51 @@ export default {
       return json(await op(env, "claim_stars", u.id, uname(u), { payload: String(d.payload || "") }));
     }
 
+    // ===== ПОПОЛНЕНИЕ В $ ЧЕРЕЗ @CryptoBot (Crypto Pay API) =====
+    if (path === "/api/cp/create" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
+      if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
+      const st = await loadSettings(env), cp = st.cp || {}, token = await cpToken(env);
+      if (!token || cp.on === false) return json({ ok: false, err: "Оплата через CryptoBot пока не подключена" });
+      const usd = Math.round(Number(d.usd) * 100) / 100, min = Number(cp.min) || 1;
+      if (!(usd >= min && usd <= 1000)) return json({ ok: false, err: `От ${min} до 1000 $` });
+      const a = Math.floor(usd * cpRate(cp));
+      const r = await cpApi(token, "createInvoice", { currency_type: "fiat", fiat: "USD", amount: usd.toFixed(2),
+        accepted_assets: "USDT,TON,BTC,ETH,LTC,BNB,TRX,USDC", description: `${a} ⭐ на баланс ${NAME}`,
+        payload: `${u.id}:${a}`, allow_comments: false, allow_anonymous: false, expires_in: 3600 });
+      if (!r.ok) return json({ ok: false, err: "CryptoBot: " + ((r.error && (r.error.name || r.error.code)) || "не создал счёт") });
+      const i = r.result;
+      return json({ ok: true, id: i.invoice_id, url: i.mini_app_invoice_url || i.bot_invoice_url, burl: i.bot_invoice_url, a, usd });
+    }
+    if (path === "/api/cp/check" && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
+      if (!u) return json({ ok: false }, 403);
+      const token = await cpToken(env); if (!token) return json({ ok: false });
+      const r = await cpApi(token, "getInvoices", { invoice_ids: String(Number(d.id) || 0) });
+      const i = r.ok && r.result && r.result.items && r.result.items[0];
+      if (!i) return json({ ok: false, wait: true });
+      if (!String(i.payload || "").startsWith(u.id + ":")) return json({ ok: false, err: "Чужой счёт" }, 403);
+      if (i.status === "expired") return json({ ok: false, err: "Счёт истёк — создай новый" });
+      if (i.status !== "paid") return json({ ok: false, wait: true });
+      return json(await cpCredit(env, i, u));
+    }
+    if (path === "/api/cp/hook" && req.method === "POST") {      // вебхук Crypto Pay (Настройки приложения → Webhooks)
+      const raw = await req.text(), token = await cpToken(env);
+      if (!token) return new Response("no", { status: 403 });
+      const key = await crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const sig = [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw)))].map(b => b.toString(16).padStart(2, "0")).join("");
+      if (sig !== (req.headers.get("crypto-pay-api-signature") || "")) return new Response("bad sig", { status: 401 });
+      let b; try { b = JSON.parse(raw); } catch { return new Response("bad", { status: 400 }); }
+      if (b.update_type === "invoice_paid" && b.payload) {
+        const i = b.payload, uid = String(i.payload || "").split(":")[0];
+        if (uid) { const r = await cpCredit(env, i, { id: uid });
+          if (r.ok && r.got) { try { await tg(env, "sendMessage", { chat_id: Number(uid), text: `✅ Оплата через CryptoBot получена: +${r.got} ⭐ на баланс ${NAME}` }); } catch (e) {} } }
+      }
+      return new Response("ok");
+    }
+
     // ===== ПОПОЛНЕНИЕ TON =====
     if (path === "/api/ton/info") {
       const st = await loadSettings(env);
@@ -704,6 +764,17 @@ export default {
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Нет доступа" }, 403);
       delete d.initData;
+      if (name === "cp_token") {     // токен CryptoBot — только владелец; наружу не отдаём
+        if (!isOwner(u.username)) return json({ ok: false, err: "Только владелец" }, 403);
+        if (d.token !== undefined) {
+          const t = String(d.token || "").trim();
+          if (t) { const me = await cpApi(t, "getMe"); if (!me.ok) return json({ ok: false, err: "CryptoBot не принял токен: " + ((me.error && me.error.name) || "ошибка") }); await putKey(env, "cpToken", t); }
+          else await putKey(env, "cpToken", "");
+        }
+        const t = await cpToken(env); let app = null;
+        if (t) { const me = await cpApi(t, "getMe"); app = me.ok ? me.result.name : null; }
+        return json({ ok: true, set: !!t, env: !!env.CRYPTOPAY_TOKEN, app, mask: t ? t.slice(0, 6) + "…" + t.slice(-4) : "", hook: url.origin + "/api/cp/hook" });
+      }
       if (name === "bc_test") {      // пробное сообщение самому себе
         const ok = isOwner(u.username) || (await isAdminUser(env, u));
         if (!ok) return json({ ok: false, err: "Нет доступа" }, 403);
