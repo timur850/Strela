@@ -243,6 +243,19 @@ export class Game {
       if (!ok) fail("Нет доступа");
       return this.admin(op.slice(6), d, isAdmin === true);
     }
+    if (op === "remind_due") {                    // кому пора напомнить про бесплатный кейс (вызывает только cron)
+      if (this.st.remind === false) return { ok: true, ids: [] };
+      const now = Date.now(), ids = [], del = [];
+      for (const k of (await this.s.list({ prefix: "rem:", limit: 40 })).keys()) {
+        const [, t, id] = k.split(":"); if (+t > now) break;
+        del.push(k); if (now - +t < 6 * 36e5) ids.push(id);          // старше 6 ч — не шлём (бот был выключен и т.п.)
+      }
+      if (del.length) await this.s.delete(del);
+      const raw = await this.s.get("feed"), list = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : [];
+      const best = list.filter(e => now - e.t < 6 * 36e5 && !this.isStaffId(e.id) && feedOk(e.s ? this.L.giftBy(e.s) : null, e.a))
+        .sort((a, b) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.a - a.a)[0] || null;
+      return { ok: true, ids, win: best && { id: best.id, s: best.s, a: best.a, t: best.t, gift: best.s ? (this.L.giftBy(best.s) || {}).name : "" } };
+    }
     if (op === "feedget") {                       // лента для игроков: без персонала, от 50 ★ или NFT
       const raw = await this.s.get("feed"), list = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : [];
       return { ok: true, list: list.filter(e => !this.isStaffId(e.id) && feedOk(e.s ? this.L.giftBy(e.s) : null, e.a)).slice(0, 100) };
@@ -365,6 +378,8 @@ export class Game {
           if (gate.channel && d.subOk !== true) fail(d.subWhy || "Подпишись на канал " + gate.channel);
         }
         u.daily = Date.now();                    // отправка в чаты нужна один раз — счётчик не сбрасываем
+        if (u.remK) await this.s.delete(u.remK);  // напоминание: бот напишет, когда кейс снова будет доступен
+        u.remK = "rem:" + String(u.daily + hrs * 36e5).padStart(15, "0") + ":" + uid; await this.s.put(u.remK, 1);
       }
     } else {
       c = L.CASES().find(x => x.n === d.name);

@@ -93,6 +93,8 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+"🔔 Напоминание о бесплатном кейсе": "🔔 Free case reminder",
+"Когда у игрока снова доступен ежедневный кейс, бот пишет ему в личку с последним крупным выигрышем и кнопкой «Открыть кейс».": "When a player's daily case is available again, the bot DMs them with the latest big win and an «Open case» button.",
 "{0} онлайн": "{0} online",
 'Месяц': 'Month',
 'Прошлый месяц ещё не закончился или в нём не было ставок': "Last month isn't over yet or had no bets",

@@ -313,6 +313,20 @@ async function seenOwner(env, u) {
   const k = "ownerchat:" + u.username.toLowerCase();
   if (!(await getKey(env, k))) await putKey(env, k, String(u.id));
 }
+// ---- напоминание: бесплатный кейс снова доступен + реальный последний крупный выигрыш ----
+function agoRu(ms) { const s = Math.max(1, Math.round(ms / 1000)); const pl = (n, a, b, c) => n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c;
+  if (s < 60) return `${s} ${pl(s, "секунду", "секунды", "секунд")} назад`; const m = Math.round(s / 60); if (m < 60) return `${m} ${pl(m, "минуту", "минуты", "минут")} назад`;
+  const h = Math.round(m / 60); return `${h} ${pl(h, "час", "часа", "часов")} назад`; }
+const kfmt = n => n >= 1e6 ? +(n / 1e6).toFixed(1) + "M" : n >= 1e4 ? +(n / 1e3).toFixed(1) + "K" : String(n);
+async function remindFree(env, origin) {
+  const r = await op(env, "remind_due", "0", "", {}, false);
+  if (!r || !r.ok || !r.ids.length) return;
+  const w = r.win, mask = id => String(id).slice(0, Math.max(3, String(id).length - 3)) + "***";
+  const win = w ? `⚡ ${agoRu(Date.now() - w.t)} игрок id ${mask(w.id)} выиграл ${w.gift ? w.gift + " за " : ""}${kfmt(w.a)} ⭐\n\n` : "";
+  const text = `🎁 Твой бесплатный кейс снова доступен!\n\n${win}Заходи и испытай свою удачу 👇`;
+  const kb = { inline_keyboard: [[{ text: "🎁 Открыть кейс", web_app: { url: origin + "/" } }]] };
+  for (const id of r.ids) { try { await tg(env, "sendMessage", { chat_id: Number(id), text, reply_markup: kb }); } catch (e) {} }
+}
 // ---- Crypto Pay (@CryptoBot): токен хранится отдельно от общих настроек (их видят все игроки) ----
 async function cpToken(env) { return (env.CRYPTOPAY_TOKEN || (await getKey(env, "cpToken")) || "").trim(); }
 const cpRate = cp => Math.max(1, Number(cp && cp.rate) || 70);     // ★ за 1 $
@@ -484,6 +498,7 @@ export default {
     if (!env.BOT_TOKEN) return;
     const origin = (await (await store(env).fetch("https://s/origin")).text()) || DEFAULT_ORIGIN;
     if (!origin) return;
+    try { await remindFree(env, origin); } catch (e) { console.log("remind", e); }
     const w = await tg(env, "getWebhookInfo", {});
     if (w.ok && hookBad(w.result, origin)) {
       const hookKey = (await sha256hex("hook:" + env.BOT_TOKEN)).slice(0, 32);
