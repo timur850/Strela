@@ -159,6 +159,11 @@ export class Game {
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
+  async betNoCharge(u, n) {                       // ставка подарком (апгрейд, контракт): в оборот игрока и турнир
+    n = Math.round(n); if (!(n > 0)) return; await this.tourAdd(u, n);
+    const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
+    ps.t += n; ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
+  }
   psWin(u, v, slug, game) {
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
     ps.w++; if (!ps.best || v > ps.best.v) ps.best = { v: Math.round(v), s: slug || "", g: game || "" };
@@ -496,7 +501,7 @@ export class Game {
     const a = L.giftBy(u.inv[i]), b = L.giftBy(String(d.target || ""));
     if (!a || !b || isStar(b) || !(b.price > a.price)) fail("Выбери подарок дороже своего");
     const ch = L.upChance(a.price, b.price);
-    u.inv.splice(i, 1); await this.stat("bets", a.price);
+    u.inv.splice(i, 1); await this.stat("bets", a.price); await this.betNoCharge(u, a.price);
     const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
     if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
     await this.gstat("upgrade", a.price, won ? b.price : 0);
@@ -512,7 +517,7 @@ export class Game {
     const inv = [...u.inv];
     for (const s of items) { const k = inv.indexOf(s); if (k < 0) fail("Подарок не найден, обнови страницу"); inv.splice(k, 1); }
     const sum = items.reduce((s, x) => s + ((L.giftBy(x) || {}).price || 0), 0);
-    u.inv = inv; await this.stat("bets", sum);
+    u.inv = inv; await this.stat("bets", sum); await this.betNoCharge(u, sum);
     const g = L.pickGift(sum, L.R("contract"));
     await this.giveGift(u, uid, g, GAME_NAMES.contract);
     await this.gstat("contract", sum, g.price);
