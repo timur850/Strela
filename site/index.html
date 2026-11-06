@@ -173,7 +173,8 @@ body.dark .tlogo{display:flex;flex-direction:row;align-items:center;gap:7px;line
 body.dark .pill{margin-left:auto;padding:7px 9px;gap:4px;cursor:pointer;flex:0 0 auto}body.dark .pill .plus,body.dark .pill.t{display:none}body.dark .pill .caret{display:inline;font-style:normal;color:var(--muted);margin-top:-6px}
 body.dark .tdep{display:block;flex:0 0 auto;border:0;border-radius:999px;padding:10px 12px;background:linear-gradient(135deg,#6f86ff,#7b5cf5);color:#fff;font:800 14px Nunito,sans-serif;box-shadow:0 6px 18px rgba(111,124,255,.45);cursor:pointer}
 body.dark .tava{display:grid;width:38px;height:38px;border-width:2px;cursor:pointer}body.dark .tava::before{font-size:17px}
-@media(max-width:430px){body.dark .tln{display:none}body.dark .pill .caret{display:none}body.dark .tdep{padding:10px 11px;font-size:13.5px}}
+@media(max-width:430px){body.dark .tln{font-size:16px}body.dark .pill .caret{display:none}body.dark .tdep{width:40px;height:40px;padding:0;font-size:0;border-radius:50%;display:grid;place-items:center}body.dark .tdep::before{content:'+';font:900 26px/1 Nunito,sans-serif;color:#fff;margin-top:1px}body.dark .tdep{line-height:0}}
+@media(max-width:375px){body.dark .tln{display:none}body.dark .tlo{padding:4px 7px;font-size:12px}}
 body.dark .top{overflow:hidden}body.dark .pill{min-width:0;flex-shrink:1}body.dark .pill b{overflow:hidden;text-overflow:ellipsis}
 body.dark .nav{padding:7px;border-radius:32px}
 body.dark .nav button{flex-direction:row;justify-content:center;font:800 14.5px Nunito,sans-serif;padding:13px 4px;border-radius:24px}
