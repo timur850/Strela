@@ -682,7 +682,7 @@ function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.c
 function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);return;
  if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
 function loadTour(){fetch('api/tour',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok){const first=!S.tour;S.tour=j;if(S.tab==='tour'&&!S.stack.length&&first){stopAll();render(T.tour());tick()}}}).catch(()=>{})}
-function loadFeed(){S.feedAt=Date.now();fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(!S.stack.length&&(S.tab==='tour'))setTab('tour');if(S.tab==='games'&&!S.stack.length)liveUpdate()}}).catch(()=>{})}
+function loadFeed(){S.feedAt=Date.now();fetch('api/feed',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){S.feed=j;if(S.tab==='games'&&!S.stack.length)liveUpdate()}}).catch(()=>{})}
 function ago(t){const d=(Date.now()-t)/1e3;return d<60?'только что':d<3600?Math.floor(d/60)+' мин':d<86400?Math.floor(d/3600)+' ч':Math.floor(d/86400)+' д'}
 function feedRow(e){const g=e.s?giftBy(e.s):null;return `<div class="it"><div class="av" style="background:hsl(${hue(e.n||'?')},65%,50%)">${esc((e.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(e.n)}<small>${esc(e.g)} · ${ago(e.t)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}<b class="star" style="margin-left:6px;white-space:nowrap">+${fmt(e.a)} ★</b></div>`}
 const LIVE_N=20;const liveKey=e=>e.t+'_'+e.id+'_'+e.a;
@@ -735,8 +735,7 @@ tasks(){const d=U().done||{},st=U().started||{};const L=TASKS();
 tour(){
   const gl=GIFTS().filter(g=>!isStar(g));
   const feed=S.feed.slice(0,15);
-  return `<div class="card"><div class="ad-h">🔥 Последние выигрыши <small style="background:var(--palm)">LIVE</small></div><div class="list">${feed.length?feed.map(feedRow).join(''):'<div class="empty">Пока никто не выигрывал — будь первым!</div>'}</div></div>
-  <h1>Турнир месяца</h1><p class="sub">Топ-3 игрока по обороту за месяц получают NFT — призы приходят в инвентарь сами</p>
+  return `<h1>Турнир месяца</h1><p class="sub">Топ-3 игрока по обороту за месяц получают NFT — призы приходят в инвентарь сами</p>
   <div class="card timer" id="timer"></div>
   <div class="tpz">${TOUR_P().map((sl,i)=>{const g=giftBy(sl);return g?`<div class="tp p${i+1}"><span class="tpm">${['🥇','🥈','🥉'][i]||i+1}</span>${gi(g)}<b>${esc(g.name)}</b><small><span class="star">★</span> ${fmt(g.price)}</small></div>`:''}).join('')}</div>
   ${S.tour&&S.tour.prev&&S.tour.prev.top.length?`<div class="card"><div class="ad-h">🏅 Победители прошлого месяца</div><div class="list">${S.tour.prev.top.map((r,i)=>{const w=(S.tour.prev.won||[]).find(x=>x.place===i+1),g=w&&giftBy(w.prize);return `<div class="it"><b style="width:22px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${g?`<span style="width:36px;height:36px;display:inline-block">${gi(g)}</span>`:''}</div>`}).join('')}</div></div>`:''}
