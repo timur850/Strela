@@ -883,7 +883,7 @@ export class Game {
       return { ok: true, users: n };
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
-    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); await this.s.delete("gstats"); return { ok: true }; }
+    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); await this.s.delete("gstats"); const sd = [...(await this.s.list({ prefix: "sd:" })).keys()]; for (let i = 0; i < sd.length; i += 100) await this.s.delete(sd.slice(i, i + 100)); return { ok: true }; }
     if (op === "refs") {
       const r = await this.s.get("u:" + id); if (!r) return { ok: true, rows: [] };
       const rows = [];

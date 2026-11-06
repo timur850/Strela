@@ -170,6 +170,15 @@ export class Store {
       } catch (e) { console.log("mig nftton", e); }
       await state.storage.put("mig:nftton1", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: обнулить статистику и графики (как просил владелец, 06.11)
+      if (await state.storage.get("mig:statreset2")) return;
+      try {
+        await state.storage.put("stats", { dep: 0, bets: 0, wins: 0 }); await state.storage.delete("gstats");
+        const sd = [...(await state.storage.list({ prefix: "sd:" })).keys()];
+        for (let i = 0; i < sd.length; i += 100) await state.storage.delete(sd.slice(i, i + 100));
+      } catch (e) { console.log("mig statreset", e); }
+      await state.storage.put("mig:statreset2", 1);
+    });
     state.blockConcurrencyWhile(async () => {   // разово: выплаты за ролики TikTok/Shorts ×2 (как просил владелец)
       if (await state.storage.get("mig:earnx2")) return;
       try { const raw = await state.storage.get("settings");
