@@ -577,7 +577,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=e6ba6a60"></script>
+<script src="i18n.js?v=2fdf5f0e"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1105,7 +1105,7 @@ function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encode
 async function refCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet()}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
 const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
-const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};
+const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.channel=e.channel||'https://t.me/StrelaCase_TikTok';e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};
 const fmtK=n=>n>=1e6?(n/1e6).toLocaleString('ru-RU')+' млн':fmt(n);
 function earnCalc(kind,views,url){const r=EARN().rows.find(x=>x[0]===kind)||EARN().rows[0];if(views<r[2])return 0;const P=[[1e3,r[3][0]],[1e5,r[3][1]],[1e6,r[3][2]]];let v;
  if(views<=1e3)v=P[0][1]*views/1e3;else if(views<=1e5)v=P[0][1]+(P[1][1]-P[0][1])*(views-1e3)/(1e5-1e3);else if(views<=1e6)v=P[1][1]+(P[2][1]-P[1][1])*(views-1e5)/(1e6-1e5);else v=P[2][1]*views/1e6;
@@ -1133,6 +1133,7 @@ function earnHub(){const N=NICK(),E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2]
  return `<h1 class="wh">Заработок</h1>${nick}
  <h2 class="nks">Как получить ещё</h2>
  ${(ADM.earn||{}).on===false?'':`<div class="brow tt" onclick="open_('earntt')"><img class="sq" src="${GICON.earn}" alt=""><div><b>Ролики в TikTok и Shorts</b><small>за 1 000 000 просмотров</small></div><em>до ${fmt(top)} <span class="star">★</span></em></div>`}
+ ${(ADM.earn||{}).on===false?'':`<div class="brow" onclick="openUrl('${esc(E.channel)}')"><span class="sq" style="background:linear-gradient(135deg,#37b6f6,#1f87d6)">📁</span><div><b>Материалы для роликов</b><small>Баннеры, примеры и правила — в канале</small></div><em>›</em></div>`}
  <div class="brow" onclick="setTab('profile')"><span class="sq" style="background:linear-gradient(135deg,#3fb6ff,#1f6fe0)">🤝</span><div><b>Пригласить друга</b><small>10% с пополнений друзей</small></div><em>10 %</em></div>`}
 function nickTick(){timers.push(setInterval(()=>{const a=$('#nkTm');if(a){const left=+a.dataset.end-Date.now();a.textContent=hms(left);if(left<=0&&S.tab==='earn'&&!S.stack.length)setTab('earn')}const b=$('#nkTm2');if(b)b.textContent=hms(nickNextDay())},1000))}
 async function nickAct(act){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');if(busy)return;busy=true;
@@ -1141,7 +1142,7 @@ async function nickAct(act){if(!(tg&&tg.initData))return toast('Открой и�
  if(j.lost)toast(j.why);else if(act==='start')toast('Этап 1 выполнен ✅ Держите тег 24 часа');else if(j.got){toast(`+${fmt(j.got)} ★`);try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}
  const sc=view.scrollTop;if(S.stack[S.stack.length-1]==='earn')rerender();else if(S.tab==='earn'&&!S.stack.length)setTab('earn');view.scrollTop=sc}
 function earnPage(){const E=EARN(),top=Math.max(...E.rows.map(r=>r[3][2]));
- const steps=['Снимите ролик на любую тему, от 10 секунд','Вставьте в середину баннер '+APP_NAME+' со звуком','Выложите ролик в TikTok или YouTube Shorts','Наберите просмотры: от '+fmt(Math.min(...E.rows.map(r=>r[2])))+' (креатив — от '+fmt((E.rows.find(r=>r[0]==='creative')||E.rows[0])[2])+')','Запишите экран телефона: статистика видео со всех разделов, включая географию по странам','Подайте заявку кнопкой ниже'];
+ const steps=['Снимите ролик на любую тему, от 10 секунд','Возьмите баннер и примеры в канале '+(E.channel.replace(/^https?:\/\/t\.me\//,'@'))+' и вставьте баннер в середину ролика со звуком','Выложите ролик в TikTok или YouTube Shorts','Наберите просмотры: от '+fmt(Math.min(...E.rows.map(r=>r[2])))+' (креатив — от '+fmt((E.rows.find(r=>r[0]==='creative')||E.rows[0])[2])+')','Запишите экран телефона: статистика видео со всех разделов, включая географию по странам','Подайте заявку кнопкой ниже'];
  const rules=['Баннер со звуком, не меньше 25% экрана, не в углу','Видео длиннее минуты: баннер на каждую минуту','Заявка в течение 7 дней после публикации','Нужна запись экрана с телефона со всей статистикой, скриншотов мало','Без рекламы других проектов','За одно видео одна заявка'];
  return `<div class="ru">
  <div class="ehero"><div class="eic"><img src="img/earn.webp" alt=""></div><h2>Ролики в TikTok и Shorts</h2><div class="esum">${fmt(top)} ★</div><p>за 1 000 000 просмотров</p></div>

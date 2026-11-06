@@ -93,6 +93,12 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+'Баннеры, примеры и правила — в канале': 'Banners, examples and rules — in the channel',
+'Возьмите баннер и примеры в канале': 'Get the banner and examples in the channel',
+'Материалы для роликов': 'Video materials',
+' и вставьте баннер в середину ролика со звуком': ' and put the banner in the middle of the video with sound',
+'и вставьте баннер в середину ролика со звуком': 'and put the banner in the middle of the video with sound',
+
 'Ставка подарком': 'Bet with a gift',
 'Подарок станет ставкой по своей цене. Выигрыш — звёздами по множителю.': 'The gift becomes your bet at its price. Winnings are paid in stars by the multiplier.',
 'Нет подарков для ставки': 'No gifts to bet',
