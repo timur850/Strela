@@ -170,6 +170,15 @@ export class Store {
       } catch (e) { console.log("mig nftton", e); }
       await state.storage.put("mig:nftton1", 1);
     });
+    state.blockConcurrencyWhile(async () => {   // разово: выплаты за ролики TikTok/Shorts ×2 (как просил владелец)
+      if (await state.storage.get("mig:earnx2")) return;
+      try { const raw = await state.storage.get("settings");
+        if (raw) { const st = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (st.earn && Array.isArray(st.earn.rows)) { st.earn.rows = st.earn.rows.map(r => Array.isArray(r[3]) ? [r[0], r[1], r[2], r[3].map(v => Math.round(v * 2))] : r);
+            await state.storage.put("settings", typeof raw === "string" ? JSON.stringify(st) : st); } }
+      } catch (e) { console.log("mig earnx2", e); }
+      await state.storage.put("mig:earnx2", 1);
+    });
     state.blockConcurrencyWhile(async () => {   // разово: включаем тёмную тему (как просил владелец)
       if (await state.storage.get("mig:darktheme")) return;
       try { const raw = await state.storage.get("settings");

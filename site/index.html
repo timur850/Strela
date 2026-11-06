@@ -494,7 +494,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="toast" id="toast"></div>
 
 <script src="i18n.js?v=2437a408"></script>
-<script src="logic.js?v=78122356"></script>
+<script src="logic.js?v=24442335"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -636,7 +636,7 @@ const T={
 games(){
   const g=liveIcons();
   return `<div class="brand"><div class="lg lgimg"><img src="img/gift.webp" alt=""></div><h1>${esc(APP_NAME.split(' ')[0].toUpperCase())}<span>${esc(APP_NAME.split(' ').slice(1).join(' ').toUpperCase())}</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
-  socialsRow()+ttBanner()+'<div class="tiles">'+GAMES.filter(x=>!ADM.off[x[0]]&&(x[0]!=='free'||FREE_KEYS().length)&&(x[0]!=='drop'||(ADM.drop||{}).on!==false)&&(x[0]!=='earn'||(ADM.earn||{}).on!==false)).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<span class="onl" data-g="${id}"${S.on&&S.on[id]?'':' hidden'}><i></i>${S.on&&S.on[id]?onTxt(S.on[id]):''}</span><div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('')+'</div>';
+  socialsRow()+'<div class="tiles">'+GAMES.filter(x=>!ADM.off[x[0]]&&(x[0]!=='free'||FREE_KEYS().length)&&(x[0]!=='drop'||(ADM.drop||{}).on!==false)&&(x[0]!=='earn'||(ADM.earn||{}).on!==false)).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<span class="onl" data-g="${id}"${S.on&&S.on[id]?'':' hidden'}><i></i>${S.on&&S.on[id]?onTxt(S.on[id]):''}</span><div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('')+'</div>';
 },
 contests(){
   const box=(p,a,b)=>`<div class="card"><div class="grid3">${p.map(s=>{const g=giftBy(s);return `<div class="prize">${gi(g)}<div><b class="star">★</b> <b>${fmt(g.price)}</b></div></div>`}).join('')}</div>
@@ -1006,7 +1006,7 @@ function refSheet(){const n=Math.min(U().refQ||0,REF_NEED),ok=n>=REF_NEED,left=(
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
 async function refCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet()}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
-const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[50,4000,30000]],['gifts','Подарки Telegram',3000,[25,1500,10000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[5,250,2500]]]};
+const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
 const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};
 const fmtK=n=>n>=1e6?(n/1e6).toLocaleString('ru-RU')+' млн':fmt(n);
 function earnCalc(kind,views,url){const r=EARN().rows.find(x=>x[0]===kind)||EARN().rows[0];if(views<r[2])return 0;const P=[[1e3,r[3][0]],[1e5,r[3][1]],[1e6,r[3][2]]];let v;
