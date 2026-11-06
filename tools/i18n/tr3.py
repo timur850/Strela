@@ -93,6 +93,12 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+'🏆 Выигрыши': '🏆 Wins',
+'Нет в ленте (лента хранит последние 300 выигрышей всех игроков)': 'Not in feed (feed keeps the last 300 wins of all players)',
+'⬆️ Апгрейды — проверка': '⬆️ Upgrades — audit',
+'Выигрыш, если число стрелки меньше шанса': 'Win if the needle number is below the chance',
+'{0} · шанс {1}% · стрелка {2}': '{0} · chance {1}% · needle {2}',
+
 '@юзернейм или ID': '@username or ID',
 '{0} шт · ★ {1}': '{0} pcs · ★ {1}',
 '· ⛔ бан': '· ⛔ banned',

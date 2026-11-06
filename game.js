@@ -504,6 +504,7 @@ export class Game {
     u.inv.splice(i, 1); await this.stat("bets", a.price); await this.betNoCharge(u, a.price);
     const roll = rand() * 100, won = roll < ch;              // где остановится стрелка колеса
     if (won) await this.giveGift(u, uid, b, GAME_NAMES.upgrade);
+    (u.glog = u.glog || []).unshift({ k: "up", a: a.slug, b: b.slug, ch: +ch.toFixed(2), roll: +roll.toFixed(2), won, t: Date.now() }); u.glog = u.glog.slice(0, 50);
     await this.gstat("upgrade", a.price, won ? b.price : 0);
     await this.huntHit(u, uid, { t: "upgrade", won, chance: ch }, a.price);
     return { won, chance: ch, roll };
@@ -852,10 +853,12 @@ export class Game {
       }
       deps.sort((a, b) => b.t - a.t);
       const wq = [...(await this.s.list({ prefix: "wdq:", limit: 1000 })).values()].filter(w => w.uid === uid);
+      const fr = await this.s.get("feed"), feedAll = fr ? (typeof fr === "string" ? JSON.parse(fr) : fr) : [];
+      const wins = feedAll.filter(e => String(e.id) === uid).slice(0, 50);
       const ref = u.ref ? await this.s.get("u:" + u.ref) : null;
       return { ok: true, u: { id: uid, name: u.name, bal: u.bal, tick: u.tick, inv: u.inv, ps: u.ps || null, hist: u.hist || [], depSum: u.depSum || 0,
         ref: u.ref ? { id: u.ref, name: ref && ref.name } : null, refCount: u.refCount || 0, refEarn: u.refEarn || 0, daily: u.daily || 0, nick: u.nick || null,
-        lvl: u.lvl || 0, fdb: u.fdb || 0, banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq };
+        lvl: u.lvl || 0, fdb: u.fdb || 0, glog: u.glog || [], banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq, wins };
     }
     if (op === "earn_list") {
       const L = [...(await this.s.list({ prefix: "earn:" })).values()].sort((a, b) => (a.st === "new") - (b.st === "new") || b.t - a.t).reverse().slice(0, 100);

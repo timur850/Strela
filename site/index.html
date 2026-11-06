@@ -586,7 +586,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=1c120c3c"></script>
+<script src="i18n.js?v=f01cc3cf"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1774,6 +1774,9 @@ async function uInfo(q){q=String(q||'').trim();if(!q)return toast('Введи @�
  <div class="card"><div class="ad-h">📤 Выводы</div>${W.length?`<div class="list">${W.map(w=>{const g=giftBy(w.s);return `<div class="it" style="padding:6px 0"><span style="width:30px;height:30px;display:inline-block">${g?gi(g):''}</span><div class="nm">${esc(g?g.name:w.s)}<small>${dt(w.t)}${w.fee?` · комиссия ${fmt(w.fee)} ★`:''}</small></div><b>★ ${fmt(w.a)}</b></div>`}).join('')}</div>`:'<div class="empty">Выводов нет</div>'}
   ${(j.wq||[]).length?`<p class="sub" style="text-align:left;margin:6px 0 0">⏳ В обработке: ${j.wq.map(w=>esc(w.gname||w.slug)).join(', ')}</p>`:''}</div>
  <div class="card"><div class="ad-h">🎮 Игра</div>${row('Оборот ставок',`★ ${fmt(p.t||0)}`)}${row('Игр',fmt(p.g||0))}${row('Выигрышей',fmt(p.w||0))}${p.best?row('Лучший выигрыш',`★ ${fmt(p.best.v)} ${esc(p.best.g||'')}`):''}${row('Рейтинг',`${lvlOf(p.t||0)+1}`)}${row('Бесплатный кейс',dt(u.daily))}${u.nick&&u.nick.s?row('Тег в нике','с '+dt(u.nick.s)):''}</div>
+
+ <div class="card"><div class="ad-h">🏆 Выигрыши <small style="background:var(--sea)">${(j.wins||[]).length}</small></div>${(j.wins||[]).length?`<div class="list">${j.wins.map(e=>{const g=e.s&&giftBy(e.s);return `<div class="it" style="padding:6px 0">${g?`<span style="width:30px;height:30px;display:inline-block">${gi(g)}</span>`:'<span style="width:30px;text-align:center">⭐</span>'}<div class="nm">${esc(e.g||'')}${g?' · '+esc(g.name):''}<small>${dt(e.t)}</small></div><b style="color:#3ce08a">+${fmt(e.a)} ★</b></div>`}).join('')}</div>`:'<div class="empty">Нет в ленте (лента хранит последние 300 выигрышей всех игроков)</div>'}</div>
+ ${(u.glog||[]).length?`<div class="card"><div class="ad-h">⬆️ Апгрейды — проверка</div><p class="sub" style="text-align:left;margin:0 0 6px">Выигрыш, если число стрелки меньше шанса</p><div class="list">${u.glog.filter(x=>x.k==='up').map(x=>{const A=giftBy(x.a),B=giftBy(x.b);return `<div class="it" style="padding:6px 0"><div class="nm">${esc(A?A.name:x.a)} (★${A?fmt(A.price):'?'}) → ${esc(B?B.name:x.b)} (★${B?fmt(B.price):'?'})<small>${dt(x.t)} · шанс ${x.ch}% · стрелка ${x.roll}</small></div><b style="color:${x.won?'#3ce08a':'#ff8a8a'}">${x.won?'✅':'❌'}</b></div>`}).join('')}</div></div>`:''}
  <div class="card"><div class="ad-h">🤝 Рефералы</div>${row('Пригласил его',u.ref?esc(u.ref.name||u.ref.id):'—')}${row('Пригласил сам',fmt(u.refCount))}${row('Заработал с рефералов',`★ ${fmt(u.refEarn)}`)}</div>
  <p class="sub" style="font-size:12px">История игрока в боте ведётся с 06.11.2026; пополнения — из журнала платежей за всё время.</p>`)}
 function ensureUser(id){id=String(id).trim();if(!/^\d{3,15}$/.test(id)){toast('Неверный ID');return null}return id}
