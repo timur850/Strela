@@ -30,8 +30,8 @@ const TON_STARS = 150;                 // сколько ★ даём за 1 TON
 const UPDATES = ["message", "pre_checkout_query", "business_connection"];
 const hookBad = (r, origin) => r.url !== origin + "/webhook" || UPDATES.some(x => !(r.allowed_updates || []).includes(x));
 const BUTTON_TEXT = "🏝 Играть";
-const WELCOME = "🏹 <b>" + NAME + "</b>\n\nКейсы, краш, мины, plinko, PvP и подарки с Fragment 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
-const WELCOME_EN = "🏹 <b>" + NAME + "</b>\n\nCases, crash, mines, plinko, PvP and gifts from Fragment 🎁\nTap the button below to open the game 👇";
+const WELCOME = "🏹 <b>" + NAME + "</b>\n\nКейсы, краш, мины, plinko, PvP и подарки Telegram 🎁\nЖми кнопку ниже, чтобы открыть игру 👇";
+const WELCOME_EN = "🏹 <b>" + NAME + "</b>\n\nCases, crash, mines, plinko, PvP and Telegram gifts 🎁\nTap the button below to open the game 👇";
 // язык игрока по Telegram: русскоязычные регионы — русский, остальные — английский
 const RU_LANGS = ["ru", "uk", "be", "kk", "uz", "ky", "tg", "az", "hy", "ka"];
 const isEn = from => { const l = String((from && from.language_code) || "ru").toLowerCase().slice(0, 2); return !RU_LANGS.includes(l); };
@@ -420,8 +420,7 @@ async function handleUpdate(env, origin, upd) {
   if (msg.from && isOwner(msg.from.username) && msg.chat.type === "private") await putKey(env, "ownerchat:" + msg.from.username.toLowerCase(), String(msg.chat.id));
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const en = isEn(msg.from);
-  const kb = { inline_keyboard: [[{ text: en ? "🏝 Play" : BUTTON_TEXT, web_app: { url: origin + "/" } }],
-    [{ text: en ? "💬 Support" : "💬 Поддержка", url: "https://t.me/" + SUPPORT.replace("@", "") }]] };
+  const kb = { inline_keyboard: [[{ text: en ? "🏝 Play" : BUTTON_TEXT, web_app: { url: origin + "/" } }]] };
   if (cmd === "/start" && msg.from && msg.chat.type === "private") await putKey(env, "bu:" + msg.from.id, "1");
   if (cmd === "/start") {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
