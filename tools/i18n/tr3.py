@@ -76,6 +76,8 @@ T = {
 "📦 Открыть кейс": "📦 Open case",
 "🛠 Включить перерыв": "🛠 Turn on maintenance",
 "не число": "NaN",
+"🔍 Поиск подарка": "🔍 Search gift",
+"Цена в ★ и вкл/выкл подарка в кейсах, яйцах и апгрейде. Цены NFT считаются сами: цена на Fragment × курс из «💎 Оплата». Впишешь свою — будет она.": "Price in ★ and on/off for the gift in cases, eggs and upgrade. NFT prices are calculated automatically: Fragment price × the rate from “💎 Payment”. Enter your own and it will be used.",
 "Включена": "Enabled",
 "Внутри кокоса за ★ {0}": "Inside the ★ {0} coconut",
 "Все 5 сокровищ найдены! Открой сундук 🗺️": "All 5 treasures found! Open the chest 🗺️",
