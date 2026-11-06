@@ -5,6 +5,7 @@ import "./site/logic.js";
 const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS, CHICK_D } = globalThis.STRELA;
 // онлайн по играм: кто был в игре за последние 5 минут (в памяти, без записи в базу)
 const ONLINE = new Map(), ON_TTL = 5 * 60e3;
+const GIFT_BET_OPS = new Set(["crash_bet", "mines_bet", "plinko", "chick_bet"]);
 const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
 const GAME_IDS = new Set(["chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
 function onMark(g, uid) { if (!GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
@@ -222,6 +223,11 @@ export class Game {
     const fn = this["op_" + op];
     if (!fn) fail("Неизвестное действие");
     this._hf = null; this._op = op; this.huntEnsure(u);
+    if (GIFT_BET_OPS.has(op) && d && d.gi != null) {   // ставка подарком: подарок уходит, его цена становится ставкой (выигрыш — звёздами)
+      const i = this.invIndex(u, d.gi, d.gs), gf = this.L.giftBy(u.inv[i]);
+      if (!gf || isStar(gf)) fail("Этот подарок нельзя поставить"); if (gf.price > MAX_BET) fail("Подарок слишком дорогой для ставки");
+      u.inv.splice(i, 1); u.bal += gf.price; d.bet = gf.price; await this.stat("giftbet", gf.price);
+    }
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
     if (OP_GAME[op]) onMark(OP_GAME[op], uid);

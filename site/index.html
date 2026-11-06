@@ -272,6 +272,10 @@ body.dark .g-chick{background:radial-gradient(90% 80% at 50% 30%,#ffb627,#7a3a06
 .fdbh.off{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--muted)}
 @keyframes fdbTw{50%{opacity:.15}}
 
+.gbb{flex:0 0 auto;position:relative;display:grid;place-items:center;width:40px;height:40px;border-radius:14px;border:1px dashed rgba(255,140,190,.6);background:rgba(255,107,154,.12);font-size:20px;cursor:pointer;padding:0;color:#fff}
+.gbb.on{border-style:solid;border-color:#ffcf3a;background:rgba(255,207,58,.15)}.gbb .gbi{width:32px;height:32px;display:block}.gbb .gbi .gi{width:32px;height:32px;font-size:20px}
+.gbb i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff5d7a;font:900 10px/18px Nunito;font-style:normal;text-align:center}
+input.gbv{color:#ffcf3a!important}.gbp{display:block;margin-top:4px;font-weight:900;font-size:13px}
 .rbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 0 10px;background:transparent}body.dark .rbar{background:linear-gradient(180deg,#151829 75%,transparent)}
 .rchips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.rchips::-webkit-scrollbar{display:none}
 .rch{flex:0 0 auto;border:1px solid var(--line);background:var(--glass2);color:var(--text);font:800 15px Nunito,sans-serif;padding:10px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
@@ -573,7 +577,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=38088cc0"></script>
+<script src="i18n.js?v=e6ba6a60"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -804,7 +808,7 @@ upgrade(){const a=S.upA!=null?giftBy(U().inv[S.upA]):null,b=S.upB?giftBy(S.upB):
  ${a&&b?`<div class="upw" id="upWheel" style="background:conic-gradient(#22c55e 0 ${ch}%,#ff5a5f ${ch}% 100%)"><div class="needle" id="upNeedle"></div><div class="hubc"><div>${ch.toFixed(1)}%<small>шанс</small></div></div></div><p class="sub">🟢 зелёное — выигрыш · 🔴 красное — проигрыш</p><button class="btn sand" id="upBtn" onclick="doUpgrade()">Апгрейд</button>`:`<button class="btn" onclick="${U().inv.length?'pickOwn()':"open_('cases')"}">${U().inv.length?'Выбрать свой подарок':'Сначала выиграйте подарок в кейсах'}</button>`}`},
 crash(){return `<div class="crash-box"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path id="cpath" fill="none" stroke="#ffd23f" stroke-width="1.2"/></svg><div class="mult" id="cm">…</div><div class="surfer" id="surf">🏄</div><div class="sea"></div></div>
  <div class="chips" id="hist"></div>
- <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="cbet" type="number" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="cbet.value=+cbet.value+100">+100</button><button class="btn ghost sm" onclick="cbet.value=+cbet.value+500">+500</button></div></div>
+ <div class="card"><div class="row" style="align-items:center">${gbBtn('cbet')}<span class="star">★</span><input id="cbet" type="number" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="cbet.value=+cbet.value+100">+100</button><button class="btn ghost sm" onclick="cbet.value=+cbet.value+500">+500</button></div></div>
  <p class="sub" style="margin:0 0 8px">Общий раунд для всех игроков · ставки за 6 секунд до старта</p>
  <div class="card list" id="cbets"><div class="empty">Ставок еще нет</div></div>
  <button class="btn sand" id="cbtn" onclick="crashAct()">Сделать ставку</button>`},
@@ -822,17 +826,17 @@ dig(){return `<h1>Шахта</h1><div class="digbox"><canvas id="digc"></canvas>
 chick(){const D=globalThis.STRELA.CHICK_D[CR.d];return `<div class="cr-top"><div><small>Множитель</small><b id="crX">x1.00</b></div><div><small>Следующая</small><b id="crN">x${chickM(CR.d,1).toFixed(2)}</b></div><div><small>Выигрыш</small><b id="crW">0 <span class="star">★</span></b></div></div>
  <div class="cr-road" id="crRoad"></div>
  <div class="seg cr-seg" id="crSeg" style="margin:12px 0">${['Легко','Средне','Сложно','Хардкор'].map((n,i)=>`<button class="${CR.d===i?'on':''}" onclick="crDiff(${i})">${n}</button>`).join('')}</div>
- <div class="card" style="margin-bottom:10px"><div class="row" style="align-items:center;gap:6px"><span class="star">★</span><input id="crBet" type="number" inputmode="numeric" value="${CR.bet||100}" onfocus="if(CR.on)this.blur()" style="flex:1;min-width:0;background:none;border:0;color:var(--text);font:900 20px Nunito,sans-serif;outline:none">
+ <div class="card" style="margin-bottom:10px"><div class="row" style="align-items:center;gap:6px">${gbBtn('crBet')}<span class="star">★</span><input id="crBet" type="number" inputmode="numeric" value="${CR.bet||100}" onfocus="if(CR.on)this.blur()" style="flex:1;min-width:0;background:none;border:0;color:var(--text);font:900 20px Nunito,sans-serif;outline:none">
  <button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(.5)">½</button><button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(2)">×2</button><button class="btn ghost sm" style="flex:0 0 auto" onclick="crBetK(0,100)">+100</button></div></div>
  <div class="row" style="gap:8px"><button class="btn sand" id="crGo" onclick="crAct()">Играть</button><button class="btn ghost" id="crCash" onclick="crCash()" style="display:none">Забрать</button></div>
  <p class="sub" id="crInfo">Шанс пройти полосу ${Math.round(D[0]*100)}% · полос ${D[1]} · максимум x${fmt(chickM(CR.d,D[1]))}</p>`},
 mines(){return `<div class="mgrid" id="mg"></div>
  <div class="seg" style="margin:14px 0">${[3,5,7].map(n=>`<button ${n==5?'class="on"':''} onclick="mSize(this,${n})">${n}x${n}</button>`).join('')}</div>
- <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
+ <div class="card"><div class="row" style="align-items:center">${gbBtn('mbet')}<span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
  <button class="btn sand" id="mbtn" onclick="minesAct()">Сделать ставку</button>`},
 plinko(){return `<canvas id="pc" width="400" height="380"></canvas>
  <div class="seg" style="margin:12px 0"><button class="on" onclick="pRisk(this,0)">Легко</button><button onclick="pRisk(this,1)">Средне</button><button onclick="pRisk(this,2)">Сложно</button></div>
- <div class="card"><div class="row" style="align-items:center"><span class="star">★</span><input id="pbet" type="number" value="100" style="flex:1;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="pbet.value=+pbet.value+100">+100</button><button class="btn ghost sm" onclick="pbet.value=+pbet.value+500">+500</button></div></div>
+ <div class="card"><div class="row" style="align-items:center">${gbBtn('pbet')}<span class="star">★</span><input id="pbet" type="number" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="pbet.value=+pbet.value+100">+100</button><button class="btn ghost sm" onclick="pbet.value=+pbet.value+500">+500</button></div></div>
  <button class="btn sand" onclick="dropBall()">Отправить</button>`},
 contracts(){const inv=U().inv;S.ctSel=(S.ctSel||[]).filter(i=>i<inv.length);const sel=S.ctSel,sum=sel.reduce((t,i)=>t+((giftBy(inv[i])||{}).price||0),0);
  const pool=sum?prizePool(sum):[];const lo=pool.length?Math.min(...pool.map(g=>g.price)):0,hi=pool.length?Math.max(...pool.map(g=>g.price)):0;
@@ -1313,7 +1317,7 @@ async function crashAct(){const ph=crashPhase();
  if(ph!=='bet')return toast(ph==='run'?'Раунд уже идёт — ставка в следующем':'Подожди начала раунда');
  if(C.bet)return toast('Ставка уже принята');
  const v=Math.round(+$('#cbet').value);if(!(v>0))return toast('Введите ставку');
- const j=await srv('crash_bet',{bet:v},{lock:1});if(!j)return;C.bet=v;toast(`Ставка ★ ${fmt(v)} принята`);crashPoll()}
+ const j=await srv('crash_bet',{bet:v,...gbArgs('cbet')},{lock:1});if(!j)return;gbDone('cbet');C.bet=v;toast(`Ставка ★ ${fmt(v)} принята`);crashPoll()}
 /* мины */
 let M={n:5};
 function mBuild(n){M={n,on:0,open:0};const g=$('#mg');g.style.gridTemplateColumns=`repeat(${n},minmax(0,1fr))`;g.innerHTML=Array.from({length:n*n},(_,i)=>`<div class="mcell" onclick="mClick(${i},this)">?</div>`).join('');$('#mx').textContent='x1.00'}
@@ -1324,13 +1328,24 @@ async function minesAct(){const b=$('#mbtn');
  if(M.on){if(!M.open)return toast('Откройте хотя бы одну клетку');const j=await srv('mines_cash',{},{lock:1});if(!j)return;
   toast(`+${fmt(j.win)} ★`);loadFeed();M.on=0;M.bombs=new Set(j.bombs);reveal();b.textContent='Сделать ставку';lockSeg();return}
  const v=Math.round(+$('#mbet').value);if(!(v>0))return toast('Введите ставку');
- const j=await srv('mines_bet',{bet:v,n:M.n},{lock:1});if(!j)return;
+ const j=await srv('mines_bet',{bet:v,n:M.n,...gbArgs('mbet')},{lock:1});if(!j)return;gbDone('mbet');
  mBuild(M.n);M.bombs=null;M.on=1;M.bet=v;b.textContent='Забрать';lockSeg()}
 async function mClick(i,el){if(!M.on||el.dataset.o||M.busy)return;M.busy=1;el.dataset.o=1;
  const j=await srv('mines_open',{i},{});M.busy=0;if(!j){delete el.dataset.o;return}
  if(!j.safe){el.className='mcell bad';el.textContent='🦀';M.on=0;M.bombs=new Set(j.bombs);toast('Краб! Ставка сгорела');reveal();$('#mbtn').textContent='Сделать ставку';lockSeg();return}
  el.className='mcell ok';el.textContent='🐚';M.open++;$('#mx').textContent='x'+j.mult.toFixed(2);$('#mbtn').textContent=`Забрать ★ ${fmt(M.bet*j.mult)}`;
  if(j.done){toast(`Все ракушки! +${fmt(j.win)} ★`);loadFeed();M.on=0;M.bombs=new Set(j.bombs);reveal();$('#mbtn').textContent='Сделать ставку';lockSeg()}}
+/* ===== ставка подарком в мини-играх ===== */
+const GB={};
+function gbBtn(id){const s=GB[id],g=s&&giftBy(s.slug);return `<button class="gbb${g?' on':''}" id="gb_${id}" onclick="${g?`gbClear('${id}')`:`gbPick('${id}')`}" title="Ставка подарком">${g?`<span class="gbi">${gi(g)}</span><i>✕</i>`:'🎁'}</button>`}
+function gbList(){return U().inv.map((sl,i)=>[giftBy(sl),i]).filter(([g])=>g&&!isStar(g)).sort((a,b)=>b[0].price-a[0].price)}
+function gbPick(id){if(id==='crBet'&&CR.on||id==='mbet'&&M.on)return toast('Дождись конца игры');const L=gbList();
+ sheet(`<h2>Ставка подарком</h2><p class="sub">Подарок станет ставкой по своей цене. Выигрыш — звёздами по множителю.</p>${L.length?`<div class="inv">${L.map(([g,i])=>`<div class="case" onclick="gbSet('${id}',${i})" style="cursor:pointer">${gi(g)}<small>${esc(g.name)}</small><b class="gbp"><span class="star">★</span> ${fmt(g.price)}</b></div>`).join('')}</div>`:`<div class="empty">Нет подарков для ставки<br><br><button class="btn sm ghost" onclick="closeSheet();open_('addgift')">⊕ Добавить подарок</button></div>`}`)}
+function gbSet(id,i){const sl=U().inv[i],g=giftBy(sl);if(!g)return;GB[id]={i,slug:sl};closeSheet();gbSync(id);toast(`🎁 Ставка: ${g.name} · ★ ${fmt(g.price)}`)}
+function gbClear(id){delete GB[id];gbSync(id)}
+function gbDone(id){delete GB[id];gbSync(id)}
+function gbSync(id){const b=$('#gb_'+id),inp=$('#'+id);if(b)b.outerHTML=gbBtn(id);if(!inp)return;const s=GB[id],g=s&&giftBy(s.slug);inp.readOnly=!!g;inp.classList.toggle('gbv',!!g);if(g)inp.value=g.price}
+function gbArgs(id){const s=GB[id];if(!s)return {};const inv=U().inv;let i=inv[s.i]===s.slug?s.i:inv.indexOf(s.slug);if(i<0){delete GB[id];return {}}return {gi:i,gs:s.slug}}
 /* ===== Цыпа: переведи через дорогу ===== */
 let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';
 /* ===== Цыпа: вся графика в SVG — одинаково на любом телефоне ===== */
@@ -1377,7 +1392,7 @@ function crDiff(d){if(CR.on)return;CR.d=d;CR.bet=Math.round(+($('#crBet')||{}).v
 function crBetK(k,add){if(CR.on)return;const i=$('#crBet');let v=Math.round(+i.value||0);v=add?v+add:Math.max(1,Math.round(v*k));i.value=v}
 function crReset(ms){setTimeout(()=>{if($('#crRoad')&&!CR.on){CR.step=0;crBuild()}},ms)}
 async function crAct(){if(CR.busy)return;
- if(!CR.on){const v=Math.round(+$('#crBet').value);if(!(v>0))return toast('Введите ставку');CR.busy=1;const j=await srv('chick_bet',{bet:v,d:CR.d},{lock:1});CR.busy=0;if(!j)return;
+ if(!CR.on){const v=Math.round(+$('#crBet').value);if(!(v>0))return toast('Введите ставку');CR.busy=1;const j=await srv('chick_bet',{bet:v,d:CR.d,...gbArgs('crBet')},{lock:1});CR.busy=0;if(!j)return;gbDone('crBet');
   CR.on=1;CR.bet=v;CR.step=0;crBuild();return}
  CR.busy=1;const j=await srv('chick_step',{},{});if(!j){CR.busy=0;return}
  if(j.dead){const lane=j.step,c=$('#crChick');c.style.transition='transform .35s ease';c.style.transform=`translateX(${crLaneX(lane)-c.offsetWidth/2}px)`;
@@ -1400,7 +1415,7 @@ function pDraw(){const x=P.x;if(!x)return;x.clearRect(0,0,400,380);const g=x.cre
  const m=PM(),w=400/(P.rows+3);m.forEach((v,i)=>{const cx=200+(i-(m.length-1)/2)*w;x.fillStyle=v>=3?'#ff5a5f':v>=1?'#ffd23f':'#14c8c8';x.beginPath();x.roundRect(cx-w/2+2,336,w-4,30,8);x.fill();x.fillStyle='#062c4a';x.font='900 11px Nunito,sans-serif';x.textAlign='center';x.fillText(v,cx,356)});
  P.balls.forEach(b=>{const g2=x.createRadialGradient(b.x-3,b.y-3,1,b.x,b.y,8);g2.addColorStop(0,'#fff8d0');g2.addColorStop(.45,'#ffd23f');g2.addColorStop(1,'#ff8a2a');x.shadowColor='rgba(255,170,40,.9)';x.shadowBlur=10;x.fillStyle=g2;x.beginPath();x.arc(b.x,b.y,7.5,0,7);x.fill();x.shadowBlur=0})}
 async function dropBall(){const v=Math.round(+$('#pbet').value);if(!(v>0))return toast('Введите ставку');
- const j=await srv('plinko',{bet:v,risk:P.risk},{hold:j=>j.win});if(!j)return;
+ const ga=gbArgs('pbet');const j=await srv('plinko',{bet:v,risk:P.risk,...ga},{hold:j=>j.win});if(!j)return;if(ga.gi!=null)gbDone('pbet');
  const gap=400/(P.rows+3),pts=[[200,10]];let o=0;for(let r=0;r<P.rows;r++){pts.push([200+o,40+r*36-12]);o+=(j.path[r]?1:-1)*gap/2}pts.push([200+o,348]);
  P.balls.push({x:200,y:10,pts,seg:0,t:0,me:j.me,win:j.win,mult:j.mult});lockSeg()}
 function loop(){P.balls.forEach(b=>{if(b.done)return;b.t+=b.seg===0?.09:.075;if(b.t>=1){b.t=0;b.seg++}
