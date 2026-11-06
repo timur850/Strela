@@ -159,6 +159,11 @@ export class Game {
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
+  async unBet(u, uid, n) {                         // возврат ставки — убираем её и из оборота турнира / статистики игрока
+    n = Math.round(n); if (!(n > 0) || !uid) return;
+    const t = await this.tourGet(), r = t.rows[uid]; if (r) { r[1] = Math.max(0, r[1] - n); if (!r[1]) delete t.rows[uid]; await this.s.put("tour", t); }
+    if (u.ps) { u.ps.t = Math.max(0, u.ps.t - n); u.ps.g = Math.max(0, u.ps.g - 1); }
+  }
   async betNoCharge(u, n) {                       // ставка подарком (апгрейд, контракт): в оборот игрока и турнир
     n = Math.round(n); if (!(n > 0)) return; await this.tourAdd(u, n);
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
@@ -191,7 +196,7 @@ export class Game {
   }
   tourPrizes() { const p = Array.isArray(this.st.tourPrizes) && this.st.tourPrizes.length ? this.st.tourPrizes : ["mythmask", "jinglebells", "snowmittens"]; return p.filter(x => this.L.giftBy(x)).slice(0, 10); }
   async tourAdd(u, n) {
-    if (!this.uid || !(n > 0) || this.isStaff) return;
+    if (!this.uid || !(n > 0) || this.isStaff || (this.st.tourBan || []).map(String).includes(String(this.uid))) return;
     const t = await this.tourGet(), r = t.rows[this.uid] || [u.name, 0];
     r[0] = u.name; r[1] += Math.round(n); t.rows[this.uid] = r;
     await this.s.put("tour", t);
@@ -579,7 +584,7 @@ export class Game {
     if (old) {                                   // брошенная игра: открытые клетки — забираем, ничего не открыто — возврат ставки
       await this.s.delete(k);
       if (old.open.length) await this.payout(u, uid, old.bet * this.L.minesMult(old.n, old.open.length), GAME_NAMES.mines);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.unBet(u, this.uid, old.bet); }
     }
     const n = [3, 5, 7].includes(+d.n) ? +d.n : 5, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
@@ -621,7 +626,7 @@ export class Game {
     if (old) {                                   // брошенный забег: пройденные полосы — забираем, не начинал — возврат
       await this.s.delete(k);
       if (old.step) await this.payout(u, uid, old.bet * this.L.chickMult(old.d, old.step), GAME_NAMES.chick);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.unBet(u, this.uid, old.bet); }
     }
     const df = [0, 1, 2, 3].includes(+d.d) ? +d.d : 0, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
@@ -691,7 +696,7 @@ export class Game {
       await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: w, prize, bank, at: now });
       await this.s.delete("pvp:cur");
     } else if (!cur.endAt && now - cur.t0 > 180000) {        // никто не пришёл — возврат
-      for (const p of cur.players) { const w = await this.s.get("u:" + p.id); if (w) { w.bal += p.v; await this.s.put("u:" + p.id, w); } await this.stat("bets", -p.v); }
+      for (const p of cur.players) { const w = await this.s.get("u:" + p.id); if (w) { w.bal += p.v; await this.unBet(w, p.id, p.v); await this.s.put("u:" + p.id, w); } await this.stat("bets", -p.v); }
       await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: -1, refund: true, at: now });
       await this.s.delete("pvp:cur");
     }
@@ -855,10 +860,17 @@ export class Game {
       const wq = [...(await this.s.list({ prefix: "wdq:", limit: 1000 })).values()].filter(w => w.uid === uid);
       const fr = await this.s.get("feed"), feedAll = fr ? (typeof fr === "string" ? JSON.parse(fr) : fr) : [];
       const wins = feedAll.filter(e => String(e.id) === uid).slice(0, 50);
+      const tr = (await this.tourGet()).rows[uid];
       const ref = u.ref ? await this.s.get("u:" + u.ref) : null;
       return { ok: true, u: { id: uid, name: u.name, bal: u.bal, tick: u.tick, inv: u.inv, ps: u.ps || null, hist: u.hist || [], depSum: u.depSum || 0,
         ref: u.ref ? { id: u.ref, name: ref && ref.name } : null, refCount: u.refCount || 0, refEarn: u.refEarn || 0, daily: u.daily || 0, nick: u.nick || null,
-        lvl: u.lvl || 0, fdb: u.fdb || 0, glog: u.glog || [], banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq, wins };
+        lvl: u.lvl || 0, fdb: u.fdb || 0, glog: u.glog || [], banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq, wins, tour: tr ? tr[1] : 0, tourBan: (this.st.tourBan || []).map(String).includes(uid) };
+    }
+    if (op === "tourkick") {                      // убрать игрока из турнира (обнулить его оборот и не считать дальше)
+      needId(); const t = await this.tourGet(); delete t.rows[id]; await this.s.put("tour", t);
+      const st = await this.settings(); st.tourBan = [...new Set([...(st.tourBan || []).map(String), id])];
+      await this.s.put("settings", typeof (await this.s.get("settings")) === "string" ? JSON.stringify(st) : st);
+      return { ok: true };
     }
     if (op === "earn_list") {
       const L = [...(await this.s.list({ prefix: "earn:" })).values()].sort((a, b) => (a.st === "new") - (b.st === "new") || b.t - a.t).reverse().slice(0, 100);

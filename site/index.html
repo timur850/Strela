@@ -586,7 +586,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=f01cc3cf"></script>
+<script src="i18n.js?v=dd22e934"></script>
 <script src="logic.js?v=f541449a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1777,6 +1777,7 @@ async function uInfo(q){q=String(q||'').trim();if(!q)return toast('Введи @�
 
  <div class="card"><div class="ad-h">🏆 Выигрыши <small style="background:var(--sea)">${(j.wins||[]).length}</small></div>${(j.wins||[]).length?`<div class="list">${j.wins.map(e=>{const g=e.s&&giftBy(e.s);return `<div class="it" style="padding:6px 0">${g?`<span style="width:30px;height:30px;display:inline-block">${gi(g)}</span>`:'<span style="width:30px;text-align:center">⭐</span>'}<div class="nm">${esc(e.g||'')}${g?' · '+esc(g.name):''}<small>${dt(e.t)}</small></div><b style="color:#3ce08a">+${fmt(e.a)} ★</b></div>`}).join('')}</div>`:'<div class="empty">Нет в ленте (лента хранит последние 300 выигрышей всех игроков)</div>'}</div>
  ${(u.glog||[]).length?`<div class="card"><div class="ad-h">⬆️ Апгрейды — проверка</div><p class="sub" style="text-align:left;margin:0 0 6px">Выигрыш, если число стрелки меньше шанса</p><div class="list">${u.glog.filter(x=>x.k==='up').map(x=>{const A=giftBy(x.a),B=giftBy(x.b);return `<div class="it" style="padding:6px 0"><div class="nm">${esc(A?A.name:x.a)} (★${A?fmt(A.price):'?'}) → ${esc(B?B.name:x.b)} (★${B?fmt(B.price):'?'})<small>${dt(x.t)} · шанс ${x.ch}% · стрелка ${x.roll}</small></div><b style="color:${x.won?'#3ce08a':'#ff8a8a'}">${x.won?'✅':'❌'}</b></div>`}).join('')}</div></div>`:''}
+ <div class="card"><div class="ad-h">🏆 Турнир месяца</div>${row('Оборот в турнире',`★ ${fmt(j.tour||0)}`)}${j.tourBan?'<p class="sub" style="text-align:left;margin:4px 0 0">⛔ Убран из турнира</p>':`<button class="btn sm ghost" style="margin-top:8px" onclick="if(confirm('Убрать игрока из турнира? Его оборот обнулится и дальше не будет считаться'))adApi('tourkick',{id:'${esc(u.id)}'}).then(r=>{if(r){toast('Убран из турнира');uInfo('${esc(u.id)}')}})">⛔ Убрать из турнира</button>`}</div>
  <div class="card"><div class="ad-h">🤝 Рефералы</div>${row('Пригласил его',u.ref?esc(u.ref.name||u.ref.id):'—')}${row('Пригласил сам',fmt(u.refCount))}${row('Заработал с рефералов',`★ ${fmt(u.refEarn)}`)}</div>
  <p class="sub" style="font-size:12px">История игрока в боте ведётся с 06.11.2026; пополнения — из журнала платежей за всё время.</p>`)}
 function ensureUser(id){id=String(id).trim();if(!/^\d{3,15}$/.test(id)){toast('Неверный ID');return null}return id}

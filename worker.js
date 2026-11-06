@@ -300,7 +300,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo"]);
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -559,6 +559,7 @@ export default {
         if (!isOwner(user.username) && !admins.includes(String(user.id))) return json({ ok: false, err: "not admin" }, 403);
         const next = data.settings || {};
         if (!isOwner(user.username)) next.admins = cur.admins || [];   // доступ выдаёт только владелец
+        if (cur.tourBan) next.tourBan = cur.tourBan;                   // список «без турнира» меняется только кнопкой в карточке игрока
         const body = JSON.stringify(next);
         if (body.length > 1_000_000) return json({ ok: false, err: "too big" }, 413);
         await store(env).fetch("https://s/", { method: "POST", body });

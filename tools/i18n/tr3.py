@@ -93,6 +93,13 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+'🏆 Турнир месяца': '🏆 Monthly tournament',
+'Оборот в турнире': 'Tournament turnover',
+'⛔ Убран из турнира': '⛔ Removed from tournament',
+'⛔ Убрать из турнира': '⛔ Remove from tournament',
+'Убрать игрока из турнира? Его оборот обнулится и дальше не будет считаться': "Remove the player from the tournament? Their turnover resets and won't count anymore",
+'Убран из турнира': 'Removed from tournament',
+
 '🏆 Выигрыши': '🏆 Wins',
 'Нет в ленте (лента хранит последние 300 выигрышей всех игроков)': 'Not in feed (feed keeps the last 300 wins of all players)',
 '⬆️ Апгрейды — проверка': '⬆️ Upgrades — audit',
