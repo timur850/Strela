@@ -824,6 +824,34 @@ export class Game {
     const id = String(d.id || "").trim();
     const needId = () => { if (!/^\d{3,15}$/.test(id)) fail("Неверный ID"); };
     const save = async u => { await this.s.put("u:" + id, u); return { ok: true, user: { id, ...this.view(u), name: u.name } }; };
+    if (op === "uinfo") {                         // полная карточка игрока: по ID или @юзернейму
+      let uid = String(d.q || "").trim().replace(/^@/, ""), u = null;
+      if (/^\d{3,15}$/.test(uid)) u = await this.s.get("u:" + uid);
+      else {
+        const want = uid.toLowerCase(); let after = null;
+        for (let k = 0; k < 50 && !u; k++) {
+          const page = await this.s.list({ prefix: "u:", limit: 1000, ...(after ? { startAfter: after } : {}) });
+          for (const [key, x] of page) if (String(x.name || "").replace(/^@/, "").toLowerCase() === want) { u = x; uid = key.slice(2); break; }
+          if (page.size < 1000) break; after = [...page.keys()].pop();
+        }
+      }
+      if (!u) fail("Игрок не найден");
+      const deps = [];                                // все подтверждённые пополнения из журналов платежей
+      for (const [pre, m] of [["pay:", "stars"], ["ton:", "ton"], ["cp:", "cp"]]) {
+        let after = null;
+        for (let k = 0; k < 30; k++) {
+          const page = await this.s.list({ prefix: pre, limit: 1000, ...(after ? { startAfter: after } : {}) });
+          for (const [, raw] of page) { const x = typeof raw === "string" ? JSON.parse(raw) : raw; if (x && String(x.uid) === uid && (m !== "stars" || x.claimed !== false)) deps.push({ m, a: x.a, t: x.t, ton: x.ton, usd: x.usd }); }
+          if (page.size < 1000) break; after = [...page.keys()].pop();
+        }
+      }
+      deps.sort((a, b) => b.t - a.t);
+      const wq = [...(await this.s.list({ prefix: "wdq:", limit: 1000 })).values()].filter(w => w.uid === uid);
+      const ref = u.ref ? await this.s.get("u:" + u.ref) : null;
+      return { ok: true, u: { id: uid, name: u.name, bal: u.bal, tick: u.tick, inv: u.inv, ps: u.ps || null, hist: u.hist || [], depSum: u.depSum || 0,
+        ref: u.ref ? { id: u.ref, name: ref && ref.name } : null, refCount: u.refCount || 0, refEarn: u.refEarn || 0, daily: u.daily || 0, nick: u.nick || null,
+        lvl: u.lvl || 0, fdb: u.fdb || 0, banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq };
+    }
     if (op === "earn_list") {
       const L = [...(await this.s.list({ prefix: "earn:" })).values()].sort((a, b) => (a.st === "new") - (b.st === "new") || b.t - a.t).reverse().slice(0, 100);
       return { ok: true, list: L };
