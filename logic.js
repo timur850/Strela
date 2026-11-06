@@ -69,7 +69,7 @@ function makeLogic(getADM,rand){
   /* бесплатные кейсы: NFT только пролетают в ленте, выпасть не могут */
   if(items&&free){items=items.map(([s,w])=>{const g=giftBy(s);return [s,g&&!isStar(g)&&!g.reg?0:w]});if(!items.some(x=>x[1]>0))items=[...items,['stars5',1]]}
   const art=(items||[]).map(x=>giftBy(x[0])).filter(Boolean).sort((a,b)=>b.price-a.price);
-  return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,del:!!c.del,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
+  return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,del:!!c.del,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),cat:c.cat||'',glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
  const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d)).filter(c=>!c.del);   // удалённые в админке — убраны совсем
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FREE=k=>caseObj(FREE_DEF[k==='tick'?1:k==='ref'?2:0],1);
