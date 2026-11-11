@@ -588,7 +588,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=e0cac246"></script>
+<script src="i18n.js?v=591a70d8"></script>
 <script src="logic.js?v=41f6a042"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -614,7 +614,7 @@ const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['wdNeedDep','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['wdNeedDep','refWdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -668,7 +668,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refD=me.refD||{};u.promoCase=me.promoCase||0;u.refLock=me.refLock||[];u.refF=me.refF||0;u.refNeed=me.refNeed||10;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refD=me.refD||{};u.promoCase=me.promoCase||0;u.refLock=me.refLock||[];u.refF=me.refF||0;u.refNeed=me.refNeed||10;u.refPaid=me.refPaid||0;u.refWdFee=me.refWdFee||50;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -765,8 +765,18 @@ admin(){return adminView()}
 };
 const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
 const WD_FEE=()=>Math.max(0,Math.min(50,+(ADM.wdFee??5)||0)),wdFeeOf=g=>WD_FEE()?Math.ceil(g.price*WD_FEE()/100):0;
-function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);if(refLocked(g.slug)&&(U().refF||0)<(U().refNeed||10))return refSheet(i);
+function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;const RL=refLocked(g.slug);if(!RL&&g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);if(RL&&(U().refF||0)<(U().refNeed||10))return refSheet(i);
+ if(RL){const fee=U().refWdFee||50,paid=(U().refPaid||0)>0;return sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)} · из реф-кейса Friends</p>
+  <div class="card" style="text-align:center">${paid?'✅ Вывод оплачен':`Вывод подарка из Friends — <b><span class="star">★</span> ${fmt(fee)}</b><br><small style="color:var(--muted)">Оплата звёздами с баланса Telegram (не с баланса игры). Если вывод отменится — оплата сохранится на следующий раз.</small>`}</div>
+  <button class="btn sand" style="margin-top:14px" onclick="${paid?`withdraw(${i})`:`rwdPay(${i})`}">${paid?'📤 Вывести':`⭐ Оплатить ${fmt(fee)} ★ и вывести`}</button>`)}
  sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p>${wdFeeOf(g)?`<div class="card" style="text-align:center;margin-top:10px">Комиссия за вывод: <b><span class="star">★</span> ${fmt(wdFeeOf(g))}</b> (${WD_FEE()}%)<br><small style="color:var(--muted)">Спишется с баланса. Если вывод отменится — вернётся.</small></div>`:''}<button class="btn sand" style="margin-top:14px" ${wdFeeOf(g)>(U().bal||0)?'disabled':''} onclick="withdraw(${i})">${wdFeeOf(g)>(U().bal||0)?`Нужно ★ ${fmt(wdFeeOf(g))} на балансе`:wdFeeOf(g)?`📤 Вывести за ★ ${fmt(wdFeeOf(g))}`:'📤 Вывести'}</button>`)}
+let rwdBusy=false;
+async function rwdPay(i){if(!(tg&&tg.initData&&tg.openInvoice))return toast('Открой игру через бота в Telegram');if(rwdBusy)return;rwdBusy=true;
+ try{const j=await API('api/stars/invoice',{kind:'rwd'});if(!j.ok){rwdBusy=false;return toast(j.err||'Не удалось создать счёт')}
+  tg.openInvoice(j.link,st=>{rwdBusy=false;if(st==='paid'){toast('Оплачено, выводим…');rwdClaim(j.payload,i,0)}else if(st==='failed')toast('Оплата не прошла')})
+ }catch(e){rwdBusy=false;toast('Нет связи с сервером')}}
+function rwdClaim(payload,i,n){API('api/stars/claim',{payload}).then(j=>{if(j.ok&&j.wait&&n<30)return setTimeout(()=>rwdClaim(payload,i,n+1),1500);
+ if(j.me)sync(j.me);if(j.ok){closeSheet();withdraw(i)}else if(j.err)toast(j.err)}).catch(()=>n<30&&setTimeout(()=>rwdClaim(payload,i,n+1),2000))}
 let wdBusy=false;
 async function withdraw(i){const s=U().inv[i],g=giftBy(s);if(!g||wdBusy)return;
  if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');
@@ -1649,6 +1659,7 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="field"><input id="pMW" type="number" min="0" max="100000" placeholder="★" value="${MIN_WD()}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — подарки дешевле можно только продать</span></div>
  <div class="ad-h" style="margin-top:14px">🔒 Вывод только после пополнения</div>
  <div class="field"><input id="pND" type="number" min="0" value="${ADM.wdNeedDep??100}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — сколько игрок должен пополнить за всё время, чтобы выводить (0 — без условия)</span></div>
+ <div class="field"><input id="pRWF" type="number" min="1" value="${ADM.refWdFee??50}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — оплата вывода подарка из реф-кейса Friends (звёздами из Telegram)</span></div>
  <div class="ad-h" style="margin-top:14px">💸 Комиссия за вывод</div>
  <div class="field"><input id="pWF" type="number" min="0" max="50" step="0.5" placeholder="%" value="${WD_FEE()}" onfocus="this.select()"><span class="sub" style="align-self:center">% от цены подарка, звёздами с баланса (0 — без комиссии)</span></div>
  <div class="ad-h" style="margin-top:14px">🎁 Бонус новым игрокам</div>
@@ -1939,7 +1950,7 @@ function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);l
  /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
  if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';
  if(r>0)ADM.tonRate=r;else warn=warn||'курс TON не указан — оставил прежний';
- ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));ADM.wdFee=Math.max(0,Math.min(50,+$('#pWF').value||0));ADM.wdNeedDep=Math.max(0,Math.round(+$('#pND').value||0));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
+ ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));ADM.wdFee=Math.max(0,Math.min(50,+$('#pWF').value||0));ADM.wdNeedDep=Math.max(0,Math.round(+$('#pND').value||0));ADM.refWdFee=Math.max(1,Math.round(+$('#pRWF').value||50));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
 function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.filter(([s,w])=>giftBy(s)&&w>0);if(!L.length)return toast('Добавьте хотя бы 1 подарок с весом > 0');
  cfg.items=L.map(x=>[x[0],x[1]]);cfg.cover=$('#ceC').value;if(!c.free){cfg.p=Math.max(1,Math.round(+$('#ceP').value||c.p));cfg.cat=($('#ceCat').value||'').trim().slice(0,30);cfg.lim=$('#ceL').classList.contains('on');cfg.hidden=$('#ceH').classList.contains('on')}
  saveAdm();closeSheet();setTab('admin');toast('Кейс сохранён ✅')}

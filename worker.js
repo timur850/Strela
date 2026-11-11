@@ -416,16 +416,16 @@ async function handleUpdate(env, origin, upd) {
   }
   // оплата звёздами: Telegram спрашивает «можно?» — отвечаем да (иначе платёж не пройдёт)
   if (upd.pre_checkout_query) {
-    const q = upd.pre_checkout_query, ok = String(q.invoice_payload || "").startsWith("dep:");
+    const q = upd.pre_checkout_query, ok = /^(dep|rwd):/.test(String(q.invoice_payload || ""));
     await tg(env, "answerPreCheckoutQuery", ok ? { pre_checkout_query_id: q.id, ok: true }
       : { pre_checkout_query_id: q.id, ok: false, error_message: "Платёж устарел, попробуй ещё раз" });
     return;
   }
   const sp = upd.message && upd.message.successful_payment;
-  if (sp && sp.currency === "XTR" && String(sp.invoice_payload).startsWith("dep:")) {
+  if (sp && sp.currency === "XTR" && /^(dep|rwd):/.test(String(sp.invoice_payload))) {
     const uid = String(upd.message.from.id), puid = sp.invoice_payload.split(":")[1];
     if (puid === uid && !(await getKey(env, "pay:" + sp.invoice_payload)))
-      await putKey(env, "pay:" + sp.invoice_payload, { uid, a: sp.total_amount, charge: sp.telegram_payment_charge_id, claimed: false, t: Date.now() });
+      await putKey(env, "pay:" + sp.invoice_payload, { uid, a: sp.total_amount, kind: sp.invoice_payload.slice(0, 3), charge: sp.telegram_payment_charge_id, claimed: false, t: Date.now() });
     return;
   }
   const msg = upd.message; if (!msg || !msg.text) return;
@@ -591,11 +591,12 @@ export default {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
-      const a = Math.round(Number(d.amount));
+      const rwd = d.kind === "rwd";   // оплата вывода подарка из реф-кейса Friends — фиксированная сумма из настроек
+      const a = rwd ? Math.max(1, Math.round(Number((await loadSettings(env)).refWdFee ?? 50))) : Math.round(Number(d.amount));
       if (!(a >= 1 && a <= 10000)) return json({ ok: false, err: "От 1 до 10 000 ★ за раз" }, 400);
-      const payload = `dep:${u.id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-      const r = await tg(env, "createInvoiceLink", { title: `Пополнение ${a} ⭐`, description: "Звёзды на баланс " + NAME,
-        payload, currency: "XTR", prices: [{ label: `${a} ⭐`, amount: a }] });
+      const payload = `${rwd ? "rwd" : "dep"}:${u.id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+      const r = await tg(env, "createInvoiceLink", rwd ? { title: "Вывод подарка из Friends", description: `Оплата вывода подарка из реф-кейса ${NAME}`, payload, currency: "XTR", prices: [{ label: `Вывод ${a} ⭐`, amount: a }] }
+        : { title: `Пополнение ${a} ⭐`, description: "Звёзды на баланс " + NAME, payload, currency: "XTR", prices: [{ label: `${a} ⭐`, amount: a }] });
       if (!r.ok) return json({ ok: false, err: r.description || "Telegram не создал счёт" });
       return json({ ok: true, link: r.result, payload });
     }
