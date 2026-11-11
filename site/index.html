@@ -1364,7 +1364,7 @@ function gbDone(id){delete GB[id];gbSync(id)}
 function gbSync(id){const b=$('#gb_'+id),inp=$('#'+id);if(b)b.outerHTML=gbBtn(id);if(!inp)return;const s=GB[id],g=s&&giftBy(s.slug);inp.readOnly=!!g;inp.classList.toggle('gbv',!!g);if(g)inp.value=g.price}
 function gbArgs(id){const s=GB[id];if(!s)return {};const inv=U().inv;let i=inv[s.i]===s.slug?s.i:inv.indexOf(s.slug);if(i<0){delete GB[id];return {}}return {gi:i,gs:s.slug}}
 /* ===== Цыпа: переведи через дорогу ===== */
-let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';
+let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';GICON.mines='img/mines.webp';GICON.plinko='img/plinko.webp';
 /* ===== Цыпа: вся графика в SVG — одинаково на любом телефоне ===== */
 const CR_CARS=[['#ff4d5e','#c42537'],['#3f8cff','#1f5fd0'],['#ffd23f','#e0a800',1],['#3ccf7a','#1f9a52'],['#f4f6fb','#b9c0d4'],['#a46bff','#6f3ed6'],['#ff9a3d','#d96a12']];
 function crCarSvg(k){const [c,d,taxi]=CR_CARS[k%CR_CARS.length],id='g'+k;return `<svg viewBox="0 0 64 120" width="100%" height="100%" style="overflow:visible"><defs><linearGradient id="${id}" x1="0" x2="1"><stop offset="0" stop-color="${d}"/><stop offset=".35" stop-color="${c}"/><stop offset=".7" stop-color="${c}"/><stop offset="1" stop-color="${d}"/></linearGradient><linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6c8" stop-opacity=".45"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient></defs>
