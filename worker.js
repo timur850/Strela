@@ -355,6 +355,15 @@ async function cpCredit(env, i, u) {          // звёзды зашиты в pa
   if (r.ok && r.already) return { ok: false, err: "Уже зачислено", already: true };
   return r;
 }
+// бот STRELA STARS (пополнение картой UA/РФ): спрашиваем у его воркера, кэш 10 минут
+let _sb = null;
+async function starsBot(env) {
+  const url = String(CONFIG.STARS_URL || "").replace(/\/$/, ""); if (!url) return "";
+  if (_sb && Date.now() - _sb.t < 600e3) return _sb.bot;
+  try { const j = await (await fetch(url + "/botname")).json(); _sb = { t: Date.now(), bot: j && j.case && j.bot ? String(j.bot) : "" }; }
+  catch (e) { _sb = { t: Date.now() - 540e3, bot: _sb ? _sb.bot : "" }; }   // ошибка — повтор через минуту
+  return _sb.bot;
+}
 const getKey = async (env, k) => (await (await store(env).fetch("https://s/" + k)).text());
 const putKey = (env, k, v) => store(env).fetch("https://s/" + k, { method: "POST", body: typeof v === "string" ? v : JSON.stringify(v) });
 
@@ -562,7 +571,7 @@ export default {
 
     // общие настройки админки
     // настройки этой копии для мини-аппа: юзернейм бота, владельцы, куда слать подарки
-    if (path === "/api/cfg") return json({ name: NAME, bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT });
+    if (path === "/api/cfg") return json({ name: NAME, bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT, starsBot: await starsBot(env) });
     if (path === "/api/settings") {
       if (req.method === "GET") return json(await loadSettings(env));
       if (req.method === "POST") {
