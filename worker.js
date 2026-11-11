@@ -359,7 +359,7 @@ async function cpCredit(env, i, u) {          // звёзды зашиты в pa
 let _sb = null;
 async function starsBot(env) {
   const url = String(CONFIG.STARS_URL || "").replace(/\/$/, ""); if (!url) return "";
-  if (_sb && Date.now() - _sb.t < 600e3) return _sb.bot;
+  if (_sb && Date.now() - _sb.t < (_sb.app ? 600e3 : 60e3)) return _sb.bot;
   try { const r = await fetch(url + "/botname"), t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {}
     if (!j) throw new Error("HTTP " + r.status + " " + t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 80));
     _sb = { t: Date.now(), bot: j.case && j.bot ? String(j.bot) : "", app: !!j.app, err: j.case ? "" : "в STRELA STARS нет секрета CASE_KEY" }; }
