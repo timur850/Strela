@@ -106,7 +106,7 @@ const DIG_W=7, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10];
 const DIG_HARD={g:1,d:1,v:1,s:2,c:2,p:3,C:3,I:3,R:3,L:3,G:3,D:4,E:4,T:1,W:2,O:1e9};
 const DIG_VAL={C:.1,I:.2,R:.3,L:.4,G:.6,D:4,E:15};
 const DIG_ORE_P=[['C',.07],['I',.045],['R',.035],['L',.025],['G',.018],['D',.005],['E',.002],['T',.006],['W',.005]];
-let DIG_MT={1:[3.5255,6.2889,9.9999],2:[3.5819,6.5513,10.6006],5:[3.6631,6.8731,10.6749],10:[3.6731,6.8973,11.2728]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
+let DIG_MT={1:[3.4974,6.5574,10.6935],2:[3.7986,6.967,11.4697],5:[3.9411,7.4468,11.6042],10:[4.0362,7.3307,11.5466]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
 function digGen(rand,K){const H=150,rows=[];
  for(let y=0;y<H;y++){let r='';for(let x=0;x<DIG_W;x++){let ch;
   if(y===0)ch='g';else if(y<3)ch=rand()<.7?'d':'v';
@@ -117,7 +117,7 @@ function digGen(rand,K){const H=150,rows=[];
  return {rows,mv:Array.from({length:600},()=>{const q=rand();return q<.22?-1:q<.44?1:0}),x0:2+Math.floor(rand()*3),seed:1+Math.floor(rand()*2147483000)}}
 /* ===== физика кирки: свободно летает по шахте как мячик (гравитация, отскоки во все стороны), ломает блоки, о которые бьётся.
    Только + − × ÷ и sqrt, свой генератор случайных чисел от seed мира → на сервере и в мини-аппе результат совпадает до бита ===== */
-const DIG_DT=1/120,DIG_G=40,DIG_RAD=.4;
+const DIG_DT=1/120,DIG_G=32,DIG_RAD=.4;
 function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp=g.map(r=>r.map(ch=>DIG_HARD[ch]||0)),ev=[],cool={};
  let sd=((w.seed|0)%2147483646)+1;if(sd<1)sd+=2147483646;const R=()=>(sd=(sd*48271)%2147483647)/2147483647;
  const P={x:(w.x0|0)+.5,y:-1.5,vx:(R()-.5)*3,vy:0,a:0,w:(R()-.5)*24,t:tier,hp:DIG_TIER[tier],raw:0,time:0,done:0,ev,g};
@@ -129,7 +129,7 @@ function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp
  const hit=(cx,cy)=>{P.hp--;hp[cy][cx]--;ev.push({e:'h',x:cx,y:cy,p:P.hp,d:1-hp[cy][cx]/(DIG_HARD[g[cy][cx]]||1)});if(hp[cy][cx]<=0)brk(cx,cy,0);if(P.hp<=0)end()};
  const bounce=(nX,nY,vn)=>{const e=.45;P.vx-=(1+e)*vn*nX;P.vy-=(1+e)*vn*nY;
   const cur=P.vx*nX+P.vy*nY,mn=nY<-.5?7+R()*6:3+R()*5;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}   /* от пола подпрыгивает выше, от стен/потолка слабее */
-  const k=(R()-.5)*(nY<-.5?13:6);P.vx+=-nY*k;P.vy+=nX*k;P.w=(R()-.5)*36};
+  if(nY<-.5){const dr=R()<.5?-1:1;P.vx=P.vx*.35+dr*(6+R()*9)}else{const k=(R()-.5)*8;P.vx+=-nY*k;P.vy+=nX*k}P.w=(R()-.5)*36};   /* от пола — сильно в случайную сторону */
  P.step=()=>{if(P.done)return;P.time+=DIG_DT;
   P.vy+=DIG_G*DIG_DT;const sp=Math.sqrt(P.vx*P.vx+P.vy*P.vy);if(sp>24){P.vx*=24/sp;P.vy*=24/sp}
   P.x+=P.vx*DIG_DT;P.y+=P.vy*DIG_DT;P.a+=P.w*DIG_DT;
