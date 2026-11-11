@@ -795,7 +795,7 @@ drop(){dropOpen();return null},
 earn(){return earnHub()},
 earntt(){return earnPage()},
 hunt(){huntOpen();return null},
-free(){const K=FREE_KEYS().filter(k=>k!=='promo'||(U().promoCase||0)>0),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>','<i>раз в 24ч</i>').replace('class="ccard"','class="ccard friends"');
+free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>','<i>раз в 24ч</i>').replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':S.freeK==='promo'?'🎟 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
  ${c.p?`<div class="row cnN" style="gap:6px;margin-bottom:10px">${[1,2,3,4,5].map(n=>`<button class="btn sm ${caseN()===n?'sand':'ghost'}" style="flex:1" onclick="setCaseN(${n})">x${n}</button>`).join('')}</div>`:''}
@@ -1077,7 +1077,7 @@ function casesPage(){const q=(S.cq||'').trim().toLowerCase(),sel=S.ccat||'all',d
  const L=CASES().map((c,i)=>({c,i})).filter(x=>!q||x.c.n.toLowerCase().includes(q));
  const groups={};L.forEach(x=>{const k=caseCat(x.c);(groups[k]=groups[k]||[]).push(x)});
  const cats=[...CAT_ORDER.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!CAT_ORDER.includes(k))];
- const FK=FREE_KEYS().filter(k=>k!=='promo'||(U().promoCase||0)>0),showFree=!q&&FK.length&&(sel==='all'||sel==='free');
+ const FK=FREE_KEYS(),showFree=!q&&FK.length&&(sel==='all'||sel==='free');
  const plural=n=>n%10===1&&n%100!==11?'кейс':n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?'кейса':'кейсов';
  const sec=k=>{const A=groups[k].slice().sort((a,b)=>(a.c.p-b.c.p)*dir);return `<div class="rsec"><div class="rsh"><h2>${esc(k)}</h2><small>${A.length} ${plural(A.length)}</small></div><div class="rgrid">${A.map(x=>rcCard(x.c,`openCase(${x.i})`,`${fmt(x.c.p)} <span class="star">★</span>`)).join('')}</div></div>`};
  return `<div class="rbar"><button class="rch ic" onclick="S.csearch=!S.csearch;rerenderCases()">🔍</button><div class="rchips">
