@@ -300,7 +300,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash", "promo"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del"]);
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del", "refs", "refundo"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -854,6 +854,9 @@ export default {
       if (name === "earn_done" && res && res.ok && res.earn) {   // игроку — результат проверки ролика
         const x = res.earn;
         try { await tg(env, "sendMessage", { chat_id: Number(x.uid), text: x.st === "paid" ? `✅ Ролик оплачен: +${x.paid} ★ на баланс в ${NAME}. Спасибо!` : `❌ Заявка на оплату ролика отклонена` + (x.why ? `: ${x.why}` : ".") }); } catch (e) {}
+      }
+      if (name === "refs" && res && res.ok && d.check) {   // перепроверка: есть ли у засчитанных друзей NFT прямо сейчас (Bot API)
+        await Promise.all(res.list.filter(f => f.q).slice(0, 40).map(async f => { const i = await refInfo(env, f.id); f.nftNow = i.nft; if (i.errGifts) f.nftErr = i.errGifts; }));
       }
       if (name === "stats" && res && res.tourPrev && res.tourPrev.top) {   // у кого нет @ — спрашиваем Telegram по ID
         await Promise.all(res.tourPrev.top.filter(r => !/^@/.test(r.n || "")).slice(0, 50).map(async r => {

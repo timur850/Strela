@@ -186,7 +186,7 @@ export class Game {
   async refFreeCount(u) {
     if (!u.ref || !u.refq || !u.rOpen || u.refFc) return;
     const r = await this.s.get("u:" + u.ref); if (!r) return;
-    u.refFc = 1; r.refF = (r.refF || 0) + 1; await this.s.put("u:" + u.ref, r);
+    u.refFc = 1; u.refFcAt = Date.now(); r.refF = (r.refF || 0) + 1; await this.s.put("u:" + u.ref, r);
   }
   lockedTake(u, slug) {                           // забирает из инвентаря «заблокированный» экземпляр? (NFT из бесплатного кейса)
     const lk = (u.freeLock || []).filter(s => s === slug).length, have = u.inv.filter(s => s === slug).length;
@@ -381,11 +381,11 @@ export class Game {
   }
   // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
   async op_ref_qualify(u, uid, d) {
-    if (u.refq || !u.ref) return { done: false };
-    u.refq = 1; u.refWhy = String(d.why || "").slice(0, 40);
+    if (u.refq || !u.ref || u.refBan) return { done: false };
+    u.refq = 1; u.refWhy = String(d.why || "").slice(0, 40); u.refAt = Date.now();
     const r = await this.s.get("u:" + u.ref); if (!r) return { done: false };
     r.refQ = (r.refQ || 0) + 1;
-    if (u.rOpen && !u.refFc) { u.refFc = 1; r.refF = (r.refF || 0) + 1; }
+    if (u.rOpen && !u.refFc) { u.refFc = 1; u.refFcAt = Date.now(); r.refF = (r.refF || 0) + 1; }
     await this.s.put("u:" + u.ref, r);
     return { done: true };
   }
@@ -921,6 +921,19 @@ export class Game {
     const id = String(d.id || "").trim();
     const needId = () => { if (!/^\d{3,15}$/.test(id)) fail("Неверный ID"); };
     const save = async u => { await this.s.put("u:" + id, u); return { ok: true, user: { id, ...this.view(u), name: u.name } }; };
+    if (op === "refs") {                          // кого пригласил игрок и кто из них засчитан (для проверки накрутки)
+      const r = await this.s.get("u:" + String(d.id || "")); if (!r) fail("Игрок не найден");
+      const ids = (r.refs || []).slice().reverse();
+      const list = (await Promise.all(ids.map(async id => { const f = await this.s.get("u:" + id); return f ? { id, n: f.name || "", q: !!f.refq, why: f.refWhy || "", at: f.refAt || 0, open: !!f.rOpen, fc: !!f.refFc, fcAt: f.refFcAt || 0, ban: !!f.refBan, dep: f.depTot || 0, seen: f.seen || 0 } : { id, gone: 1 }; }))).filter(x => !x.gone);
+      return { ok: true, id: String(d.id), n: r.name || "", refCount: r.refCount || 0, refQ: r.refQ || 0, refF: r.refF || 0, refNeed: 10 * ((r.refWd || 0) + 1), refWd: r.refWd || 0, list };
+    }
+    if (op === "refundo") {                       // снять засчитанного друга (накрутка): у пригласившего −1, повторно не засчитается
+      const f = await this.s.get("u:" + String(d.id || "")); if (!f || !f.ref) fail("Это не приглашённый игрок");
+      const r = await this.s.get("u:" + f.ref);
+      if (r) { if (f.refFc) r.refF = Math.max(0, (r.refF || 0) - 1); if (f.refq) r.refQ = Math.max(0, (r.refQ || 0) - 1); await this.s.put("u:" + f.ref, r); }
+      f.refFc = 0; f.refq = 0; f.refBan = 1; await this.s.put("u:" + String(d.id), f);
+      return { ok: true };
+    }
     if (op === "uinfo") {                         // полная карточка игрока: по ID или @юзернейму
       let uid = String(d.q || "").trim().replace(/^@/, ""), u = null;
       if (/^\d{3,15}$/.test(uid)) u = await this.s.get("u:" + uid);

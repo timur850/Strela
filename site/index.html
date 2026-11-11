@@ -588,7 +588,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=11488f2a"></script>
+<script src="i18n.js?v=5bfaaed9"></script>
 <script src="logic.js?v=41f6a042"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1776,6 +1776,18 @@ users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <div class="field"><input placeholder="Поиск по ID или имени" value="${esc(S.uq||'')}" onchange="S.uq=this.value;setTab('admin')"></div>
  <div class="card list">${L.map(u=>{const b=ADM.banned.includes(u.id);return `<div class="it"><div class="av" style="background:${b?'var(--coral)':'var(--sea)'}">${esc(String(u.name||'?').replace('@','')[0]||'?')}</div><div class="nm" onclick="uInfo('${u.id}')" style="cursor:pointer">${esc(u.name)} ${u.id===ME.id?'(вы)':''}<small>ID ${u.id} · ★ ${fmt(u.bal)} · 🎫 ${u.tick} · 🎁 ${u.inv}</small></div><button class="btn sm ${b?'sand':'ghost'}" onclick="adBan('${u.id}')">${b?'Разбан':'Бан'}</button></div>`}).join('')||'<div class="empty">Никого не найдено</div>'}</div>`},
 };
+/* проверка рефералов: кто приглашён, почему засчитан, есть ли NFT сейчас; снять накрутку */
+async function refAudit(id,check){sheet('<div class="empty">'+(check?'Проверяю NFT у засчитанных друзей…':'Загрузка…')+'</div>');const j=await adApi('refs',{id,check:!!check});if(!j){closeSheet();return}
+ const dt=t=>t?new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+ const L=j.list,cnt=L.filter(f=>f.fc).length,q=L.filter(f=>f.q).length;
+ const bad=f=>f.q&&/^NFT/.test(f.why)&&f.nftNow===0;
+ sheet(`<h2>👥 Рефералы ${esc(j.n||j.id)}</h2>
+ <div class="card"><div class="it" style="padding:4px 0"><div class="nm">Пришли по ссылке</div><b>${j.refCount}</b></div><div class="it" style="padding:4px 0"><div class="nm">С NFT или Premium</div><b>${q}</b></div><div class="it" style="padding:4px 0"><div class="nm">Засчитано для реф-кейса</div><b>${j.refF} / ${j.refNeed}</b></div><div class="it" style="padding:4px 0"><div class="nm">Выводов из реф-кейса</div><b>${j.refWd}</b></div>
+ <p class="sub" style="text-align:left;font-size:12px;margin:8px 0 0">Засчитан = пришёл по ссылке + открыл реф-кейс + NFT или Premium. «Premium» бот берёт из данных, подписанных самим Telegram, подделать их нельзя. NFT можно перепроверить кнопкой ниже.</p>
+ <button class="btn sm ghost" style="margin-top:8px" onclick="refAudit('${esc(j.id)}',1)">🔍 Перепроверить NFT сейчас</button></div>
+ ${L.length?`<div class="list">${L.map(f=>`<div class="it" style="flex-wrap:wrap;align-items:flex-start"><div class="nm" style="flex:1;min-width:0">${f.fc?'✅':f.q?'🟡':f.ban?'⛔':'⚪'} <b>${esc(f.n||'Игрок')}</b> <small style="color:var(--muted)">ID ${esc(f.id)}</small><br><small style="color:var(--muted)">${f.ban?'снят админом':f.q?`${esc(f.why)} · ${dt(f.at)}`:'нет NFT / Premium'}${f.q&&!f.open?' · реф-кейс не открывал':''}${f.fc?` · засчитан ${dt(f.fcAt)}`:''}${f.dep?` · пополнил ★ ${fmt(f.dep)}`:''}${f.nftNow!=null?` · NFT сейчас: <b style="color:${f.nftNow?'#4ade80':'#f87171'}">${f.nftNow}</b>`:''}${f.nftErr?` · ⚠️ ${esc(f.nftErr)}`:''}</small>${bad(f)?'<br><small style="color:#f87171">⚠️ засчитан за NFT, а сейчас NFT нет</small>':''}</div>
+  ${f.q&&!f.ban?`<button class="btn sm ghost" style="width:auto;padding:0 10px;flex:none" onclick="if(confirm('Снять засчитывание этого друга? У пригласившего станет на 1 меньше, повторно он не засчитается'))adApi('refundo',{id:'${esc(f.id)}'}).then(r=>{if(r){toast('Снят');refAudit('${esc(j.id)}')}})">Снять</button>`:''}</div>`).join('')}</div>`:'<div class="card empty">Никого не пригласил</div>'}
+ <p class="sub" style="font-size:12px">✅ засчитан · 🟡 есть NFT/Premium, но реф-кейс ещё не открывал · ⚪ не подходит · ⛔ снят</p>`)}
 async function uInfo(q){q=String(q||'').trim();if(!q)return toast('Введи @юзернейм или ID');sheet('<div class="empty">Загрузка…</div>');
  const j=await adApi('uinfo',{q});if(!j){closeSheet();return}const u=j.u,D=j.deps||[],p=u.ps||{},dt=t=>t?new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
  const sum=m=>D.filter(x=>x.m===m).reduce((a,x)=>a+(x.a||0),0),tot=D.reduce((a,x)=>a+(x.a||0),0),ML={stars:'⭐ Звёзды',ton:'💎 TON',cp:'🤖 CryptoBot'};
@@ -1792,6 +1804,7 @@ async function uInfo(q){q=String(q||'').trim();if(!q)return toast('Введи @�
 
  <div class="card"><div class="ad-h">🏆 Выигрыши <small style="background:var(--sea)">${(j.wins||[]).length}</small></div>${(j.wins||[]).length?`<div class="list">${j.wins.map(e=>{const g=e.s&&giftBy(e.s);return `<div class="it" style="padding:6px 0">${g?`<span style="width:30px;height:30px;display:inline-block">${gi(g)}</span>`:'<span style="width:30px;text-align:center">⭐</span>'}<div class="nm">${esc(e.g||'')}${g?' · '+esc(g.name):''}<small>${dt(e.t)}</small></div><b style="color:#3ce08a">+${fmt(e.a)} ★</b></div>`}).join('')}</div>`:'<div class="empty">Нет в ленте (лента хранит последние 300 выигрышей всех игроков)</div>'}</div>
  ${(u.glog||[]).length?`<div class="card"><div class="ad-h">⬆️ Апгрейды — проверка</div><p class="sub" style="text-align:left;margin:0 0 6px">Выигрыш, если число стрелки меньше шанса</p><div class="list">${u.glog.filter(x=>x.k==='up').map(x=>{const A=giftBy(x.a),B=giftBy(x.b);return `<div class="it" style="padding:6px 0"><div class="nm">${esc(A?A.name:x.a)} (★${A?fmt(A.price):'?'}) → ${esc(B?B.name:x.b)} (★${B?fmt(B.price):'?'})<small>${dt(x.t)} · шанс ${x.ch}% · стрелка ${x.roll}</small></div><b style="color:${x.won?'#3ce08a':'#ff8a8a'}">${x.won?'✅':'❌'}</b></div>`}).join('')}</div></div>`:''}
+ <div class="card"><div class="ad-h">👥 Рефералы</div><button class="btn sm sand" onclick="refAudit('${esc(u.id)}')">Кого пригласил и кто засчитан</button></div>
  <div class="card"><div class="ad-h">🏆 Турнир месяца</div>${row('Оборот в турнире',`★ ${fmt(j.tour||0)}`)}${j.tourBan?'<p class="sub" style="text-align:left;margin:4px 0 0">⛔ Убран из турнира</p>':`<button class="btn sm ghost" style="margin-top:8px" onclick="if(confirm('Убрать игрока из турнира? Его оборот обнулится и дальше не будет считаться'))adApi('tourkick',{id:'${esc(u.id)}'}).then(r=>{if(r){toast('Убран из турнира');uInfo('${esc(u.id)}')}})">⛔ Убрать из турнира</button>`}</div>
  <div class="card"><div class="ad-h">🤝 Рефералы</div>${row('Пригласил его',u.ref?esc(u.ref.name||u.ref.id):'—')}${row('Пригласил сам',fmt(u.refCount))}${row('Заработал с рефералов',`★ ${fmt(u.refEarn)}`)}</div>
  <p class="sub" style="font-size:12px">История игрока в боте ведётся с 06.11.2026; пополнения — из журнала платежей за всё время.</p>`)}
