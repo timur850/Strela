@@ -1536,7 +1536,8 @@ function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min
  const B=digB();for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
  for(const f of DIG.fx)f.t+=dt;DIG.fx=DIG.fx.filter(f=>f.t<1100);DIG.shake=Math.max(0,DIG.shake-dt*.04);DIG.flash=Math.max(0,DIG.flash-dt*.002);
  if(DIG.pk){const p=DIG.pk;p.ox=(p.ox||0)*Math.pow(.0005,dt/1000*DIG_SPD[DIG.speed]);if(DIG.A)digAnim(dt/1000);else if(!DIG.run&&!DIG.spin){p.rot=Math.sin(now/300)*.2}
-  const want=Math.max(0,p.y+2.7-$('#digc').clientHeight/B/2);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
+  const vh=$('#digc').clientHeight/B,c0=DIG.cam||0,sy=p.y+2.7-c0;   /* камера с «мёртвой зоной»: не дёргается от каждого отскока, едет только когда кирка уходит к краю */
+  let want=c0;if(sy>vh*.62)want=c0+(sy-vh*.62);else if(sy<vh*.3)want=c0-(vh*.3-sy);want=Math.max(0,want);DIG.cam=c0+(want-c0)*Math.min(1,dt*.004)}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
 function digHud(hp,max,t,won){DIG.hpv=[hp,max];$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
 function digLock(on){document.querySelectorAll('.dk button,#dbrow button,#dbet').forEach(e=>{e.disabled=!!on;e.style.opacity=on?.45:'';e.style.pointerEvents=on?'none':''})}
@@ -1561,7 +1562,7 @@ function digAnimStart(j){const S=globalThis.STRELA,T=S.digSim(j.world,j.tier,j.k
  DIG.A={j,ph,ei:0,acc:0,won:0,t:j.tier,max:S.DIG_TIER[j.tier],hp:S.DIG_TIER[j.tier],inX:0,wait:0,fin:0,auto:Math.max(1,T/45)};   /* длинные партии слегка ускоряем (≈45 с на x1) */
  DIG.pk.ox=0}
 function digEv(A,e){const S=globalThis.STRELA;
- if(e.e==='h'){const ch=DIG.g[e.y]&&DIG.g[e.y][e.x];A.hp=e.p;DIG.dmg[e.y+','+e.x]=e.d;digBurst(e.x,e.y,ch,3);DIG.shake=Math.max(DIG.shake,2.5);digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred('light')}catch(_){};return}
+ if(e.e==='h'){const ch=DIG.g[e.y]&&DIG.g[e.y][e.x];A.hp=e.p;DIG.dmg[e.y+','+e.x]=e.d;digBurst(e.x,e.y,ch,3);digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred('light')}catch(_){};return}
  if(e.e==='b'){const ch=DIG.g[e.y][e.x];DIG.g[e.y][e.x]='.';delete DIG.dmg[e.y+','+e.x];digBurst(e.x,e.y,ch,A.inX?5:12);
   if(e.v){const a=A.j.bet*e.v*A.j.unit;A.won+=a;DIG.fx.push({x:e.x,y:e.y,s:'+'+(a>=10?Math.round(a):a.toFixed(1)),t:0,col:e.v>=4?'#7dfcff':'#ffe066',big:e.v>=4});digHud(A.hp,A.max,A.t,A.won);try{tg.HapticFeedback.impactOccurred(e.v>=4?'heavy':'medium')}catch(_){}}
   return}
