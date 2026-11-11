@@ -102,19 +102,23 @@ function makeLogic(getADM,rand){
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */
-const DIG_W=7, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10];
+const DIG_W=11, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10];
 const DIG_HARD={g:1,d:1,v:1,s:2,c:2,p:3,C:3,I:3,R:3,L:3,G:3,D:4,E:4,T:1,W:2,O:1e9};
 const DIG_VAL={C:.1,I:.2,R:.3,L:.4,G:.6,D:4,E:15};
 const DIG_ORE_P=[['C',.07],['I',.045],['R',.035],['L',.025],['G',.018],['D',.005],['E',.002],['T',.006],['W',.005]];
-let DIG_MT={1:[3.4974,6.5574,10.6935],2:[3.7986,6.967,11.4697],5:[3.9411,7.4468,11.6042],10:[4.0362,7.3307,11.5466]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
+let DIG_MT={1:[4.7751,9.4379,15.5654],2:[5.996,11.5452,19.4876],5:[6.7084,13.6814,22.4273],10:[7.4058,14.2023,23.5718]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
 function digGen(rand,K){const H=150,rows=[];
  for(let y=0;y<H;y++){let r='';for(let x=0;x<DIG_W;x++){let ch;
   if(y===0)ch='g';else if(y<3)ch=rand()<.7?'d':'v';
   else{const deep=y/H;ch=rand()<deep*.8?'p':rand()<.25?'c':rand()<.1?'v':'s';
    const q=rand();let a=0;for(const [o,pr] of DIG_ORE_P){a+=pr*(DIG_VAL[o]?1/K:1)*(o==='D'||o==='E'?(.5+deep):1);if(q<a){ch=o;break}}}
   r+=ch}rows.push(r)}
- rows.push('OOOOOOO');
- return {rows,mv:Array.from({length:600},()=>{const q=rand();return q<.22?-1:q<.44?1:0}),x0:2+Math.floor(rand()*3),seed:1+Math.floor(rand()*2147483000)}}
+ /* жилы: руда растёт кучками 2–5 блоков, как в майнкрафте */
+ const gr=rows.map(r=>r.split(''));for(let y=3;y<H;y++)for(let x=0;x<DIG_W;x++){const o=gr[y][x];if(!'CIRLG'.includes(o)||rand()<.35)continue;let n=1+Math.floor(rand()*4),cx=x,cy=y;
+  while(n-->0){const d=Math.floor(rand()*4);cx+=d===0?1:d===1?-1:0;cy+=d===2?1:d===3?-1:0;if(cx<0||cx>=DIG_W||cy<3||cy>=H){cx=x;cy=y;continue}if('scpv'.includes(gr[cy][cx]))gr[cy][cx]=o}}
+ for(let y=0;y<H;y++)rows[y]=gr[y].join('');
+ rows.push('O'.repeat(DIG_W));
+ return {rows,mv:Array.from({length:600},()=>{const q=rand();return q<.22?-1:q<.44?1:0}),x0:Math.floor(DIG_W/2)-1+Math.floor(rand()*3),seed:1+Math.floor(rand()*2147483000)}}
 /* ===== физика кирки: свободно летает по шахте как мячик (гравитация, отскоки во все стороны), ломает блоки, о которые бьётся.
    Только + − × ÷ и sqrt, свой генератор случайных чисел от seed мира → на сервере и в мини-аппе результат совпадает до бита ===== */
 const DIG_DT=1/120,DIG_G=32,DIG_RAD=.4;
@@ -128,8 +132,8 @@ function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp
    P.vy-=10+R()*6;P.vx+=(R()-.5)*14}};   /* взрыв 3×4, кирку подбрасывает */
  const hit=(cx,cy)=>{P.hp--;hp[cy][cx]--;ev.push({e:'h',x:cx,y:cy,p:P.hp,d:1-hp[cy][cx]/(DIG_HARD[g[cy][cx]]||1)});if(hp[cy][cx]<=0)brk(cx,cy,0);if(P.hp<=0)end()};
  const bounce=(nX,nY,vn)=>{const e=.45;P.vx-=(1+e)*vn*nX;P.vy-=(1+e)*vn*nY;
-  const cur=P.vx*nX+P.vy*nY,mn=nY<-.5?7+R()*6:3+R()*5;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}   /* от пола подпрыгивает выше, от стен/потолка слабее */
-  if(nY<-.5){const dr=R()<.5?-1:1;P.vx=P.vx*.35+dr*(6+R()*9)}else{const k=(R()-.5)*8;P.vx+=-nY*k;P.vy+=nX*k}P.w=(R()-.5)*36};   /* от пола — сильно в случайную сторону */
+  const cur=P.vx*nX+P.vy*nY,mn=nY<-.5?5+R()*5:3+R()*4;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}   /* от пола подпрыгивает выше, от стен/потолка слабее */
+  if(nY<-.5){const dr=R()<.5?-1:1;P.vx=P.vx*.35+dr*(5+R()*8)}else{const k=(R()-.5)*8;P.vx+=-nY*k;P.vy+=nX*k}P.w=(R()-.5)*36};   /* от пола — сильно в случайную сторону */
  P.step=()=>{if(P.done)return;P.time+=DIG_DT;
   P.vy+=DIG_G*DIG_DT;const sp=Math.sqrt(P.vx*P.vx+P.vy*P.vy);if(sp>24){P.vx*=24/sp;P.vy*=24/sp}
   P.x+=P.vx*DIG_DT;P.y+=P.vy*DIG_DT;P.a+=P.w*DIG_DT;
@@ -141,7 +145,7 @@ function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp
     let nX=0,nY=-1;if(d2>1e-9){const d=Math.sqrt(d2);nX=dx/d;nY=dy/d;P.x=nx+nX*DIG_RAD;P.y=ny+nY*DIG_RAD}else P.y=cy-DIG_RAD;
     const vn=P.vx*nX+P.vy*nY;if(vn>=0)continue;
     bounce(nX,nY,vn);
-    if(ch!=='O'&&-vn>2&&P.time-(cool[cy*8+cx]||-9)>.08){cool[cy*8+cx]=P.time;hit(cx,cy);if(P.done)return}}}
+    if(ch!=='O'&&-vn>2&&P.time-(cool[cy*16+cx]||-9)>.08){cool[cy*16+cx]=P.time;hit(cx,cy);if(P.done)return}}}
   if(P.time>240||P.y>H-1.5)end()};
  return P}
 function digSim(w,tier,K){const P=digPhys(w,tier,K);for(let i=0;i<120*300&&!P.done;i++)P.step();if(!P.done){P.done=1;P.ev.push({e:'end',p:P.hp})}return {ev:P.ev,raw:P.raw,T:P.time}}
@@ -153,5 +157,5 @@ function digRun(rand,K,tp,force){const p=digTierP(tp),r=rand();const tier=force!
 function digPay(ev,bet,unit){let s=0;for(const e of ev)if(e.e==='b'&&e.v)s+=e.v;return Math.round(bet*s*unit)}
 /* уровни игрока: по обороту (сумме ставок), награда за каждый новый уровень */
 const LEVELS=[['Рейтинг 1',0,0],['Рейтинг 2',1000,10],['Рейтинг 3',5000,40],['Рейтинг 4',20000,150],['Рейтинг 5',60000,400],['Рейтинг 6',200000,1200],['Рейтинг 7',600000,3500]];
-G.STRELA={LEVELS,CHICK_D,digGen,digSim,digPhys,DIG_DT,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
+G.STRELA={LEVELS,CHICK_D,digGen,digSim,digPhys,DIG_DT,DIG_W,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
 })(globalThis);

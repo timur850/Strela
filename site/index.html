@@ -589,7 +589,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="toast" id="toast"></div>
 
 <script src="i18n.js?v=9e684d46"></script>
-<script src="logic.js?v=254dc7b1"></script>
+<script src="logic.js?v=5ace7f93"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -1500,37 +1500,47 @@ function digTex(){if(DIG.tex)return DIG.tex;const T={};let sd=7;const R=()=>(sd=
  T.T=mk(x=>{x.fillStyle='#d9301f';x.fillRect(0,0,16,16);x.fillStyle='#a31c10';for(let i=1;i<16;i+=3)x.fillRect(i,0,1,16);x.fillStyle='#f2f2f2';x.fillRect(0,5,16,6);x.fillStyle='#1a1a1a';[[2,6,3,1],[3,7,1,3],[6,6,1,4],[7,7,1,1],[8,8,1,1],[9,6,1,4],[11,6,3,1],[12,7,1,3]].forEach(r=>x.fillRect(...r));x.fillStyle='#cfcfcf';x.fillRect(0,0,16,1)});
  T.W=mk(x=>{noise(x,['#a7743e','#93652f','#b98549']);x.fillStyle='#5b3a17';x.fillRect(0,0,16,4);x.fillStyle='#7a5022';for(let i=0;i<16;i+=4)x.fillRect(i,0,1,4);x.fillStyle='#3d2a12';x.fillRect(2,6,5,5);x.fillStyle='#9a9a9a';x.fillRect(3,7,3,1);x.fillRect(4,8,1,2);x.fillStyle='#7a4f20';x.fillRect(10,6,1,6);x.fillStyle='#c9c9c9';x.fillRect(9,6,3,2)});
  T.O=mk(x=>noise(x,['#14101c','#1d1528','#2a1e3a','#0f0b15']));
+ T.BW=mk(x=>{noise(x,['#5b4a86','#53437c','#64538f','#4c3d72']);x.fillStyle='#3a2d5c';x.fillRect(0,0,16,1);x.fillRect(0,0,1,16);x.fillStyle='#7a69a8';x.fillRect(1,1,14,1);x.fillRect(1,1,1,14);x.fillStyle='#2f2449';x.fillRect(0,15,16,1);x.fillRect(15,0,1,16)});
  T.air=mk(x=>{noise(x,['#2a211b','#251d17','#30261f','#211a15']);x.fillStyle='rgba(0,0,0,.25)';x.fillRect(0,0,16,2)});
  const pick=(h1,h2,h3)=>mk(x=>{const s=["....kkkkkk......","...kLddddDk.....","....kkkkddDk....","........kddDk...",".......kwkdDk...","......kwk.kdDk..",".....kwk...kDk..","....kwk.....kk..","...kwk..........","..kwk...........",".kwk............","kwk.............","kk.............."];const p={k:'#1b1b1b',L:h3,d:h1,D:h2,w:'#8b5a2b'};s.forEach((r,y)=>[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=p[ch];x.fillRect(i,y+1,1,1)}}))});
  T.pick=[pick('#8e8e8e','#5d5d5d','#c4c4c4'),pick('#e6e6e6','#a9a9a9','#ffffff'),pick('#4fe6e6','#1ea0aa','#e1ffff')];
  const avg={};for(const k in T){if(k==='pick')continue;const d=T[k].getContext('2d').getImageData(0,0,16,16).data;let r=0,g=0,b=0;for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2]}avg[k]=`rgb(${r/256|0},${g/256|0},${b/256|0})`}T.avg=avg;
  return DIG.tex=T}
-function digIdleWorld(){const rows=[];for(let y=0;y<40;y++){let r='';for(let x=0;x<7;x++)r+=y===0?'g':y<3?'d':'sssscpv'[(Math.random()*7)|0];rows.push(r)}return rows}
+function digIdleWorld(){const rows=[];for(let y=0;y<40;y++){let r='';for(let x=0;x<STRELA.DIG_W;x++)r+=y===0?'g':y<3?'d':'sssscpv'[(Math.random()*7)|0];rows.push(r)}return rows}
 function digSetup(rows){DIG.g=rows.map(r=>r.split(''));DIG.dmg={};DIG.parts=[];DIG.fx=[];DIG.shake=0;DIG.flash=0}
-function digDraw(){const cv=$('#digc');if(!cv||!DIG.g)return;const x=cv.getContext('2d'),T=digTex(),W=cv.clientWidth,H=cv.clientHeight,B=W/7,top=B*2.2;
+function digBg(x,W,H){if(DIG.bgc&&DIG.bgc.w===W&&DIG.bgc.h===H)return x.drawImage(DIG.bgc.c,0,0,W,H);const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#7cc4ff');sky.addColorStop(.55,'#b9e4ff');sky.addColorStop(1,'#d6f1ff');g.fillStyle=sky;g.fillRect(0,0,W,H);
+ const P=Math.max(3,Math.round(W/90));const hill=(base,amp,per,ph,col)=>{g.fillStyle=col;for(let i=0;i<W;i+=P){const y=H*base-Math.round((Math.sin(i/per+ph)*amp+Math.sin(i/(per*.43)+ph*2)*amp*.35)/P)*P;g.fillRect(i,y,P,H-y)}};
+ hill(.42,H*.09,W*.16,1,'#a9cfe6');hill(.55,H*.07,W*.11,3,'#8fc2d9');hill(.68,H*.05,W*.09,5,'#86c96e');hill(.8,H*.04,W*.07,2,'#6cb658');
+ g.fillStyle='rgba(255,255,255,.9)';[[.12,.12,.22],[.6,.07,.18],[.78,.24,.14],[.3,.3,.12]].forEach(([a,b,w])=>{const X=Math.round(W*a/P)*P,Y=Math.round(H*b/P)*P,ww=Math.round(W*w/P)*P;g.fillRect(X,Y,ww,P*3);g.fillRect(X+P*2,Y-P*2,ww-P*5,P*2)});
+ DIG.bgc={w:W,h:H,c};x.drawImage(c,0,0,W,H)}
+function digDraw(){const cv=$('#digc');if(!cv||!DIG.g)return;const x=cv.getContext('2d'),T=digTex(),W=cv.clientWidth,H=cv.clientHeight,M=W/(STRELA.DIG_W+.7)*.35,B=(W-2*M)/STRELA.DIG_W,top=B*2.2;
  if(cv.width!==Math.round(W*devicePixelRatio)){cv.width=Math.round(W*devicePixelRatio);cv.height=Math.round(H*devicePixelRatio)}
  x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);x.imageSmoothingEnabled=false;
  const sh=DIG.shake>0?(Math.random()-.5)*DIG.shake:0,sv=DIG.shake>0?(Math.random()-.5)*DIG.shake:0;x.translate(sh,sv);
- const cam=DIG.cam||0,g0=top-cam*B;x.fillStyle='#1e1712';x.fillRect(-30,-30,W+60,H+60);if(g0>-30){const sky=x.createLinearGradient(0,g0-top,0,g0);sky.addColorStop(0,'#6fb7ff');sky.addColorStop(1,'#bde3ff');x.fillStyle=sky;x.fillRect(-30,-30,W+60,g0+30)}
+ const cam=DIG.cam||0,g0=top-cam*B;x.save();x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);digBg(x,W,H);x.restore();
+ {const r0=Math.floor(cam-2.2)-1,r1=Math.ceil(cam+H/B)+1;for(let r=Math.max(0,r0);r<r1;r++){const py=top+(r-cam)*B;x.drawImage(T.BW,0,py,M+.6,B+.6);x.drawImage(T.BW,W-M,py,M+.6,B+.6)}}x.translate(M,0);
  x.fillStyle='rgba(255,255,255,.85)';const cl=(Date.now()/60)%(W+120);[[cl-60,top*.25],[cl-W*.6,top*.5],[cl+W*.3-W-120,top*.35]].forEach(([a,b])=>{const y=b-cam*B;if(y>-20){x.fillRect(a,y,B*1.6,B*.35);x.fillRect(a+B*.3,y-B*.2,B*.8,B*.25)}});
  const r0=Math.max(0,Math.floor(cam-2.2)),r1=Math.min(DIG.g.length,Math.ceil(cam+H/B));
- for(let r=r0;r<r1;r++)for(let c=0;c<7;c++){const ch=DIG.g[r][c],px=c*B,py=top+(r-cam)*B;
-  x.drawImage(ch==='.'?T.air:T[ch]||T.s,px,py,B+.6,B+.6);
+ for(let r=r0;r<r1;r++)for(let c=0;c<STRELA.DIG_W;c++){const ch=DIG.g[r][c],px=c*B,py=top+(r-cam)*B;
+  if(ch!=='.')x.drawImage(T[ch]||T.s,px,py,B+.6,B+.6);
   const dm=DIG.dmg[r+','+c];if(dm&&ch!=='.'){x.fillStyle='rgba(0,0,0,.6)';const n=Math.ceil(dm*5),u=B/16;const L=[[7,7,2,1],[6,8,1,3],[9,6,3,1],[4,10,3,1],[10,9,1,4],[3,4,4,1],[12,3,1,3],[2,12,3,1],[11,13,4,1],[7,2,1,3]];for(let i=0;i<Math.min(L.length,n*2);i++){const [a,b,w,h]=L[i];x.fillRect(px+a*u,py+b*u,w*u,h*u)}}}
  for(const p of DIG.parts){x.fillStyle=p.c;x.fillRect(p.x,p.y-cam*B,p.s,p.s)}
- if(DIG.pk){const p=DIG.pk,px=(p.x+(p.ox||0)+.5)*B,py=top+(p.y-cam)*B+B*.5;x.save();x.translate(px,py);x.rotate(p.rot||0);x.drawImage(T.pick[p.t],-B*.55,-B*.6,B*1.1,B*1.1);x.restore()}
+ if(DIG.pk){const p=DIG.pk,px=(p.x+(p.ox||0)+.5)*B,py=top+(p.y-cam)*B+B*.5;x.save();x.translate(px,py);x.rotate(p.rot||0);x.drawImage(T.pick[p.t],-B*.55,-B*.6,B*1.1,B*1.1);x.restore();
+  if(DIG.A&&DIG.hpv){const s=`♥ ${DIG.hpv[0]}/${DIG.hpv[1]}`;x.font=`900 ${Math.round(B*.36)}px Nunito,sans-serif`;x.textAlign='center';x.lineWidth=4;x.strokeStyle='rgba(0,0,0,.7)';x.strokeText(s,px,py-B*.85);x.fillStyle='#fff';x.fillText(s,px,py-B*.85);x.fillStyle='#ff4d5e';}}
  x.textAlign='center';for(const f of DIG.fx){const a=Math.max(0,1-f.t/1100);x.globalAlpha=a;x.font=`900 ${Math.round(B*(f.big?.55:.38))}px Nunito,sans-serif`;const y=top+(f.y-cam)*B-f.t/16;x.lineWidth=4;x.strokeStyle='rgba(0,0,0,.75)';x.strokeText(f.s,(f.x+.5)*B,y);x.fillStyle=f.col||'#ffe066';x.fillText(f.s,(f.x+.5)*B,y);x.globalAlpha=1}
  x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);if(DIG.flash>0){x.fillStyle=`rgba(255,230,160,${DIG.flash})`;x.fillRect(0,0,W,H)}}
-function digBurst(c,r,ch,n){const B=$('#digc').clientWidth/7,top=B*2.2,T=digTex();for(let i=0;i<(n||9);i++)DIG.parts.push({x:(c+.5)*B,y:top+(r+.5)*B,vx:(Math.random()-.5)*B*.14,vy:-Math.random()*B*.16,s:B*(.08+Math.random()*.1),c:Math.random()<.5?T.avg[ch]||'#777':'rgba(0,0,0,.35)',life:600+Math.random()*400})}
+const digB=()=>{const W=$('#digc').clientWidth;return (W-2*(W/(STRELA.DIG_W+.7)*.35))/STRELA.DIG_W};
+function digBurst(c,r,ch,n){const B=digB(),top=B*2.2,T=digTex();for(let i=0;i<(n||9);i++)DIG.parts.push({x:(c+.5)*B,y:top+(r+.5)*B,vx:(Math.random()-.5)*B*.14,vy:-Math.random()*B*.16,s:B*(.08+Math.random()*.1),c:Math.random()<.5?T.avg[ch]||'#777':'rgba(0,0,0,.35)',life:600+Math.random()*400})}
 function digLoop(){if(!$('#digc'))return;const now=performance.now(),dt=Math.min(50,now-(DIG.lt||now));DIG.lt=now;
- const B=$('#digc').clientWidth/7;for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
+ const B=digB();for(const p of DIG.parts){p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=B*.012*dt/16;p.life-=dt}DIG.parts=DIG.parts.filter(p=>p.life>0);
  for(const f of DIG.fx)f.t+=dt;DIG.fx=DIG.fx.filter(f=>f.t<1100);DIG.shake=Math.max(0,DIG.shake-dt*.04);DIG.flash=Math.max(0,DIG.flash-dt*.002);
  if(DIG.pk){const p=DIG.pk;p.ox=(p.ox||0)*Math.pow(.0005,dt/1000*DIG_SPD[DIG.speed]);if(DIG.A)digAnim(dt/1000);else if(!DIG.run&&!DIG.spin){p.rot=Math.sin(now/300)*.2}
-  const want=Math.max(0,p.y-3.5);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
+  const want=Math.max(0,p.y+2.7-$('#digc').clientHeight/B/2);DIG.cam=(DIG.cam||0)+(want-(DIG.cam||0))*Math.min(1,dt*.006*DIG_SPD[DIG.speed])}
  digDraw();DIG.raf=requestAnimationFrame(digLoop)}
-function digHud(hp,max,t,won){$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
+function digHud(hp,max,t,won){DIG.hpv=[hp,max];$('#dhp').innerHTML=`<i style="width:${Math.max(0,hp/max*100)}%"></i><span>♥ ${hp}/${max}</span>`;$('#dtier').innerHTML=`<canvas width="16" height="16"></canvas>${DIG_TN[t]}`;const c=$('#dtier canvas').getContext('2d');c.drawImage(digTex().pick[t],0,0);$('#dwin').textContent=(won||0).toFixed(won%1?1:0)+' ★'}
 function digLock(on){document.querySelectorAll('.dk button,#dbrow button,#dbet').forEach(e=>{e.disabled=!!on;e.style.opacity=on?.45:'';e.style.pointerEvents=on?'none':''})}
-function digInit(){DIG.run=0;DIG.spin=0;digLock(0);clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:3,y:-1,t:0,rot:0,vy:0};DIG.A=null;digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
+function digInit(){DIG.run=0;DIG.spin=0;digLock(0);clearTimeout(DIG.next);cancelAnimationFrame(DIG.raf);setTimeout(()=>{digSetup(digIdleWorld());DIG.cam=0;DIG.pk={x:5,y:-1,t:0,rot:0,vy:0};DIG.A=null;digHud(100,100,0,0);digKSet(DIG.k);DIG.lt=0;digLoop()},30)}
 function digKSet(k){if((DIG.run||DIG.spin)&&k!==DIG.k)return;DIG.k=k;document.querySelectorAll('.dk button').forEach(b=>b.classList.toggle('on',+b.dataset.k===k));const leg=$('#dleg');if(!leg)return;const S=globalThis.STRELA,bet=Math.max(1,+($('#dbet')||{}).value||0),unit=(ADM.rtp&&ADM.rtp.dig?ADM.rtp.dig:90)/100/S.digM(k,ADM.digTier);
  leg.innerHTML=Object.entries(S.DIG_VAL).map(([o,v])=>`<span><canvas data-t="${o}" width="16" height="16"></canvas>${DIG_NAMES[o]}<b>${(bet*v*k*unit).toFixed(1)} ★</b></span>`).join('')+`<span><canvas data-t="T" width="16" height="16"></canvas>TNT<b>взрыв 3×4</b></span><span><canvas data-t="W" width="16" height="16"></canvas>Верстак<b>⬆ / 🔧</b></span>`;
  leg.querySelectorAll('canvas').forEach(c=>{const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(digTex()[c.dataset.t],0,0)})}
