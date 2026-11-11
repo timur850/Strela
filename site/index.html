@@ -588,8 +588,8 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=d0af11e0"></script>
-<script src="logic.js?v=3c96aea7"></script>
+<script src="i18n.js?v=11488f2a"></script>
+<script src="logic.js?v=41f6a042"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -668,7 +668,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refD=me.refD||{};u.promoCase=me.promoCase||0;u.refF=me.refF||0;u.freeNeed=me.freeNeed||10;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refD=me.refD||{};u.promoCase=me.promoCase||0;u.refLock=me.refLock||[];u.refF=me.refF||0;u.refNeed=me.refNeed||10;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -748,7 +748,7 @@ tour(){
   <div class="card list">${(S.tour&&S.tour.top.length)?S.tour.top.map((r,i)=>{const g=i<TOUR_P().length&&giftBy(TOUR_P()[i]);return `<div class="it"${String(r.id)===String(ME.id)?' style="background:rgba(255,210,63,.15);border-radius:12px"':''}><b style="width:22px;color:var(--muted)">${i+1}</b><div class="av" style="background:hsl(${hue(r.n||'?')},65%,50%)">${esc((r.n||'?').replace('@','')[0]||'?').toUpperCase()}</div><div class="nm">${esc(r.n||'Игрок')}<small><span class="star">★</span> ${fmt(r.v)}</small></div>${g?`<span style="width:34px;height:34px;display:inline-block">${gi(g)}</span>`:''}</div>`}).join(''):`<div class="empty">${S.tour?'Турнир только начался — сделай ставку и стань первым!':'Загрузка…'}</div>`}</div>`;
 },
 profile(){
-  const inv=U().inv.map((s,i)=>{const g=giftBy(s);return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
+  const inv=U().inv.map((s,i)=>{const g=giftBy(s);if(refLocked(s))return `<div class="case">${gi(g)}<small>🔒 ${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button></div>`;return `<div class="case">${gi(g)}<small>${g.name}</small><button class="btn sm sand" style="width:100%;margin-top:6px;padding:6px" onclick="sellGift(${i})">★ ${fmt(g.price)}</button>${isStar(g)||g.price<MIN_WD()?'':`<button class="btn sm ghost" style="width:100%;margin-top:4px;padding:6px" onclick="askWithdraw(${i})">📤 Вывести</button>`}</div>`}).join('');
   return `${profTop()}${statsBlock()}
   <div class="card plist"><button onclick="rulesSheet()"><i>📜</i>Правила<em>›</em></button><button onclick="fairSheet()"><i>🛡</i>Честная игра<em>›</em></button><button onclick="openUrl('https://t.me/'+SUPPORT)"><i>💬</i>Поддержка<em>›</em></button><button onclick="S.langOpen=!S.langOpen;setTab('profile')"><i>🌐</i>Язык · ${LANG==='en'?'English':'Русский'}<em>›</em></button></div>
   ${S.langOpen?langCard():''}
@@ -765,14 +765,7 @@ admin(){return adminView()}
 };
 const MIN_WD=()=>Math.max(0,Math.round(ADM.minWd??100));
 const WD_FEE=()=>Math.max(0,Math.min(50,+(ADM.wdFee??5)||0)),wdFeeOf=g=>WD_FEE()?Math.ceil(g.price*WD_FEE()/100):0;
-const freeLocked=s=>{const u=U(),lk=(u.freeLock||[]).filter(x=>x===s).length;return lk>0&&lk>=(u.inv||[]).filter(x=>x===s).length};
-function freeLockSheet(i){const u=U(),g=giftBy(u.inv[i]),need=u.freeNeed||10,n=Math.min(u.refF||0,need);
- sheet(`<h1>🔒 NFT из бесплатного кейса</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p>
- <div class="card"><div class="ad-h">Вывод откроется, когда пригласишь ${need} друзей</div><div class="frbar"><i style="width:${n/need*100}%"></i></div><p class="sub" style="margin:8px 0 0">Засчитано: <b>${n}/${need}</b></p></div>
- <div class="card"><div class="ad-h">Кто засчитывается</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. Открывает мини-апп и <b>бесплатный кейс</b>.<br>3. У него есть <b>Telegram Premium</b> или <b>NFT-подарок</b> в профиле.<br><br>Первый NFT — 10 друзей, второй — 20, третий — 30 и так далее. Пока NFT нельзя продать или поставить, но можно улучшить в апгрейде.</p></div>
- <button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="freeRefCheck(${i})">🔄 Проверить друзей</button>`)}
-async function freeRefCheck(i){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:'Новых подходящих друзей нет');freeLockSheet(i)}catch(e){toast('Нет связи с сервером')}}
-function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);if(!isStar(g)&&freeLocked(g.slug)&&(U().refF||0)<(U().freeNeed||10))return freeLockSheet(i);
+function askWithdraw(i){const g=giftBy(U().inv[i]);if(!g)return;if(g.price<MIN_WD())return toast(`Вывод — от ${MIN_WD()} ★`);if(refLocked(g.slug)&&(U().refF||0)<(U().refNeed||10))return refSheet(i);
  sheet(`<h1>Вывод подарка</h1><div style="text-align:center;font-size:64px;margin:10px 0">${gi(g)}</div><p class="sub">${esc(g.name)} · ★ ${fmt(g.price)}</p><p class="sub">${g.reg?'Подарок придёт вам в Telegram сразу.':'Заявка уйдёт администратору, подарок придёт вам в Telegram.'}</p>${wdFeeOf(g)?`<div class="card" style="text-align:center;margin-top:10px">Комиссия за вывод: <b><span class="star">★</span> ${fmt(wdFeeOf(g))}</b> (${WD_FEE()}%)<br><small style="color:var(--muted)">Спишется с баланса. Если вывод отменится — вернётся.</small></div>`:''}<button class="btn sand" style="margin-top:14px" ${wdFeeOf(g)>(U().bal||0)?'disabled':''} onclick="withdraw(${i})">${wdFeeOf(g)>(U().bal||0)?`Нужно ★ ${fmt(wdFeeOf(g))} на балансе`:wdFeeOf(g)?`📤 Вывести за ★ ${fmt(wdFeeOf(g))}`:'📤 Вывести'}</button>`)}
 let wdBusy=false;
 async function withdraw(i){const s=U().inv[i],g=giftBy(s);if(!g||wdBusy)return;
@@ -802,7 +795,7 @@ drop(){dropOpen();return null},
 earn(){return earnHub()},
 earntt(){return earnPage()},
 hunt(){huntOpen();return null},
-free(){const K=FREE_KEYS().filter(k=>k!=='promo'||(U().promoCase||0)>0),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),`freeCase('${k}')`).replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}</i>`).replace('class="ccard"','class="ccard friends"');
+free(){const K=FREE_KEYS().filter(k=>k!=='promo'||(U().promoCase||0)>0),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>','<i>раз в 24ч</i>').replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':S.freeK==='promo'?'🎟 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
  ${c.p?`<div class="row cnN" style="gap:6px;margin-bottom:10px">${[1,2,3,4,5].map(n=>`<button class="btn sm ${caseN()===n?'sand':'ghost'}" style="flex:1" onclick="setCaseN(${n})">x${n}</button>`).join('')}</div>`:''}
@@ -1091,7 +1084,7 @@ function casesPage(){const q=(S.cq||'').trim().toLowerCase(),sel=S.ccat||'all',d
   ${[['all','Все'],...(FK.length?[['free','Бесплатные']]:[]),...cats.map(k=>[k,k])].map(([k,t])=>`<button class="rch ${sel===k?'on':''}" onclick="S.ccat='${esc(k)}';rerenderCases()">${esc(t)}</button>`).join('')}</div>
   <button class="rch ic" onclick="S.csort=-(S.csort||1);rerenderCases();toast(S.csort>0?'Сначала дешёвые':'Сначала дорогие')">⇅</button></div>
  ${S.csearch?`<div class="field" style="margin:4px 0 8px"><input id="cq" placeholder="🔍 Поиск кейса" value="${esc(S.cq||'')}" oninput="S.cq=this.value;clearTimeout(S.cqT);S.cqT=setTimeout(()=>{rerenderCases();const e=$('#cq');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}},250)"></div>`:''}
- ${showFree?`<div class="rsec"><div class="rsh"><h2>Бесплатные</h2><small>${FK.length} ${plural(FK.length)}</small></div><div class="rgrid">${FK.map(k=>rcCard(FREE(k),`freeCase('${k}')`,k==='tick'?'🎫 1':k==='promo'?`🎟 ${U().promoCase||0}`:REF_NEED[k]?`👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}`:'Бесплатно')).join('')}</div></div>`:''}
+ ${showFree?`<div class="rsec"><div class="rsh"><h2>Бесплатные</h2><small>${FK.length} ${plural(FK.length)}</small></div><div class="rgrid">${FK.map(k=>rcCard(FREE(k),`freeCase('${k}')`,k==='tick'?'🎫 1':k==='promo'?`🎟 ${U().promoCase||0}`:k==='ref'?'раз в 24ч':'Бесплатно')).join('')}</div></div>`:''}
  ${sel==='free'?'':(sel==='all'?cats:cats.filter(k=>k===sel)).map(sec).join('')||(q?'<div class="card empty">Ничего не найдено</div>':'')}`}
 function rerenderCases(){if(S.stack[S.stack.length-1]!=='cases'&&!(S.tab==='cases'&&!S.stack.length))return;const sc=view.scrollTop;render(casesPage());view.scrollTop=sc}
 function openCase(i){S.curCase=CASES()[i];S.freeK=null;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
@@ -1105,18 +1098,15 @@ function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g
 async function gateShare(){const txt='Забирай бесплатный кейс с подарками в '+APP_NAME+' 🏝';
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
-const REF_NEED={ref:10,ref20:20,ref30:30};
-/* следующий кейс Friends показываем только когда открыт предыдущий: ×10 → ×20 → ×30 */
-const refVis=k=>k==='ref20'?(U().refQ||0)>=REF_NEED.ref:k==='ref30'?(U().refQ||0)>=REF_NEED.ref20:true;
-function refSheet(k){k=REF_NEED[k]?k:'ref';const N=REF_NEED[k],n=Math.min(U().refQ||0,N),ok=n>=N,left=((U().refD||{})[k]||0)+864e5-Date.now();
- sheet(`<div class="frhead"><div class="frbadge">👥</div><h2>Кейс ${esc(FREE(k).n)}</h2><p class="sub">Пригласи <b>${N} друзей</b>, у которых в профиле есть <b>NFT-подарок</b> или <b>Telegram Premium</b>. Открывается раз в 24 часа.</p></div>
- <div class="card"><div class="frbar"><i style="width:${n/N*100}%"></i></div>
- <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${N}</b>${ok?'':` · осталось ${N-n}`}</p>
- <div style="display:flex;gap:6px;margin-top:10px">${Object.keys(REF_NEED).filter(x=>FREE_KEYS().includes(x)&&refVis(x)).map(x=>`<div onclick="refSheet('${x}')" style="flex:1;text-align:center;padding:8px 4px;border-radius:12px;cursor:pointer;background:${x===k?'rgba(255,61,139,.25)':'rgba(255,255,255,.06)'};border:1px solid ${x===k?'#ff3d8b':'transparent'}"><b>×${REF_NEED[x]}</b><br><small style="color:var(--muted)">${(U().refQ||0)>=REF_NEED[x]?'✅ открыт':'🔒'}</small></div>`).join('')}</div></div>
- ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('${k}',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
- `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck('${k}')">🔄 Проверить друзей</button>`}
- <div class="card" style="margin-top:10px"><div class="ad-h">Как засчитываются друзья</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. У него в профиле есть NFT-подарок (не скрытый) или Telegram Premium.<br>3. Premium засчитывается, когда друг откроет игру. Если NFT появился позже — нажми «Проверить друзей».</p></div>
- <h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE(k))}`)}
+/* реф-кейс Friends: бесплатно раз в 24 ч; выигрыш можно только вывести — после приглашения друзей (10, потом 20, 30…) */
+const refLocked=sl=>{const u=U(),lk=(u.refLock||[]).filter(x=>x===sl).length;return lk>0&&lk>=(u.inv||[]).filter(x=>x===sl).length};
+function refSheet(wi){const u=U(),need=u.refNeed||10,n=Math.min(u.refF||0,need),left=(u.refDaily||0)+864e5-Date.now(),g=wi!=null?giftBy(u.inv[wi]):null;
+ sheet(`<div class="frhead"><div class="frbadge">${g?'🔒':'👥'}</div><h2>${g?'Подарок из реф-кейса':'Реф-кейс '+esc(FREE('ref').n)}</h2><p class="sub">${g?`${gi(g)} <b>${esc(g.name)}</b> · ★ ${fmt(g.price)}<br>`:''}Открывается бесплатно <b>раз в 24 часа</b>. Выигрыш попадает в инвентарь — его нельзя продать, поставить или обменять, только <b>вывести</b>.</p></div>
+ <div class="card"><div class="ad-h">Вывод: пригласи ${need} друзей</div><div class="frbar"><i style="width:${n/need*100}%"></i></div><p class="sub" style="margin:8px 0 0">Засчитано: <b>${n}/${need}</b>${n<need?` · осталось ${need-n}`:' · можно выводить ✅'}</p></div>
+ ${g?'':`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('ref',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`}
+ <button class="btn ${g?'sand':'ghost'}" style="margin-top:8px" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck(${wi==null?'null':wi})">🔄 Проверить друзей</button>
+ <div class="card" style="margin-top:10px"><div class="ad-h">Кто засчитывается</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. Открывает мини-апп и <b>этот реф-кейс</b>.<br>3. У него есть <b>Telegram Premium</b> или <b>NFT-подарок</b> в профиле (не скрытый).<br><br>Первый вывод — 10 друзей, второй — 20, третий — 30 и так далее.</p></div>
+ ${g?'':`<h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE('ref'))}`}`)}
 function promoSheet(){const n=U().promoCase||0;
  sheet(`<div class="frhead"><div class="frbadge">🎟</div><h2>Промо-кейс</h2><p class="sub">Открывается за промокод. Промокоды публикуем в канале и у партнёров.</p></div>
  <div class="card"><div class="ad-h">У тебя промо-кейсов: ${n}</div><div style="display:flex;gap:8px"><input id="pcode" placeholder="Введи промокод" autocapitalize="characters" style="flex:1;text-transform:uppercase"><button class="btn sm sand" style="width:auto;padding:0 16px" onclick="promoUse(1)">OK</button></div></div>
@@ -1127,7 +1117,7 @@ async function promoUse(fromCase){const el=$('#pcode'),code=(el&&el.value||'').t
  toast(j.t==='stars'?`Промокод активирован: +${fmt(j.v)} ★`:j.t==='tick'?`Промокод активирован: +${j.v} 🎫`:`Промокод активирован: +${j.v} промо-кейс`);
  if(el)el.value='';if(fromCase)promoSheet();else if(S.tab==='bonus'&&!S.stack.length)setTab('bonus')}
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
-async function refCheck(k){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet(k)}catch(e){toast('Нет связи с сервером')}}
+async function refCheck(wi){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet(wi)}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
 const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
 const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.channel=e.channel||'https://t.me/StrelaCase_TikTok';e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};
@@ -1237,7 +1227,7 @@ function dropSheet(res,anim){const D=S.drop,T=DROP_T(D);if(!D){sheet(`<h2>📦 $
 async function dropClaim(){const b=document.querySelector('#sheet button.sand');if(b)b.disabled=true;const im=document.querySelector('#sheet .dropimg');if(im)im.classList.add('shake');
  const [j]=await Promise.all([srv('drop',{},{lock:1,hold:j=>j.prize}),new Promise(r=>setTimeout(r,1300))]);if(!j){if(b)b.disabled=false;if(im)im.classList.remove('shake');return}
  S.drop=j.drop;dropSheet(j.prize);try{tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred('success')}catch(e){}toast(`+${fmt(j.prize)} ★`)}
-function freeCase(k,ok){if(!FREE_KEYS().includes(k))return toast('Этот кейс удалён');if(k==='promo'&&!ok)return promoSheet();if(REF_NEED[k]||k==='promo'){if(REF_NEED[k]&&!ok)return refSheet(k);S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
+function freeCase(k,ok){if(!FREE_KEYS().includes(k))return toast('Этот кейс удалён');if(k==='promo'&&!ok)return promoSheet();if(k==='ref'||k==='promo'){if(k==='ref'&&!ok)return refSheet();S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
 if(k==='tick'){if(U().tick<1)return toast('Нужен 1 🎫 — приглашай друзей: 3 друга = 1 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 const rnd01=()=>Math.random();
