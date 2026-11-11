@@ -15,7 +15,7 @@ function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLIN
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
 const REF_TIERS = { ref: 10, ref20: 20, ref30: 30 };   // кейсы Friends: сколько друзей с NFT или Premium нужно
 const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за билеты
-const FREE_NFT_REFS = 5;  // NFT из ежедневного кейса выводится после стольких приглашённых  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
+const FREE_NFT_STEP = 10;   // NFT из бесплатного кейса: 1-й вывод — 10 друзей, 2-й — 20, 3-й — 30…
 
 const MAX_BET = 1_000_000;
 const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", chick: "Цыпа", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
@@ -89,7 +89,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refF: u.refF || 0, freeNeed: FREE_NFT_STEP * ((u.freeWd || 0) + 1), refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -179,6 +179,13 @@ export class Game {
       }
     }
     u.depTot = sum; return sum;
+  }
+  isLockedCopy(u, slug) { const lk = (u.freeLock || []).filter(s => s === slug).length; return lk > 0 && lk >= u.inv.filter(s => s === slug).length; }
+  // друг засчитывается для вывода NFT из бесплатного кейса: пришёл по ссылке, открыл бесплатный кейс, есть Premium или NFT
+  async refFreeCount(u) {
+    if (!u.ref || !u.refq || !(u.fOpen || u.daily) || u.refFc) return;
+    const r = await this.s.get("u:" + u.ref); if (!r) return;
+    u.refFc = 1; r.refF = (r.refF || 0) + 1; await this.s.put("u:" + u.ref, r);
   }
   lockedTake(u, slug) {                           // забирает из инвентаря «заблокированный» экземпляр? (NFT из бесплатного кейса)
     const lk = (u.freeLock || []).filter(s => s === slug).length, have = u.inv.filter(s => s === slug).length;
@@ -320,12 +327,14 @@ export class Game {
     if (GIFT_BET_OPS.has(op) && d && d.gi != null) {   // ставка подарком: подарок уходит, его цена становится ставкой (выигрыш — звёздами)
       const i = this.invIndex(u, d.gi, d.gs), gf = this.L.giftBy(u.inv[i]);
       if (!gf || isStar(gf)) fail("Этот подарок нельзя поставить"); if (gf.price > MAX_BET) fail("Подарок слишком дорогой для ставки");
+      if (this.isLockedCopy(u, gf.slug)) fail("NFT из бесплатного кейса нельзя поставить — его можно вывести, когда пригласишь друзей");
       u.inv.splice(i, 1); u.bal += gf.price; d.bet = gf.price; await this.stat("giftbet", gf.price);
     }
     const res = (await fn.call(this, u, uid, d || {})) || {};
     if (this._hf) res.hunt = this._hf;
     if (OP_GAME[op]) onMark(OP_GAME[op], uid, this.isStaff);
     onMark("app", uid, this.isStaff);
+    if (u.ref && u.refq && !u.refFc && (u.fOpen || u.daily)) await this.refFreeCount(u);   // друг уже открывал бесплатный кейс раньше
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
@@ -374,7 +383,9 @@ export class Game {
     if (u.refq || !u.ref) return { done: false };
     u.refq = 1; u.refWhy = String(d.why || "").slice(0, 40);
     const r = await this.s.get("u:" + u.ref); if (!r) return { done: false };
-    r.refQ = (r.refQ || 0) + 1; await this.s.put("u:" + u.ref, r);
+    r.refQ = (r.refQ || 0) + 1;
+    if ((u.fOpen || u.daily) && !u.refFc) { u.refFc = 1; r.refF = (r.refF || 0) + 1; }
+    await this.s.put("u:" + u.ref, r);
     return { done: true };
   }
   // кого из моих приглашённых ещё не засчитали (до 15 за раз)
@@ -463,7 +474,8 @@ export class Game {
     }
     const g = L.caseGift(c);
     await this.giveGift(u, uid, g, "Кейс " + c.n);
-    if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после 5 приглашённых
+    if (d.free === "daily" && !isStar(g)) (u.freeLock = u.freeLock || []).push(g.slug);   // NFT из ежедневного — вывод после приглашённых друзей
+    if (d.free === "daily") { u.fOpen = 1; await this.refFreeCount(u); }
     return { prize: g.slug, prizes: [g.slug] };
   }
 
@@ -798,12 +810,16 @@ export class Game {
   // ---- продажа подарков ----
   async op_sell(u, uid, d) {
     const i = this.invIndex(u, d.i, d.slug), g = this.L.giftBy(u.inv[i]);
+    if (g && !isStar(g) && this.isLockedCopy(u, g.slug)) fail("NFT из бесплатного кейса нельзя продать — его можно вывести, когда пригласишь друзей");
     u.inv.splice(i, 1); u.bal += g ? g.price : 0;
     return { got: g ? g.price : 0 };
   }
   async op_sellall(u) {
-    const s = u.inv.reduce((a, x) => a + ((this.L.giftBy(x) || {}).price || 0), 0);
-    u.inv = []; u.bal += s; return { got: s };
+    const keep = [...(u.freeLock || [])], out = [];   // NFT из бесплатного кейса остаются в инвентаре
+    for (const x of u.inv) { const k = keep.indexOf(x); if (k >= 0) { keep.splice(k, 1); out.push(x); } }
+    const sold = u.inv.slice(); for (const x of out) sold.splice(sold.indexOf(x), 1);
+    const s = sold.reduce((a, x) => a + ((this.L.giftBy(x) || {}).price || 0), 0);
+    u.inv = out; u.bal += s; return { got: s };
   }
 
   // ---- задания → билеты ----
@@ -840,11 +856,13 @@ export class Game {
     if (needDep && !this.isStaff) { const dt = await this.depTotal(u, uid); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
     if (g.price < minWd) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
-    if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
-      fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
+    const freeL = lockN && lockN >= haveN, need = FREE_NFT_STEP * ((u.freeWd || 0) + 1);
+    if (freeL && (u.refF || 0) < need)
+      fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${need} друзей (${u.refF || 0}/${need}). Друг засчитывается, когда заходит по твоей ссылке, открывает бесплатный кейс и у него есть Telegram Premium или NFT`);
     const pct = Math.max(0, Math.min(50, +(this.st.wdFee ?? 5) || 0)), fee = pct ? Math.ceil(g.price * pct / 100) : 0;   // комиссия за вывод, ★ с баланса
     if (fee && (u.bal || 0) < fee) fail(`Комиссия за вывод — ${fee} ★ (${pct}%). Пополни баланс`);
     u.inv.splice(i, 1);
+    if (freeL) { u.freeLock.splice(u.freeLock.indexOf(g.slug), 1); u.freeWd = (u.freeWd || 0) + 1; }   // следующий вывод бесплатного NFT — на 10 друзей больше
     if (fee) { u.bal -= fee; await this.stat("fee", fee); }
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, fee, t: Date.now(), st: "new" });

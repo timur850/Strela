@@ -68,15 +68,15 @@ function makeLogic(getADM,rand){
   if(!items&&defItems&&Array.isArray(defItems[0]))items=defItems;
   if(!items&&defItems){const k=n+price+R('cases')+_GK;items=_fitC[k]||(_fitC[k]=fitW(defItems,free?(fcost||60):price,free?.5:R('cases')))}
   if(items)items=monoW(items);
-  /* бесплатные кейсы: NFT только пролетают в ленте, выпасть не могут */
-  if(items&&free){items=items.map(([s,w])=>{const g=giftBy(s);return [s,g&&!isStar(g)&&!g.reg?0:w]});if(!items.some(x=>x[1]>0))items=[...items,['stars5',1]]}
+  /* бесплатные кейсы: по умолчанию NFT только пролетают в ленте; если содержимое задал админ — выпадают по его шансам */
+  if(items&&free&&!(c.items&&c.items.length)){items=items.map(([s,w])=>{const g=giftBy(s);return [s,g&&!isStar(g)&&!g.reg?0:w]});if(!items.some(x=>x[1]>0))items=[...items,['stars5',1]]}
   const art=(items||[]).map(x=>giftBy(x[0])).filter(Boolean).sort((a,b)=>b.price-a.price);
   return {n,p:price,g:giftBy(c.cover)||art[0]||giftBy(s),art,l:c.lim??!!l,items,hidden:!!c.hidden,del:!!c.del,free:!!free,custom:(a.customCases||[]).some(x=>x[0]===n),cat:c.cat||'',glow:glow||'#0ea5e9',badge:badge||'',title:title||'',cover:c.cover}}
  const ALL_CASES=()=>[...CASE_DEF,...(A().customCases||[])].map(d=>caseObj(d)).filter(c=>!c.del);   // удалённые в админке — убраны совсем
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FK={daily:0,tick:1,ref:2,ref20:3,ref30:4,promo:5};
  const FREE=k=>caseObj(FREE_DEF[FK[k]||0],1);
- const FREE_KEYS=()=>['daily','tick','ref','ref20','ref30','promo'].filter(k=>/^ref/.test(k)||!FREE(k).del);   // кейсы Friends всегда есть (×20/×30 появляются по мере приглашений)   // бесплатные, не удалённые в админке
+ const FREE_KEYS=()=>['daily','promo'].filter(k=>!FREE(k).del);   // один бесплатный кейс раз в 24 ч (+ промо-кейс по промокоду)   // бесплатные, не удалённые в админке
  function itemsPick(items){const L0=items.filter(([s])=>giftBy(s)),L=L0.some(x=>x[1]>0)?L0.filter(x=>x[1]>0):L0;   // вес 0 = только витрина, не выпадает
  let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
  function autoDist(cost,rtp){const pool=prizePool(cost);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
