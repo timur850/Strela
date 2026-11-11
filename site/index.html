@@ -795,7 +795,7 @@ drop(){dropOpen();return null},
 earn(){return earnHub()},
 earntt(){return earnPage()},
 hunt(){huntOpen();return null},
-free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),`freeCase('${k}')`).replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}</i>`).replace('class="ccard"','class="ccard friends"');
+free(){const K=FREE_KEYS().filter(refVis),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),`freeCase('${k}')`).replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}</i>`).replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':S.freeK==='promo'?'🎟 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
  ${c.p?`<div class="row cnN" style="gap:6px;margin-bottom:10px">${[1,2,3,4,5].map(n=>`<button class="btn sm ${caseN()===n?'sand':'ghost'}" style="flex:1" onclick="setCaseN(${n})">x${n}</button>`).join('')}</div>`:''}
@@ -1077,14 +1077,14 @@ function casesPage(){const q=(S.cq||'').trim().toLowerCase(),sel=S.ccat||'all',d
  const L=CASES().map((c,i)=>({c,i})).filter(x=>!q||x.c.n.toLowerCase().includes(q));
  const groups={};L.forEach(x=>{const k=caseCat(x.c);(groups[k]=groups[k]||[]).push(x)});
  const cats=[...CAT_ORDER.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!CAT_ORDER.includes(k))];
- const FK=FREE_KEYS(),showFree=!q&&FK.length&&(sel==='all'||sel==='free');
+ const FK=FREE_KEYS().filter(refVis),showFree=!q&&FK.length&&(sel==='all'||sel==='free');
  const plural=n=>n%10===1&&n%100!==11?'кейс':n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?'кейса':'кейсов';
  const sec=k=>{const A=groups[k].slice().sort((a,b)=>(a.c.p-b.c.p)*dir);return `<div class="rsec"><div class="rsh"><h2>${esc(k)}</h2><small>${A.length} ${plural(A.length)}</small></div><div class="rgrid">${A.map(x=>rcCard(x.c,`openCase(${x.i})`,`${fmt(x.c.p)} <span class="star">★</span>`)).join('')}</div></div>`};
  return `<div class="rbar"><button class="rch ic" onclick="S.csearch=!S.csearch;rerenderCases()">🔍</button><div class="rchips">
   ${[['all','Все'],...(FK.length?[['free','Бесплатные']]:[]),...cats.map(k=>[k,k])].map(([k,t])=>`<button class="rch ${sel===k?'on':''}" onclick="S.ccat='${esc(k)}';rerenderCases()">${esc(t)}</button>`).join('')}</div>
   <button class="rch ic" onclick="S.csort=-(S.csort||1);rerenderCases();toast(S.csort>0?'Сначала дешёвые':'Сначала дорогие')">⇅</button></div>
  ${S.csearch?`<div class="field" style="margin:4px 0 8px"><input id="cq" placeholder="🔍 Поиск кейса" value="${esc(S.cq||'')}" oninput="S.cq=this.value;clearTimeout(S.cqT);S.cqT=setTimeout(()=>{rerenderCases();const e=$('#cq');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}},250)"></div>`:''}
- ${showFree?`<div class="rsec"><div class="rsh"><h2>Бесплатные</h2><small>${FK.length} ${plural(FK.length)}</small></div><div class="rgrid">${FK.map(k=>rcCard(FREE(k),`freeCase('${k}')`,k==='tick'?'🎫 1':'Бесплатно')).join('')}</div></div>`:''}
+ ${showFree?`<div class="rsec"><div class="rsh"><h2>Бесплатные</h2><small>${FK.length} ${plural(FK.length)}</small></div><div class="rgrid">${FK.map(k=>rcCard(FREE(k),`freeCase('${k}')`,k==='tick'?'🎫 1':k==='promo'?`🎟 ${U().promoCase||0}`:REF_NEED[k]?`👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}`:'Бесплатно')).join('')}</div></div>`:''}
  ${sel==='free'?'':(sel==='all'?cats:cats.filter(k=>k===sel)).map(sec).join('')||(q?'<div class="card empty">Ничего не найдено</div>':'')}`}
 function rerenderCases(){if(S.stack[S.stack.length-1]!=='cases'&&!(S.tab==='cases'&&!S.stack.length))return;const sc=view.scrollTop;render(casesPage());view.scrollTop=sc}
 function openCase(i){S.curCase=CASES()[i];S.freeK=null;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();armSpin()}
@@ -1099,11 +1099,13 @@ async function gateShare(){const txt='Забирай бесплатный кей
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
 const REF_NEED={ref:10,ref20:20,ref30:30};
+/* следующий кейс Friends показываем только когда открыт предыдущий: ×10 → ×20 → ×30 */
+const refVis=k=>k==='ref20'?(U().refQ||0)>=REF_NEED.ref:k==='ref30'?(U().refQ||0)>=REF_NEED.ref20:true;
 function refSheet(k){k=REF_NEED[k]?k:'ref';const N=REF_NEED[k],n=Math.min(U().refQ||0,N),ok=n>=N,left=((U().refD||{})[k]||0)+864e5-Date.now();
  sheet(`<div class="frhead"><div class="frbadge">👥</div><h2>Кейс ${esc(FREE(k).n)}</h2><p class="sub">Пригласи <b>${N} друзей</b>, у которых в профиле есть <b>NFT-подарок</b> или <b>Telegram Premium</b>. Открывается раз в 24 часа.</p></div>
  <div class="card"><div class="frbar"><i style="width:${n/N*100}%"></i></div>
  <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${N}</b>${ok?'':` · осталось ${N-n}`}</p>
- <div style="display:flex;gap:6px;margin-top:10px">${Object.keys(REF_NEED).filter(x=>FREE_KEYS().includes(x)).map(x=>`<div onclick="refSheet('${x}')" style="flex:1;text-align:center;padding:8px 4px;border-radius:12px;cursor:pointer;background:${x===k?'rgba(255,61,139,.25)':'rgba(255,255,255,.06)'};border:1px solid ${x===k?'#ff3d8b':'transparent'}"><b>×${REF_NEED[x]}</b><br><small style="color:var(--muted)">${(U().refQ||0)>=REF_NEED[x]?'✅ открыт':'🔒'}</small></div>`).join('')}</div></div>
+ <div style="display:flex;gap:6px;margin-top:10px">${Object.keys(REF_NEED).filter(x=>FREE_KEYS().includes(x)&&refVis(x)).map(x=>`<div onclick="refSheet('${x}')" style="flex:1;text-align:center;padding:8px 4px;border-radius:12px;cursor:pointer;background:${x===k?'rgba(255,61,139,.25)':'rgba(255,255,255,.06)'};border:1px solid ${x===k?'#ff3d8b':'transparent'}"><b>×${REF_NEED[x]}</b><br><small style="color:var(--muted)">${(U().refQ||0)>=REF_NEED[x]?'✅ открыт':'🔒'}</small></div>`).join('')}</div></div>
  ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('${k}',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
  `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck('${k}')">🔄 Проверить друзей</button>`}
  <div class="card" style="margin-top:10px"><div class="ad-h">Как засчитываются друзья</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. У него в профиле есть NFT-подарок (не скрытый) или Telegram Premium.<br>3. Premium засчитывается, когда друг откроет игру. Если NFT появился позже — нажми «Проверить друзей».</p></div>
