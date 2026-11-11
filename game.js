@@ -13,7 +13,7 @@ const GAME_IDS = new Set(["app", "chick", "cases", "crash", "mines", "plinko", "
 function onMark(g, uid, staff) { if (staff || !GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
 function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
-const REF_CASE_NEED = 5;
+const REF_TIERS = { ref: 10, ref20: 20, ref30: 30 };   // кейсы Friends: сколько друзей с NFT или Premium нужно
 const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за билеты
 const FREE_NFT_REFS = 5;  // NFT из ежедневного кейса выводится после стольких приглашённых  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
 
@@ -46,16 +46,24 @@ const HUNT_EMO = ["🐚", "🦪", "🐙", "🦀", "⭐"];
 const HUNT_PRIZES = [[10, 45], [15, 30], [25, 18], [50, 7]];
 const pick = a => a[randInt(a.length)];
 const HUNT_TYPES = {
-  case:     L => { const C = L.CASES().filter(c => c.p > 0 && c.p <= 1500); const c = pick(C.length ? C : L.CASES()); return { name: c.n, ch: .3, hint: `Спрятано в кейсе на букву «${c.n[0]}»` }; },
-  dig:      () => ({ depth: pick([60, 80, 100]), ch: .5, hint: "Глубоко под землёй — глубже, чем кажется" }),
-  crash:    () => ({ m: pick([2.5, 3, 4]), ch: .5, hint: "Там, где волна поднимается очень высоко" }),
-  mines:    () => ({ k: pick([4, 5, 6]), ch: .5, hint: "Под песком, после нескольких удачных шагов подряд" }),
-  plinko:   () => ({ ch: 1, hint: "Шарик должен упасть у самого края" }),
-  upgrade:  () => ({ max: pick([30, 40, 50]), ch: 1, hint: "Рискни и победи, когда шанс против тебя" }),
-  egg:      () => { const e = pick(EGGS); return { price: e[2], ch: .3, hint: `Внутри кокоса за ★ ${e[2]}` }; },
-  contract: () => ({ n: pick([3, 4, 5]), ch: .6, hint: "Собери много подарков в одну сделку" }),
-  slots:    () => ({ ch: .5, hint: "Когда три одинаковых встанут в ряд" }),
+  case:     L => { const C = L.CASES().filter(c => c.p > 0 && c.p <= 1500); const c = pick(C.length ? C : L.CASES()); return { name: c.n }; },
+  dig:      () => ({ depth: pick([6, 10, 14]) }),
+  crash:    () => ({ m: pick([2, 2.5, 3]) }),
+  mines:    () => ({ k: pick([3, 4, 5]) }),
+  plinko:   () => ({}),
+  upgrade:  () => ({ max: pick([40, 50, 60]) }),
+  egg:      () => { const e = pick(EGGS); return { price: e[2] }; },
+  contract: () => ({ n: pick([3, 4]) }),
+  slots:    () => ({}),
 };
+/* понятное задание: что именно сделать (без загадок и без везения — выполнил условие, сокровище твоё) */
+const HUNT_TXT = {
+  case: s => `Открой кейс «${s.name}»`, dig: s => `Шахта: докопай до глубины ${s.depth} м`, crash: s => `Краш: забери ставку на ×${s.m} или выше`,
+  mines: s => `Мины: открой ${s.k} ${s.k < 5 ? "клетки" : "клеток"} и забери выигрыш`, plinko: () => "Плинко: попади шариком в крайнюю лунку (слева или справа)",
+  upgrade: s => `Апгрейд: выиграй с шансом ${s.max}% или меньше`, egg: s => `Кокосы: открой кокос за ★ ${s.price}`,
+  contract: s => `Контракт: обменяй сразу ${s.n} подарка или больше`, slots: () => "Слоты: собери 3 одинаковых символа",
+};
+const HUNT_GO = { case: "cases", dig: "dig", crash: "crash", mines: "mines", plinko: "plinko", upgrade: "upgrade", egg: "eggs", contract: "contracts", slots: "slots" };
 const HUNT_CHECK = {
   case: (s, e) => e.name === s.name, dig: (s, e) => e.depth >= s.depth, crash: (s, e) => e.m >= s.m, mines: (s, e) => e.open >= s.k,
   plinko: (s, e) => e.k <= 1 || e.k >= 7, upgrade: (s, e) => e.won && e.chance <= s.max, egg: (s, e) => e.price === s.price,
@@ -81,7 +89,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -379,6 +387,22 @@ export class Game {
     }
     return { ids: out };
   }
+  // ---- промокоды: создаёт админ (звёзды, билеты или промо-кейс), лимит активаций, у каждого игрока — один раз ----
+  async op_promo(u, uid, d) {
+    const code = String(d.code || "").trim().toUpperCase();
+    if (!/^[A-Z0-9_-]{2,32}$/.test(code)) fail("Введи промокод");
+    const p = await this.s.get("promo:" + code);
+    if (!p || p.off) fail("Такого промокода нет");
+    if (p.exp && Date.now() > p.exp) fail("Срок действия промокода закончился");
+    if ((p.used || 0) >= p.max) fail("Промокод закончился — все активации использованы");
+    if ((u.promos || []).includes(code)) fail("Ты уже активировал этот промокод");
+    if (p.dep && (await this.depTotal(u, uid)) < p.dep) fail(`Промокод работает после пополнения от ★ ${p.dep}`);
+    p.used = (p.used || 0) + 1; p.last = [{ id: uid, n: u.name, t: Date.now() }, ...(p.last || [])].slice(0, 100);
+    await this.s.put("promo:" + code, p);
+    u.promos = [...(u.promos || []), code].slice(-200);
+    if (p.t === "stars") u.bal += p.v; else if (p.t === "tick") u.tick += p.v; else u.promoCase = (u.promoCase || 0) + p.v;
+    return { t: p.t, v: p.v, code };
+  }
   // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
   async op_share(u) { u.shares = Math.min(20, (u.shares || 0) + 1); return { shares: u.shares }; }
 
@@ -400,12 +424,16 @@ export class Game {
   async op_case(u, uid, d) {
     const L = this.L; let c;
     if (d.free && !L.FREE_KEYS().includes(d.free)) fail("Этот кейс удалён");
-    if (d.free === "ref") {                       // кейс Friends: 5 друзей с NFT или уровнем 2+, раз в 24 ч
-      c = L.FREE("ref");
-      if ((u.refQ || 0) < REF_CASE_NEED) fail(`Пригласи ${REF_CASE_NEED} друзей с NFT или уровнем 2+ (${u.refQ || 0}/${REF_CASE_NEED})`);
-      const left = (u.refDaily || 0) + 864e5 - Date.now();
-      if (left > 0) fail(`Кейс Friends — раз в 24 ч, через ${left >= 36e5 ? Math.ceil(left / 36e5) + " ч" : Math.ceil(left / 6e4) + " мин"}`);
-      u.refDaily = Date.now();
+    if (REF_TIERS[d.free]) {                     // кейсы Friends ×10 / ×20 / ×30: столько друзей с NFT или Premium, каждый раз в 24 ч
+      const k = d.free, need = REF_TIERS[k]; c = L.FREE(k);
+      if ((u.refQ || 0) < need) fail(`Пригласи ${need} друзей с NFT или Telegram Premium (${u.refQ || 0}/${need})`);
+      u.refD = u.refD || {}; const last = k === "ref" ? (u.refDaily || 0) : (u.refD[k] || 0), left = last + 864e5 - Date.now();
+      if (left > 0) fail(`Кейс ${c.n} — раз в 24 ч, через ${left >= 36e5 ? Math.ceil(left / 36e5) + " ч" : Math.ceil(left / 6e4) + " мин"}`);
+      if (k === "ref") u.refDaily = Date.now(); else u.refD[k] = Date.now();
+    } else if (d.free === "promo") {             // промо-кейс: открывается за активированный промокод
+      c = L.FREE("promo");
+      if (!((u.promoCase || 0) > 0)) fail("Нет промо-кейсов — сначала активируй промокод");
+      u.promoCase--;
     } else if (d.free === "daily" || d.free === "tick") {
       c = L.FREE(d.free);
       if (d.free === "tick") { if (u.tick < TICKET_CASE) fail(`Нужно ${TICKET_CASE} 🎫`); u.tick -= TICKET_CASE; }
@@ -464,20 +492,22 @@ export class Game {
   huntCfg() { const c = this.st.hunt || {}; return { on: c.on !== false, minBet: Math.max(1, Math.round(c.minBet ?? 25)), prizes: Array.isArray(c.prizes) && c.prizes.length ? c.prizes : HUNT_PRIZES }; }
   huntEnsure(u) {
     const c = this.huntCfg(); if (!c.on) return;
-    const k = weekKey(); if (u.hunt && u.hunt.k === k) return;
+    const k = weekKey();
+    if (u.hunt && u.hunt.k === k && !u.hunt.v2) { u.hunt.spots = u.hunt.spots.map(s => s.got ? s : { ...s, ...HUNT_TYPES[s.t](this.L) }); u.hunt.v2 = 1; }   // старые загадки → понятные задания
+    if (u.hunt && u.hunt.k === k) return;
     const types = Object.keys(HUNT_TYPES).sort(() => rand() - .5).slice(0, 5);   // 5 разных мест из 9, у каждого игрока свои
-    u.hunt = { k, spots: types.map((t, i) => ({ t, e: HUNT_EMO[i], got: false, ...HUNT_TYPES[t](this.L) })), claimed: false };
+    u.hunt = { k, v2: 1, spots: types.map((t, i) => ({ t, e: HUNT_EMO[i], got: false, ...HUNT_TYPES[t](this.L) })), claimed: false };
   }
   huntView(u) {
     const c = this.huntCfg(); if (!c.on || !u.hunt || u.hunt.k !== weekKey()) return c.on ? null : { off: true };
-    return { spots: u.hunt.spots.map(s => ({ e: s.e, got: s.got, hint: s.hint })), claimed: u.hunt.claimed, end: weekEnd() };
+    return { spots: u.hunt.spots.map(s => ({ e: s.e, got: s.got, hint: HUNT_TXT[s.t] ? HUNT_TXT[s.t](s) : s.hint, go: HUNT_GO[s.t] })), claimed: u.hunt.claimed, end: weekEnd() };
   }
   async huntHit(u, uid, ev, amount) {
     const c = this.huntCfg(); if (!c.on || this._hf) return;
     if (amount != null && amount < c.minBet) return;            // мелкие ставки не считаются
     this.huntEnsure(u); const H = u.hunt; if (!H || H.claimed) return;
     for (const s of H.spots) {
-      if (s.got || s.t !== ev.t || !HUNT_CHECK[s.t](s, ev) || rand() >= s.ch) continue;
+      if (s.got || s.t !== ev.t || !HUNT_CHECK[s.t](s, ev)) continue;
       s.got = true; this._hf = { e: s.e, n: H.spots.filter(x => x.got).length }; return;
     }
   }
@@ -902,6 +932,22 @@ export class Game {
         ref: u.ref ? { id: u.ref, name: ref && ref.name } : null, refCount: u.refCount || 0, refEarn: u.refEarn || 0, daily: u.daily || 0, nick: u.nick || null,
         lvl: u.lvl || 0, fdb: u.fdb || 0, glog: u.glog || [], banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq, wins, tour: tr ? tr[1] : 0, tourBan: (this.st.tourBan || []).map(String).includes(uid) };
     }
+    if (op === "promo_list") {                    // все промокоды: сколько активаций, кто активировал
+      const L = [...(await this.s.list({ prefix: "promo:" })).values()].sort((a, b) => (b.t0 || 0) - (a.t0 || 0));
+      return { ok: true, list: L };
+    }
+    if (op === "promo_save") {                    // создать / изменить: код, что даёт, сколько, лимит активаций, срок, мин. пополнение
+      const code = String(d.code || "").trim().toUpperCase();
+      if (!/^[A-Z0-9_-]{2,32}$/.test(code)) fail("Код: 2–32 символа, латиница, цифры, - и _");
+      const t = ["stars", "tick", "case"].includes(d.t) ? d.t : fail("Выбери, что даёт промокод");
+      const v = Math.round(+d.v || 0); if (!(v >= 1 && v <= (t === "stars" ? 100000 : 100))) fail("Неверное количество");
+      const max = Math.round(+d.max || 0); if (!(max >= 1 && max <= 1e6)) fail("Неверный лимит активаций");
+      const old = (await this.s.get("promo:" + code)) || {};
+      const days = +d.days || 0, p = { ...old, code, t, v, max, dep: Math.max(0, Math.round(+d.dep || 0)), off: !!d.off, exp: days > 0 ? (old.exp && d.keepExp ? old.exp : Date.now() + days * 864e5) : 0, used: old.used || 0, t0: old.t0 || Date.now() };
+      await this.s.put("promo:" + code, p);
+      return { ok: true };
+    }
+    if (op === "promo_del") { await this.s.delete("promo:" + String(d.code || "").toUpperCase()); return { ok: true }; }
     if (op === "tourkick") {                      // убрать игрока из турнира (обнулить его оборот и не считать дальше)
       needId(); const t = await this.tourGet(); delete t.rows[id]; await this.s.put("tour", t);
       const st = await this.settings(); st.tourBan = [...new Set([...(st.tourBan || []).map(String), id])];

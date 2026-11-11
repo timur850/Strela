@@ -588,8 +588,8 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=9e684d46"></script>
-<script src="logic.js?v=0caaacbb"></script>
+<script src="i18n.js?v=059feeaf"></script>
+<script src="logic.js?v=ec3a40d1"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -668,7 +668,7 @@ function copyText(t){const done=()=>toast('Ссылка скопирована �
  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,old);else old()}catch(e){old()}}
 function copyRef(){copyText(refLink())}
 function shareRef(){const u='https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏹 Залетай в '+APP_NAME+' — кейсы, краш и подарки!');try{if(tg&&tg.openTelegramLink)return tg.openTelegramLink(u)}catch(e){}copyRef()}
-function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
+function sync(me,hold){if(!me)return;const u=U();u.bal=Math.max(0,me.bal-(hold||0));u.tick=me.tick;u.inv=me.inv||[];u.done=me.done||{};u.daily=me.daily||0;u.shares=me.shares||0;u.freeLock=me.freeLock||[];u.refQ=me.refQ||0;u.refDaily=me.refDaily||0;u.refD=me.refD||{};u.promoCase=me.promoCase||0;u.refCount=me.refCount||0;u.refEarn=me.refEarn||0;u.hunt=me.hunt||null;u.ps=me.ps||null;u.hist=me.hist||[];u.lvl=me.lvl||0;u.nick=me.nick||null;u.fdbOk=me.fdbOk!==false;upd()}
 let busy=false;
 async function srv(op,body,o){o=o||{};
  if(!(tg&&tg.initData)){if(!o.quiet)toast('Открой игру через бота в Telegram');return null}
@@ -795,9 +795,9 @@ drop(){dropOpen();return null},
 earn(){return earnHub()},
 earntt(){return earnPage()},
 hunt(){huntOpen();return null},
-free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED)}/${REF_NEED}</i>`).replace('class="ccard"','class="ccard friends"');
+free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),`freeCase('${k}')`).replace('<i>бесплатно</i>',`<i>👥 ${Math.min(U().refQ||0,REF_NEED[k])}/${REF_NEED[k]}</i>`).replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
-caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
+caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':S.freeK==='promo'?'🎟 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
  ${c.p?`<div class="row cnN" style="gap:6px;margin-bottom:10px">${[1,2,3,4,5].map(n=>`<button class="btn sm ${caseN()===n?'sand':'ghost'}" style="flex:1" onclick="setCaseN(${n})">x${n}</button>`).join('')}</div>`:''}
  <div class="row" style="margin-bottom:12px;gap:6px">${c.p?`<button class="btn ghost" id="demoBtn" onclick="spinCase(1)">🎲 Демо</button>`:''}<button class="btn ${fastSpin()?'sand':'ghost'}" id="fastBtn" onclick="toggleFast()">⚡ Быстро</button><button class="btn ghost" onclick="casePrizes()">🎁 Призы</button></div>
  <button class="btn sand" id="spinBtn" onclick="spinCase()">${c.p?`Крутить за ★ ${fmt(c.p*caseN())}`:'Крутить бесплатно'}</button>
@@ -1057,6 +1057,7 @@ function walletPage(){const t=S.wt||'dep';let h=`<h1 class="wh">Кошелёк</
  return h+'</div>'}
 function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).length,row=(on,ic,bg,t,sub,pill,cls='')=>`<div class="brow ${cls}" onclick="${on}"><span class="sq" style="background:${bg}">${ic}</span><div><b>${t}</b><small>${sub}</small></div>${pill?`<em>${pill}</em>`:''}</div>`;
  return `<h1 class="wh">Бонусы</h1>${fdbCard(1)}
+ <div class="card" style="margin:10px 0"><div class="ad-h">🎟 Промокод</div><div style="display:flex;gap:8px"><input id="pcode" placeholder="Введи промокод" autocapitalize="characters" style="flex:1;text-transform:uppercase"><button class="btn sm sand" style="width:auto;padding:0 18px" onclick="promoUse(0)">Активировать</button></div>${(u.promoCase||0)>0?`<button class="btn ghost" style="margin-top:8px" onclick="freeCase('promo')">🎁 Промо-кейсы: ${u.promoCase} — открыть</button>`:''}</div>
  ${FREE_KEYS().length?row("S.ccat='free';setTab('cases')",'🎁','linear-gradient(135deg,#f0b43a,#c0640a)','Бесплатные кейсы','Открывай каждый день','FREE','gold'):''}
  ${row("setTab('tasks')",'📋','linear-gradient(135deg,#6f86ff,#7b5cf5)','Задания','Получай 🎫 билеты за подписки',left?`${left} новых`:'✓')}
  ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир месяца','Топ-3 по обороту получают NFT','Месяц')}
@@ -1097,17 +1098,27 @@ function gateSheet(){const g=GATE(),n=Math.min(U().shares||0,g.shares),done=n>=g
 async function gateShare(){const txt='Забирай бесплатный кейс с подарками в '+APP_NAME+' 🏝';
  try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent(txt))}catch(e){return toast('Не удалось открыть отправку')}
  setTimeout(async()=>{const j=await srv('share',{},{quiet:1});if(j){U().shares=j.shares;gateSheet()}},1500)}
-const REF_NEED=5;
-function refSheet(){const n=Math.min(U().refQ||0,REF_NEED),ok=n>=REF_NEED,left=(U().refDaily||0)+864e5-Date.now();
- sheet(`<div class="frhead"><div class="frbadge">👥</div><h2>Кейс Friends</h2><p class="sub">Пригласи ${REF_NEED} друзей, у которых в профиле есть <b>NFT-подарок</b> или <b>уровень 2+</b>. Открывается раз в 24 часа.</p></div>
- <div class="card"><div class="frbar"><i style="width:${n/REF_NEED*100}%"></i></div><div class="frdots">${Array.from({length:REF_NEED},(_,i)=>`<span class="${i<n?'on':''}">${i<n?'✓':i+1}</span>`).join('')}</div>
- <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${REF_NEED}</b></p></div>
- ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('ref',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
- `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck()">🔄 Проверить друзей</button>`}
- <p class="sub" style="margin-top:10px;font-size:12px">Друг засчитывается, когда заходит по твоей ссылке. Если NFT или уровень у него появились позже — нажми «Проверить друзей». Скрытые подарки бот не видит.</p>
- <h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE('ref'))}`)}
+const REF_NEED={ref:10,ref20:20,ref30:30};
+function refSheet(k){k=REF_NEED[k]?k:'ref';const N=REF_NEED[k],n=Math.min(U().refQ||0,N),ok=n>=N,left=((U().refD||{})[k]||0)+864e5-Date.now();
+ sheet(`<div class="frhead"><div class="frbadge">👥</div><h2>Кейс ${esc(FREE(k).n)}</h2><p class="sub">Пригласи <b>${N} друзей</b>, у которых в профиле есть <b>NFT-подарок</b> или <b>Telegram Premium</b>. Открывается раз в 24 часа.</p></div>
+ <div class="card"><div class="frbar"><i style="width:${n/N*100}%"></i></div>
+ <p class="sub" style="margin:8px 0 0">Засчитано друзей: <b>${n}/${N}</b>${ok?'':` · осталось ${N-n}`}</p>
+ <div style="display:flex;gap:6px;margin-top:10px">${Object.keys(REF_NEED).filter(x=>FREE_KEYS().includes(x)).map(x=>`<div onclick="refSheet('${x}')" style="flex:1;text-align:center;padding:8px 4px;border-radius:12px;cursor:pointer;background:${x===k?'rgba(255,61,139,.25)':'rgba(255,255,255,.06)'};border:1px solid ${x===k?'#ff3d8b':'transparent'}"><b>×${REF_NEED[x]}</b><br><small style="color:var(--muted)">${(U().refQ||0)>=REF_NEED[x]?'✅ открыт':'🔒'}</small></div>`).join('')}</div></div>
+ ${ok?`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('${k}',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`:
+ `<button class="btn sand" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck('${k}')">🔄 Проверить друзей</button>`}
+ <div class="card" style="margin-top:10px"><div class="ad-h">Как засчитываются друзья</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. У него в профиле есть NFT-подарок (не скрытый) или Telegram Premium.<br>3. Premium засчитывается, когда друг откроет игру. Если NFT появился позже — нажми «Проверить друзей».</p></div>
+ <h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE(k))}`)}
+function promoSheet(){const n=U().promoCase||0;
+ sheet(`<div class="frhead"><div class="frbadge">🎟</div><h2>Промо-кейс</h2><p class="sub">Открывается за промокод. Промокоды публикуем в канале и у партнёров.</p></div>
+ <div class="card"><div class="ad-h">У тебя промо-кейсов: ${n}</div><div style="display:flex;gap:8px"><input id="pcode" placeholder="Введи промокод" autocapitalize="characters" style="flex:1;text-transform:uppercase"><button class="btn sm sand" style="width:auto;padding:0 16px" onclick="promoUse(1)">OK</button></div></div>
+ ${n>0?`<button class="btn sand" onclick="closeSheet();freeCase('promo',1)">🎁 Открыть промо-кейс</button>`:''}
+ <h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE('promo'))}`)}
+async function promoUse(fromCase){const el=$('#pcode'),code=(el&&el.value||'').trim().toUpperCase();if(!code)return toast('Введи промокод');
+ const j=await srv('promo',{code},{lock:1});if(!j)return;
+ toast(j.t==='stars'?`Промокод активирован: +${fmt(j.v)} ★`:j.t==='tick'?`Промокод активирован: +${j.v} 🎫`:`Промокод активирован: +${j.v} промо-кейс`);
+ if(el)el.value='';if(fromCase)promoSheet();else if(S.tab==='bonus'&&!S.stack.length)setTab('bonus')}
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
-async function refCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet()}catch(e){toast('Нет связи с сервером')}}
+async function refCheck(k){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet(k)}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
 const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
 const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.channel=e.channel||'https://t.me/StrelaCase_TikTok';e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};
@@ -1185,15 +1196,16 @@ function huntFx(h){if(!h)return;const d=document.createElement('div');d.classNam
  try{tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred('success')}catch(e){}
  toast(h.n>=5?`Все 5 сокровищ найдены! Открой сундук 🗺️`:`Найдено сокровище ${huntE(h.e)} (${h.n}/5)!`)}
 const HUNT_DELAY={case:5600,dig:6000,egg:3500,upgrade:5600,plinko:3500,contract:3000};
+function huntGo(k){closeSheet();if(k==='cases'){S.ccat='all';setTab('cases')}else open_(k)}
 async function huntOpen(){huntSheet();const j=await srv('hunt_state',{},{quiet:1});if(j){S.huntInfo=j;huntSheet()}}
 function huntSheet(res){const H=U().hunt,I=S.huntInfo;
  if(!H||H.off){sheet(`<h2>🗺️ Охота за сокровищами</h2><div class="card empty">${H&&H.off?'Охота сейчас выключена':'Загрузка…'}</div>`);return}
  const got=H.spots.filter(x=>x.got).length,P=(I&&I.cfg&&I.cfg.prizes)||[],W=P.reduce((a,x)=>a+x[1],0)||1;
- sheet(`<h2>🗺️ Охота за сокровищами</h2><p class="sub">Найди все 5 тайников за неделю и открой сундук. У каждого игрока тайники свои и каждую неделю новые.</p>
+ sheet(`<h2>🗺️ Охота за сокровищами</h2><p class="sub">Выполни 5 заданий за неделю и открой сундук со звёздами. Задания у каждого свои и обновляются в понедельник.</p>
  ${res?`<div class="dropwin"><div class="burst"></div><div style="font-size:60px;position:relative">🧰</div><h2 style="margin:4px 0;position:relative">+${fmt(res)} ★</h2><small style="color:var(--muted);position:relative">Уже на балансе</small></div>`:''}
  <div class="card"><div class="ad-h">Найдено ${got}/5 · до конца недели ${dropLeft(H.end)}</div>
- ${H.spots.map(x=>`<div class="hspot ${x.got?'':'no'}"><div class="he">${huntE(x.e)}</div><div style="flex:1"><b>${x.got?'Найдено ✅':'Подсказка'}</b><small>${esc(x.hint)}</small></div></div>`).join('')}
- <p class="sub" style="text-align:left;margin:4px 0 0;font-size:12px">Сокровища находятся только в платных играх от ★ ${fmt((I&&I.cfg&&I.cfg.minBet)||25)}. Подсказки — загадки: где именно искать, придётся догадаться.</p></div>
+ ${H.spots.map((x,i)=>`<div class="hspot ${x.got?'':'no'}"><div class="he">${huntE(x.e)}</div><div style="flex:1"><b>${x.got?'Найдено ✅':`Задание ${i+1}`}</b><small>${esc(x.hint)}</small></div>${!x.got&&x.go&&!H.claimed?`<button class="btn sm sand" style="width:auto;padding:0 12px;flex:none" onclick="huntGo('${x.go}')">Играть</button>`:''}</div>`).join('')}
+ <p class="sub" style="text-align:left;margin:4px 0 0;font-size:12px"><b>Как найти:</b> выполни задание в игре со ставкой от <b>★ ${fmt((I&&I.cfg&&I.cfg.minBet)||25)}</b> — сокровище засчитается сразу, без везения. Бесплатные кейсы и ставки меньше не считаются.</p></div>
  ${P.length?`<div class="card"><div class="ad-h">🧰 Что в сундуке</div><div style="display:flex;gap:6px;flex-wrap:wrap">${P.map(([v,w])=>`<div style="flex:1;min-width:22%;text-align:center;padding:6px;border-radius:12px;background:rgba(255,255,255,.08)"><b class="star">★ ${fmt(v)}</b><br><small style="color:var(--muted)">${(w/W*100).toFixed(0)}%</small></div>`).join('')}</div></div>`:''}
  ${I&&I.winners&&I.winners.length?`<div class="card"><div class="ad-h">🏅 Нашли всё на этой неделе</div><div class="list">${I.winners.map((w,i)=>`<div class="it"><b style="width:24px">${i+1}</b><div class="nm">${esc(w.n||'Игрок')}</div><b class="star">+${fmt(w.v)} ★</b></div>`).join('')}</div></div>`:''}
  <button class="btn sand" ${got<5||H.claimed?'disabled':''} onclick="huntClaim()">${H.claimed?'✅ Сундук открыт — новая охота в понедельник':got<5?`🔒 Сундук: найдено ${got}/5`:'🧰 Открыть сундук'}</button>`)}
@@ -1216,7 +1228,7 @@ function dropSheet(res,anim){const D=S.drop,T=DROP_T(D);if(!D){sheet(`<h2>📦 $
 async function dropClaim(){const b=document.querySelector('#sheet button.sand');if(b)b.disabled=true;const im=document.querySelector('#sheet .dropimg');if(im)im.classList.add('shake');
  const [j]=await Promise.all([srv('drop',{},{lock:1,hold:j=>j.prize}),new Promise(r=>setTimeout(r,1300))]);if(!j){if(b)b.disabled=false;if(im)im.classList.remove('shake');return}
  S.drop=j.drop;dropSheet(j.prize);try{tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred('success')}catch(e){}toast(`+${fmt(j.prize)} ★`)}
-function freeCase(k,ok){if(!FREE_KEYS().includes(k))return toast('Этот кейс удалён');if(k==='ref'){if(!ok)return refSheet();S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
+function freeCase(k,ok){if(!FREE_KEYS().includes(k))return toast('Этот кейс удалён');if(k==='promo'&&!ok)return promoSheet();if(REF_NEED[k]||k==='promo'){if(REF_NEED[k]&&!ok)return refSheet(k);S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300);return}
 if(k==='tick'){if(U().tick<1)return toast('Нужен 1 🎫 — приглашай друзей: 3 друга = 1 🎫')}else{{const left=(U().daily||0)+GATE().hours*36e5-Date.now();if(left>0)return toast(`Кейс доступен раз в ${GATE().hours} ч — через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`)}if(GATE().on&&!ok&&(U().shares||0)<GATE().shares)return gateSheet()}
  S.curCase=FREE(k);S.freeK=k;S.spunOnce=0;closeSheet();S.stack.push('caseOpen');render(G.caseOpen());fillStrip();setTimeout(spinCase,300)}
 const rnd01=()=>Math.random();
@@ -1736,7 +1748,7 @@ drop(){const D=ADM.drop||{},wk=D.period==='week';return `<div class="card"><div 
  <div class="field"><input id="drB" type="number" min="0" value="${D.budget??(wk?1000:200)}"><span class="sub" style="align-self:center">★ — фонд ${wk?'на всю неделю':'на день'}</span></div>
  <div class="field"><input id="drP" value="${esc((D.prizes||[[5,40],[10,30],[15,15],[25,10],[50,5]]).map(([v,w])=>v+':'+w).join(' '))}"><span class="sub" style="align-self:center;white-space:nowrap">★:вес</span></div>
  <p class="sub" style="text-align:left;margin:0 0 8px;font-size:12px">Призы через пробел в виде <b>звёзды:вес</b>, например <b>5:40 10:30</b>. Проценты считаются автоматически, игроки их видят.</p>
-<button class="btn sand" onclick="dropSave()">Сохранить</button></div>${huntAdm()}`},
+<button class="btn sand" onclick="dropSave()">Сохранить</button></div>${huntAdm()}${promoAdm()}`},
 games(){return `<div class="card"><div class="ad-h">🕹 Включение игр</div>
  ${GAMES.map(([id,,ic,t])=>`<div class="grow"><span style="font-size:28px">${ic}</span><div class="nm">${t}</div><button class="sw ${ADM.off[id]?'':'on'}" onclick="ADM.off['${id}']=!ADM.off['${id}'];this.classList.toggle('on');saveAdm()"></button></div>`).join('')}</div>`},
 soc(){if(!ADM.socials)ADM.socials=structuredClone(DEF_SOCIALS);
@@ -1831,6 +1843,27 @@ function huntSave(){const pr=$('#huP').value.trim().split(/\s+/).map(x=>x.split(
  ADM.hunt={on:$('#huOn').checked,minBet:Math.max(1,Math.round(+$('#huMin').value||25)),prizes:pr};saveAdm(1);setTab('admin');toast('Охота сохранена')}
 function dropSave(){const pr=$('#drP').value.trim().split(/\s+/).map(x=>x.split(':').map(Number)).filter(([v,w])=>v>0&&w>0).map(([v,w])=>[Math.round(v),w]);if(!pr.length)return toast('Укажи призы, например 5:40 10:30');
  ADM.drop={period:(ADM.drop||{}).period==='week'?'week':'day',on:$('#drOn').checked,budget:Math.max(0,Math.round(+$('#drB').value||0)),prizes:pr};saveAdm(1);setTab('admin');toast('Дроп сохранён')}
+/* ===== промокоды: создать, лимит активаций, кто активировал ===== */
+const PT={stars:'★ звёзды',tick:'🎫 билеты',case:'🎟 промо-кейс'};
+function promoAdm(){if(!S.promoL&&!S.promoLd){S.promoLd=1;adApi('promo_list',{}).then(j=>{S.promoLd=0;if(j){S.promoL=j.list;if(S.tab==='admin'&&!S.stack.length)setTab('admin')}})}
+ const L=S.promoL||[],e=S.promoE||{};
+ return `<div class="card" id="promoAdm"><div class="ad-h">🎟 Промокоды</div>
+ <div class="field"><input id="prC" placeholder="КОД, напр. STRELA100" value="${esc(e.code||'')}" style="text-transform:uppercase"></div>
+ <div class="row" style="gap:6px;margin-bottom:6px">${Object.keys(PT).map(k=>`<button class="btn sm ${(e.t||'stars')===k?'sand':'ghost'}" style="flex:1" onclick="promoE({t:'${k}'})">${PT[k]}</button>`).join('')}</div>
+ <div class="field"><input id="prV" type="number" min="1" value="${e.v||10}"><span class="sub" style="align-self:center;white-space:nowrap">${(e.t||'stars')==='stars'?'★ за активацию':(e.t==='tick'?'🎫 за активацию':'кейсов за активацию')}</span></div>
+ <div class="field"><input id="prM" type="number" min="1" value="${e.max||100}"><span class="sub" style="align-self:center;white-space:nowrap">активаций всего</span></div>
+ <div class="field"><input id="prD" type="number" min="0" value="${e.days||0}"><span class="sub" style="align-self:center;white-space:nowrap">дней действует (0 — без срока)</span></div>
+ <div class="field"><input id="prP" type="number" min="0" value="${e.dep||0}"><span class="sub" style="align-self:center;white-space:nowrap">★ пополнений нужно (0 — всем)</span></div>
+ <button class="btn sand" onclick="promoSave()">${L.some(x=>x.code===(e.code||'').toUpperCase())?'💾 Сохранить промокод':'➕ Создать промокод'}</button>
+ <p class="sub" style="text-align:left;margin:8px 0 0;font-size:12px">Каждый игрок может активировать один код только один раз. Игрок вводит код в «Бонусы → Промокод» или в промо-кейсе.</p>
+ ${L.length?`<div class="list" style="margin-top:10px">${L.map(x=>{const end=x.exp&&Date.now()>x.exp,full=(x.used||0)>=x.max;return `<div class="it" style="flex-wrap:wrap"><div class="nm" style="flex:1"><b>${esc(x.code)}</b> · ${x.t==='stars'?'★ '+fmt(x.v):x.t==='tick'?'🎫 '+x.v:'🎟 '+x.v+' кейс'}<br><small style="color:var(--muted)">Активировано <b>${x.used||0}/${x.max}</b>${x.dep?` · от ★ ${fmt(x.dep)} пополнений`:''}${x.exp?` · ${end?'⛔ срок истёк':'до '+new Date(x.exp).toLocaleDateString('ru-RU')}`:''}${x.off?' · ⏸ выключен':full?' · ✅ закончился':''}</small></div>
+  <button class="btn sm ghost" style="width:auto;padding:0 10px" onclick="promoWho('${esc(x.code)}')">👥</button><button class="btn sm ghost" style="width:auto;padding:0 10px" onclick="promoEdit('${esc(x.code)}')">✏️</button><button class="btn sm ghost" style="width:auto;padding:0 10px" onclick="promoDel('${esc(x.code)}')">🗑</button></div>`}).join('')}</div>`:`<div class="empty" style="margin-top:8px">${S.promoLd?'Загрузка…':'Промокодов пока нет'}</div>`}</div>`}
+function promoE(x){const c=$('#prC');S.promoE=Object.assign({},S.promoE,{code:c?c.value:'',v:+($('#prV')||{}).value||10,max:+($('#prM')||{}).value||100,days:+($('#prD')||{}).value||0,dep:+($('#prP')||{}).value||0},x);setTab('admin');setTimeout(()=>{const e=$('#promoAdm');if(e)e.scrollIntoView({block:'center'})},50)}
+async function promoSave(){promoE({});const e=S.promoE,code=(e.code||'').trim().toUpperCase();if(!code)return toast('Введи код');
+ const j=await adApi('promo_save',{code,t:e.t||'stars',v:e.v,max:e.max,days:e.days,dep:e.dep,keepExp:e.keepExp&&!e.daysChanged});if(!j)return;toast('Промокод '+code+' сохранён');S.promoE={};S.promoL=null;setTab('admin')}
+function promoEdit(code){const x=(S.promoL||[]).find(p=>p.code===code);if(!x)return;S.promoE={code:x.code,t:x.t,v:x.v,max:x.max,dep:x.dep||0,days:x.exp?Math.max(1,Math.ceil((x.exp-Date.now())/864e5)):0};setTab('admin');setTimeout(()=>{const e=$('#promoAdm');if(e)e.scrollIntoView({block:'center'})},50)}
+async function promoDel(code){if(!confirm('Удалить промокод '+code+'?'))return;const j=await adApi('promo_del',{code});if(!j)return;S.promoL=null;setTab('admin');toast('Удалён')}
+function promoWho(code){const x=(S.promoL||[]).find(p=>p.code===code);if(!x)return;sheet(`<h2>🎟 ${esc(code)}</h2><p class="sub">Активировано ${x.used||0}/${x.max}. Последние 100:</p>${(x.last||[]).length?`<div class="list">${x.last.map(r=>`<div class="it"><div class="nm">${esc(r.n||'Игрок')} <small style="color:var(--muted)">ID ${esc(r.id)}</small></div><small style="color:var(--muted)">${new Date(r.t).toLocaleString('ru-RU')}</small></div>`).join('')}</div>`:'<div class="card empty">Ещё никто не активировал</div>'}`)}
 async function adApi(op,body){if(!(tg&&tg.initData)){toast('Открой через бота в Telegram');return null}
  try{const j=await API('api/admin/'+op,body);if(!j.ok){toast(j.err||'Ошибка');return null}
   if(j.user&&j.user.id===ME.id)sync(j.user);return j}catch(e){toast('Нет связи с сервером');return null}}

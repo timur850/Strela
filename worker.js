@@ -264,10 +264,10 @@ async function refInfo(env, uid) {
   } catch (e) { out.errGifts = String(e); }
   return out;
 }
-async function refGood(env, uid) {
+async function refGood(env, uid, prem) {   // друг засчитывается: NFT-подарок в профиле или Telegram Premium
+  if (prem) return "Premium";
   const i = await refInfo(env, uid);
-  const ok = i.nft > 0 || (i.level != null && i.level >= REF_LEVEL);
-  return ok ? (i.nft > 0 ? `NFT: ${i.nft}` : `уровень ${i.level}`) : "";
+  return i.nft > 0 ? `NFT: ${i.nft}` : "";
 }
 const REF_LEVEL = 2;   // минимальный уровень профиля для кейса Friends
 // технический перерыв: игрокам всё закрыто, админам и владельцам — открыто
@@ -299,8 +299,8 @@ async function setupBot(env, origin, hookKey, dropPending) {
 const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
-const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick"]);
+const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash", "promo"]);   // ref_qualify / ref_pending вызывает только сервер
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -439,7 +439,7 @@ async function handleUpdate(env, origin, upd) {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
     if (m && msg.from) {
       const b = await op(env, "ref_bind", msg.from.id, uname(msg.from), { ref: m[1] });
-      const why = b && b.bound ? await refGood(env, msg.from.id) : "";
+      const why = b && b.bound ? await refGood(env, msg.from.id, !!msg.from.is_premium) : "";
       if (why) await op(env, "ref_qualify", msg.from.id, uname(msg.from), { why });
     }
   }
@@ -744,6 +744,9 @@ export default {
           d.gate = { on: !!g.on, hours: Math.max(1, Math.min(168, +g.hours || 24)), shares: Math.max(0, Math.min(20, Math.round(+g.shares || 0))), channel: String(g.channel || "") };
           if (d.gate.on && d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
         }
+      }
+      if (name === "me" && u.is_premium && !(await getKey(env, "pq:" + u.id))) {   // друг с Premium открыл игру — засчитываем пригласившему (один раз)
+        await putKey(env, "pq:" + u.id, "1"); await op(env, "ref_qualify", u.id, uname(u), { why: "Premium" });
       }
       const res = await op(env, name, u.id, uname(u), d);
       if (name === "earn_apply" && res.ok && res.earn) {   // новая заявка на оплату ролика → владельцам и админам
