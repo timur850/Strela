@@ -1938,7 +1938,7 @@ function ceDelete(){const c=ceGet(S.ceKey);if(!c)return;if(!confirm(`Удали�
  saveAdm(1);closeSheet();setTab('admin');toast('Кейс удалён 🗑')}
 function ceRestore(n){if(ADM.caseCfg[n])delete ADM.caseCfg[n].del;saveAdm(1);setTab('admin');toast('Кейс возвращён')}
 
-upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');if(location.hash==='#rules'||(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param==='rules'))setTimeout(rulesSheet,400);navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(()=>{if(document.hidden)return;const fast=!S.stack.length&&(S.tab==='games'||S.tab==='tour');if(fast||Date.now()-(S.feedAt||0)>20000)loadFeed()},5000);
+upd();setTab(location.hash==='#admin'&&IS_ADMIN?'admin':'games');if(/rules/.test(location.hash)||new URLSearchParams(location.search).get('p')==='rules'||(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param==='rules'))setTimeout(rulesSheet,700);navBadge();loadShared();if(IS_ADMIN&&tg&&tg.initData)setTimeout(()=>adLoad(),300);srv('me',{},{quiet:1}).then(()=>{navBadge();if(S.tab==='profile'&&!S.stack.length)setTab('profile')});loadFeed();setInterval(()=>{if(document.hidden)return;const fast=!S.stack.length&&(S.tab==='games'||S.tab==='tour');if(fast||Date.now()-(S.feedAt||0)>20000)loadFeed()},5000);
 </script>
 <!-- ===== ОСЕННЯЯ ТЕМА (включается классом body.autumn) ===== -->
 <style id="autumn-css">

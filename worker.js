@@ -433,7 +433,7 @@ async function handleUpdate(env, origin, upd) {
   if (msg.from && isOwner(msg.from.username) && msg.chat.type === "private") await putKey(env, "ownerchat:" + msg.from.username.toLowerCase(), String(msg.chat.id));
   const chat = msg.chat.id, cmd = msg.text.split(/\s/)[0].split("@")[0];
   const en = isEn(msg.from);
-  const kb = { inline_keyboard: [[{ text: en ? "🏝 Play" : BUTTON_TEXT, web_app: { url: origin + "/" } }, { text: en ? "📜 Rules" : "📜 Правила", web_app: { url: origin + "/#rules" } }]] };
+  const kb = { inline_keyboard: [[{ text: en ? "🏝 Play" : BUTTON_TEXT, web_app: { url: origin + "/" } }, { text: en ? "📜 Rules" : "📜 Правила", web_app: { url: origin + "/?p=rules" } }]] };
   if (cmd === "/start" && msg.from && msg.chat.type === "private") await putKey(env, "bu:" + msg.from.id, "1");
   if (cmd === "/start") {
     const m = msg.text.match(/^\/start(?:@\S+)?\s+ref_(\d{3,15})/);
@@ -500,7 +500,7 @@ async function handleUpdate(env, origin, upd) {
     await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text: t });
   }
   else if (cmd === "/help") await tg(env, "sendMessage", { chat_id: chat, text: (en ? "Support: " : "Поддержка: ") + SUPPORT });
-  else await tg(env, "sendMessage", { chat_id: chat, text: en ? "Open the game with the button below 👇" : "Открой игру кнопкой ниже 👇", reply_markup: kb });
+  else if (cmd !== "/start") await tg(env, "sendMessage", { chat_id: chat, text: en ? "Open the game with the button below 👇" : "Открой игру кнопкой ниже 👇", reply_markup: kb });   // на /start уже ушло приветствие
 }
 
 export default {
