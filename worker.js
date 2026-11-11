@@ -587,6 +587,17 @@ export default {
         { headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
 
     // ===== ПОПОЛНЕНИЕ ЗВЁЗДАМИ =====
+    // зачисление звёзд из STRELA STARS (покупка «на баланс казино»). Доступ — только с секретом EXT_KEY (одинаковый в обоих воркерах)
+    if (path === "/ext/credit" && req.method === "POST") {
+      const key = String(env.EXT_KEY || "").trim(), got = String(req.headers.get("x-ext-key") || "").trim();
+      if (!key || key.length < 16 || got.length !== key.length || (await sha256hex("ext:" + got)) !== (await sha256hex("ext:" + key))) return json({ ok: false, err: "bad key" }, 403);
+      const b = await req.json().catch(() => ({}));
+      const uid = String(b.uid || ""), a = Math.floor(+b.a || 0), id = String(b.id || "");
+      if (!/^\d{3,15}$/.test(uid) || !(a > 0 && a <= 1000000) || !/^[\w:-]{1,64}$/.test(id)) return json({ ok: false, err: "bad params" }, 400);
+      const r = await op(env, "credit_ext", uid, String(b.name || "").slice(0, 64), { id, a, from: String(b.from || "").slice(0, 32) });
+      if (r.ok && r.got) { try { await tg(env, "sendMessage", { chat_id: Number(uid), text: `💫 На баланс зачислено ${a} ★ из ${String(b.from || "STRELA STARS").slice(0, 32)}`, reply_markup: { inline_keyboard: [[{ text: "🎁 Открыть", web_app: { url: origin + "/" } }]] } }); } catch (e) {} }
+      return json(r.ok ? { ok: true, got: r.got || 0, already: !!r.already, bal: r.me && r.me.bal } : { ok: false, err: r.err || r.error || "ошибка" });
+    }
     if (path === "/api/stars/invoice" && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);

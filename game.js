@@ -910,6 +910,14 @@ export class Game {
     return { got: a, ton: d.ton, bonus };
   }
 
+  async op_credit_ext(u, uid, d) {          // вызывает только сервер: покупка в STRELA STARS «на баланс казино» (проверено секретом EXT_KEY)
+    const key = "ext:" + d.id;
+    if (await this.s.get(key)) return { got: 0, already: true };
+    const a = Math.max(0, Math.floor(+d.a || 0));
+    await this.s.put(key, JSON.stringify({ uid, a, from: d.from || "", t: Date.now() }));
+    u.bal += a; await this.stat("dep", a); this.hist(u, { k: "dep", m: "strela", a }); const bonus = this.depDone(u, a); await this.stat("fdb", bonus); await this.refBonus(u, a);
+    return { got: a, bonus };
+  }
   async op_credit_cp(u, uid, d) {           // вызывает только сервер после проверки счёта в CryptoBot
     const key = "cp:" + d.id;
     if (await this.s.get(key)) return { got: 0, already: true };
