@@ -76,7 +76,7 @@ function makeLogic(getADM,rand){
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FK={daily:0,tick:1,ref:2,ref20:3,ref30:4,promo:5};
  const FREE=k=>caseObj(FREE_DEF[FK[k]||0],1);
- const FREE_KEYS=()=>['daily','tick','ref','ref20','ref30','promo'].filter(k=>!FREE(k).del);   // бесплатные, не удалённые в админке
+ const FREE_KEYS=()=>['daily','tick','ref','ref20','ref30','promo'].filter(k=>/^ref/.test(k)||!FREE(k).del);   // кейсы Friends всегда есть (×20/×30 появляются по мере приглашений)   // бесплатные, не удалённые в админке
  function itemsPick(items){const L0=items.filter(([s])=>giftBy(s)),L=L0.some(x=>x[1]>0)?L0.filter(x=>x[1]>0):L0;   // вес 0 = только витрина, не выпадает
  let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
  function autoDist(cost,rtp){const pool=prizePool(cost);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
