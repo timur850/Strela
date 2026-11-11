@@ -106,7 +106,7 @@ const DIG_W=11, DIG_TIER=[100,150,250], DIG_TIER_P=[.6,.3,.1], DIG_KS=[1,2,5,10]
 const DIG_HARD={g:1,d:1,v:1,s:2,c:2,p:3,C:3,I:3,R:3,L:3,G:3,D:4,E:4,T:1,W:2,O:1e9};
 const DIG_VAL={C:.1,I:.2,R:.3,L:.4,G:.6,D:4,E:15};
 const DIG_ORE_P=[['C',.07],['I',.045],['R',.035],['L',.025],['G',.018],['D',.005],['E',.002],['T',.006],['W',.005]];
-let DIG_MT={1:[4.7751,9.4379,15.5654],2:[5.996,11.5452,19.4876],5:[6.7084,13.6814,22.4273],10:[7.4058,14.2023,23.5718]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
+let DIG_MT={1:[5.0593,9.1784,14.7943],2:[5.9967,11.1694,17.7792],5:[7.0222,12.9043,20.5506],10:[7.2268,13.6857,21.3719]};   // средний «сырой» выигрыш за игру по каждой кирке (калибровка)
 function digGen(rand,K){const H=150,rows=[];
  for(let y=0;y<H;y++){let r='';for(let x=0;x<DIG_W;x++){let ch;
   if(y===0)ch='g';else if(y<3)ch=rand()<.7?'d':'v';
@@ -131,9 +131,11 @@ function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp
   if(ch==='T'&&!tnt){ev.push({e:'x',x:cx,y:cy});for(let yy=Math.max(0,cy-1);yy<=Math.min(H-2,cy+2);yy++)for(let xx=Math.max(0,cx-1);xx<=Math.min(DIG_W-1,cx+1);xx++)brk(xx,yy,1);ev.push({e:'xe'});
    P.vy-=10+R()*6;P.vx+=(R()-.5)*14}};   /* взрыв 3×4, кирку подбрасывает */
  const hit=(cx,cy)=>{P.hp--;hp[cy][cx]--;ev.push({e:'h',x:cx,y:cy,p:P.hp,d:1-hp[cy][cx]/(DIG_HARD[g[cy][cx]]||1)});if(hp[cy][cx]<=0)brk(cx,cy,0);if(P.hp<=0)end()};
- const bounce=(nX,nY,vn)=>{const e=.45;P.vx-=(1+e)*vn*nX;P.vy-=(1+e)*vn*nY;
-  const cur=P.vx*nX+P.vy*nY,mn=nY<-.5?5+R()*5:3+R()*4;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}   /* от пола подпрыгивает выше, от стен/потолка слабее */
-  if(nY<-.5){const dr=R()<.5?-1:1;P.vx=P.vx*.35+dr*(5+R()*8)}else{const k=(R()-.5)*8;P.vx+=-nY*k;P.vy+=nX*k}P.w=(R()-.5)*36};   /* от пола — сильно в случайную сторону */
+ const bounce=(nX,nY,vn)=>{const e=.25;P.vx-=(1+e)*vn*nX;P.vy-=(1+e)*vn*nY;
+  if(nY<-.5){   /* пол: в основном катится, лишь иногда подскакивает */
+   const big=R()<.12,mn=big?4.5+R()*3:1.4+R()*2;const cur=P.vx*nX+P.vy*nY;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}
+   const sg=P.vx<0?-1:1,dr=R()<.82?sg:-sg;P.vx=dr*(4+R()*5);P.w=P.vx/DIG_RAD*.9}
+  else{const cur=P.vx*nX+P.vy*nY,mn=2+R()*3;if(cur<mn){P.vx+=(mn-cur)*nX;P.vy+=(mn-cur)*nY}const k=(R()-.5)*5;P.vx+=-nY*k;P.vy+=nX*k;P.w=-P.w*.6+(R()-.5)*10}};
  P.step=()=>{if(P.done)return;P.time+=DIG_DT;
   P.vy+=DIG_G*DIG_DT;const sp=Math.sqrt(P.vx*P.vx+P.vy*P.vy);if(sp>24){P.vx*=24/sp;P.vy*=24/sp}
   P.x+=P.vx*DIG_DT;P.y+=P.vy*DIG_DT;P.a+=P.w*DIG_DT;
@@ -145,7 +147,7 @@ function digPhys(w,tier,K){const H=w.rows.length,g=w.rows.map(r=>r.split('')),hp
     let nX=0,nY=-1;if(d2>1e-9){const d=Math.sqrt(d2);nX=dx/d;nY=dy/d;P.x=nx+nX*DIG_RAD;P.y=ny+nY*DIG_RAD}else P.y=cy-DIG_RAD;
     const vn=P.vx*nX+P.vy*nY;if(vn>=0)continue;
     bounce(nX,nY,vn);
-    if(ch!=='O'&&-vn>2&&P.time-(cool[cy*16+cx]||-9)>.08){cool[cy*16+cx]=P.time;hit(cx,cy);if(P.done)return}}}
+    if(ch!=='O'&&-vn>1.1&&P.time-(cool[cy*16+cx]||-9)>.14){cool[cy*16+cx]=P.time;hit(cx,cy);if(P.done)return}}}
   if(P.time>240||P.y>H-1.5)end()};
  return P}
 function digSim(w,tier,K){const P=digPhys(w,tier,K);for(let i=0;i<120*300&&!P.done;i++)P.step();if(!P.done){P.done=1;P.ev.push({e:'end',p:P.hp})}return {ev:P.ev,raw:P.raw,T:P.time}}
