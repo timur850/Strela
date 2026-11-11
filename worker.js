@@ -362,7 +362,7 @@ async function starsBot(env) {
   if (_sb && Date.now() - _sb.t < 600e3) return _sb.bot;
   try { const r = await fetch(url + "/botname"), t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {}
     if (!j) throw new Error("HTTP " + r.status + " " + t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 80));
-    _sb = { t: Date.now(), bot: j.case && j.bot ? String(j.bot) : "", err: j.case ? "" : "в STRELA STARS нет секрета CASE_KEY" }; }
+    _sb = { t: Date.now(), bot: j.case && j.bot ? String(j.bot) : "", app: !!j.app, err: j.case ? "" : "в STRELA STARS нет секрета CASE_KEY" }; }
   catch (e) { _sb = { t: Date.now() - 540e3, bot: _sb ? _sb.bot : "", err: String(e.message || e) }; }   // ошибка — повтор через минуту
   return _sb.bot;
 }
@@ -573,7 +573,7 @@ export default {
 
     // общие настройки админки
     // настройки этой копии для мини-аппа: юзернейм бота, владельцы, куда слать подарки
-    if (path === "/api/cfg") return json({ name: NAME, bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT, starsBot: await starsBot(env), starsErr: (_sb && _sb.err) || "" });
+    if (path === "/api/cfg") return json({ name: NAME, bot: await botName(env).catch(() => ""), owners: OWNERS, giftAcc: CONFIG.GIFT_ACC, support: SUPPORT, starsBot: await starsBot(env), starsApp: !!(_sb && _sb.app), starsErr: (_sb && _sb.err) || "" });
     if (path === "/api/settings") {
       if (req.method === "GET") return json(await loadSettings(env));
       if (req.method === "POST") {
