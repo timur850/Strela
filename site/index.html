@@ -588,7 +588,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=5bfaaed9"></script>
+<script src="i18n.js?v=e0cac246"></script>
 <script src="logic.js?v=41f6a042"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -657,7 +657,7 @@ const U=()=>ADM.users[ME.id];
 const S={tab:'games',stack:[]};
 
 function upd(){$('#bal').textContent=fmt(U().bal);$('#tick').textContent=U().tick;saveAdm()}
-function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}
+function toast(t,ms){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),ms||1900);try{tg&&tg.HapticFeedback.notificationOccurred('success')}catch(_){}}
 /* ===== баланс и подарки хранит сервер; здесь только кэш для показа ===== */
 let BOT_USERNAME='StrelaCase_bot';
 let APP_NAME='STRELA CASE'; /* название — у каждой копии своё (приходит с сервера) */
@@ -1117,7 +1117,7 @@ async function promoUse(fromCase){const el=$('#pcode'),code=(el&&el.value||'').t
  toast(j.t==='stars'?`Промокод активирован: +${fmt(j.v)} ★`:j.t==='tick'?`Промокод активирован: +${j.v} 🎫`:`Промокод активирован: +${j.v} промо-кейс`);
  if(el)el.value='';if(fromCase)promoSheet();else if(S.tab==='bonus'&&!S.stack.length)setTab('bonus')}
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
-async function refCheck(wi){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Засчитано новых друзей: +${j.added} ✅`:(j.checked?'Новых подходящих друзей нет':'Все приглашённые уже проверены'));refSheet(wi)}catch(e){toast('Нет связи с сервером')}}
+async function refCheck(wi){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Найдено друзей с NFT: +${j.added}. В вывод засчитаются, когда откроют реф-кейс`:(j.checked?'Новых друзей с NFT нет':'Все приглашённые уже проверены'),4500);refSheet(wi)}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
 const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
 const EARN=()=>{const e=Object.assign({},EARN_DEF,ADM.earn||{});e.channel=e.channel||'https://t.me/StrelaCase_TikTok';e.rows=(ADM.earn&&ADM.earn.rows)||EARN_DEF.rows.map(r=>r[0]==='gameplay'?[r[0],'Геймплей в '+APP_NAME,r[2],r[3]]:r);return e};

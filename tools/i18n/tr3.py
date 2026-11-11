@@ -93,6 +93,8 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+    "Найдено друзей с NFT: +{0}. В вывод засчитаются, когда откроют реф-кейс": "Friends with NFT found: +{0}. They'll count toward withdrawal once they open the referral case",
+    "Новых друзей с NFT нет": "No new friends with NFT",
     "· NFT сейчас:": "· NFT now:",
     "· засчитан {0}": "· counted {0}",
     "· пополнил ★ {0}": "· deposited ★ {0}",
