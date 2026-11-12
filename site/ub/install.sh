@@ -7,11 +7,14 @@ DIR="$HOME/strela-ub"
 echo "=== Автовыдача NFT для STRELA CASE ==="
 mkdir -p "$DIR" && cd "$DIR"
 
-echo "→ Ставлю Python и нужные пакеты (может занять минуту)…"
-if command -v apt-get >/dev/null 2>&1; then (sudo apt-get update -qq && sudo apt-get install -y -qq python3 python3-pip curl) >/dev/null 2>&1 || true; fi
-python3 -m pip install -q --break-system-packages https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip 2>/dev/null \
-  || python3 -m pip install -q https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip
-python3 -m pip install -q --break-system-packages qrcode 2>/dev/null || python3 -m pip install -q qrcode 2>/dev/null || true
+echo "→ Ставлю Python 3.12 и нужные пакеты (может занять пару минут)…"
+# Telethon плохо работает с Python 3.14 — ставим отдельный Python 3.12 через uv, системный не трогаем
+if command -v apt-get >/dev/null 2>&1; then (sudo apt-get update -qq && sudo apt-get install -y -qq curl) >/dev/null 2>&1 || true; fi
+command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+export PATH="$HOME/.local/bin:$PATH"
+[ -x .venv/bin/python ] || uv venv -q -p 3.12 .venv
+uv pip install -q -p .venv/bin/python https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip qrcode
+PY="$DIR/.venv/bin/python"
 curl -sL "$SERVER/ub/strela_ub.py" -o strela_ub.py
 
 if [ ! -f .env ] || ! grep -q '^UB_KEY=' .env; then
@@ -26,7 +29,7 @@ fi
 if ! grep -q '^SESSION=' .env; then
   echo
   echo "→ Вход в аккаунт-склад по номеру телефона."
-  python3 strela_ub.py login
+  "$PY" strela_ub.py login
 fi
 
 echo "→ Включаю автозапуск…"
@@ -37,7 +40,7 @@ Description=STRELA autogift
 After=network-online.target
 [Service]
 WorkingDirectory=$DIR
-ExecStart=$(command -v python3) $DIR/strela_ub.py
+ExecStart=$PY $DIR/strela_ub.py
 Restart=always
 RestartSec=10
 [Install]
@@ -48,7 +51,7 @@ EOF
   echo
   echo "✅ Готово. Автовыдача работает в фоне. Логи: journalctl -u strela-ub -f"
 else
-  nohup python3 strela_ub.py > ub.log 2>&1 &
+  nohup "$PY" strela_ub.py > ub.log 2>&1 &
   echo "✅ Готово. Автовыдача запущена в фоне. Логи: tail -f $DIR/ub.log"
 fi
 echo "В админке игры статус должен стать «🟢 Скрипт на связи» в течение минуты."
