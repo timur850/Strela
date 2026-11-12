@@ -149,6 +149,22 @@ export class Game {
     g.bet += Math.round(betSum); g.pay += Math.round(paid);
     await this.s.put("gstats", all);
   }
+  // аналитика по играм по дням (Киев): gd:YYYY-MM-DD → { game: [игр, ставки, выплаты] } + gd:all за всё время
+  gameKey(op, d) {
+    if (op === "case") return d && d.free ? (d.free === "ref" ? "ref" : "free") : "case";
+    const m = /^(crash|mines|chick|pvp|hunt)/.exec(op || ""); if (m) return m[1];
+    if (["dig", "egg", "upgrade", "contract", "plinko", "slots"].includes(op)) return op;
+    return "bonus";                                // уровни, задания, промо, дроп, заработок — раздача без ставки
+  }
+  async gday(bet, pay, gk = this._gk) {
+    if (this.isStaff || !gk || !(bet || pay > 0)) return;
+    for (const k of ["gd:" + dayKey(), "gd:all"]) {
+      const o = (await this.s.get(k)) || {}, r = o[gk] || (o[gk] = [0, 0, 0]);
+      if (bet) { r[0] += bet > 0 ? 1 : -1; r[1] += Math.round(bet); }   // отрицательная ставка — возврат
+      if (pay > 0) r[2] += Math.round(pay);
+      await this.s.put(k, o);
+    }
+  }
 
   async feed(u, uid, game, gift, amount) {
     if (!(amount > 0) || this.isStaff) return;
@@ -163,7 +179,7 @@ export class Game {
   async charge(u, n) {
     if (!(n > 0)) fail("Неверная ставка");
     if (u.bal < n) fail("Недостаточно звёзд");
-    u.bal -= n; await this.stat("bets", n); await this.tourAdd(u, n);
+    u.bal -= n; await this.stat("bets", n); await this.gday(n, 0); await this.tourAdd(u, n);
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
@@ -199,7 +215,7 @@ export class Game {
     if (u.ps) { u.ps.t = Math.max(0, u.ps.t - n); u.ps.g = Math.max(0, u.ps.g - 1); }
   }
   async betNoCharge(u, n) {                       // ставка подарком (апгрейд, контракт): в оборот игрока и турнир
-    n = Math.round(n); if (!(n > 0)) return; await this.tourAdd(u, n);
+    n = Math.round(n); if (!(n > 0)) return; await this.gday(n, 0); await this.tourAdd(u, n);
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
     ps.t += n; ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
@@ -252,12 +268,12 @@ export class Game {
   // выдать выигрыш звёздами
   async payout(u, uid, n, game) {
     n = Math.round(n); if (!(n > 0)) return;
-    u.bal += n; await this.stat("wins", n); await this.feed(u, uid, game, null, n); this.psWin(u, n, "", game);
+    u.bal += n; await this.stat("wins", n); await this.gday(0, n); await this.feed(u, uid, game, null, n); this.psWin(u, n, "", game);
   }
   // выдать подарок (звёзды — сразу на баланс)
   async giveGift(u, uid, g, game) {
     if (isStar(g)) return this.payout(u, uid, g.price, game);
-    u.inv.push(g.slug); await this.stat("wins", g.price); await this.feed(u, uid, game, g, g.price); this.psWin(u, g.price, g.slug, game);
+    u.inv.push(g.slug); await this.stat("wins", g.price); await this.gday(0, g.price); await this.feed(u, uid, game, g, g.price); this.psWin(u, g.price, g.slug, game);
   }
   invIndex(u, i, slug) {
     i = Number(i);
@@ -324,7 +340,7 @@ export class Game {
     if (banned && op !== "me") fail("Аккаунт заблокирован");
     const fn = this["op_" + op];
     if (!fn) fail("Неизвестное действие");
-    this._hf = null; this._op = op; this.huntEnsure(u);
+    this._hf = null; this._op = op; this._gk = this.gameKey(op, d); this.huntEnsure(u);
     if (GIFT_BET_OPS.has(op) && d && d.gi != null) {   // ставка подарком: подарок уходит, его цена становится ставкой (выигрыш — звёздами)
       const i = this.invIndex(u, d.gi, d.gs), gf = this.L.giftBy(u.inv[i]);
       if (!gf || isStar(gf)) fail("Этот подарок нельзя поставить"); if (gf.price > MAX_BET) fail("Подарок слишком дорогой для ставки");
@@ -356,7 +372,7 @@ export class Game {
     const next = (u.lvl || 0) + 1, L = LEVELS[next], t = (u.ps && u.ps.t) || 0;
     if (!L) fail("Максимальный рейтинг уже получен");
     if (t < L[1]) fail(`Нужен оборот ${L[1]} ★`);
-    u.lvl = next; u.bal += L[2]; await this.stat("lvl", L[2]);
+    u.lvl = next; u.bal += L[2]; await this.stat("lvl", L[2]); await this.gday(0, L[2], "bonus");
     return { got: L[2], lvl: next, name: L[0] };
   }
   // «Поставь в ник»: этап 1 — тег в имени и био, этап 2 — держать 24 ч, этап 3 — награда раз в день (зависит от уровня)
@@ -377,7 +393,7 @@ export class Game {
     if (!d.ok) { u.nick = null; await this.s.delete("nk:" + uid); return { lost: true, why: (d.why || "Тег убран") + " — прогресс сброшен, начни заново" }; }
     if (Date.now() - u.nick.s < 864e5) fail("Подожди 24 часа с начала");
     const day = dayKey(); if (u.nick.day === day) fail("Сегодня награда уже получена — приходи завтра");
-    const r = this.nickReward(u); u.nick.day = day; u.bal += r; await this.stat("nick", r);
+    const r = this.nickReward(u); u.nick.day = day; u.bal += r; await this.stat("nick", r); await this.gday(0, r, "bonus");
     return { got: r, nick: u.nick };
   }
   async op_wallet(u, uid) {                      // мои заявки на вывод, которые ещё не выполнены
@@ -418,7 +434,7 @@ export class Game {
     p.used = (p.used || 0) + 1; p.last = [{ id: uid, n: u.name, t: Date.now() }, ...(p.last || [])].slice(0, 100);
     await this.s.put("promo:" + code, p);
     u.promos = [...(u.promos || []), code].slice(-200);
-    if (p.t === "stars") u.bal += p.v; else if (p.t === "tick") u.tick += p.v; else u.promoCase = (u.promoCase || 0) + p.v;
+    if (p.t === "stars") { u.bal += p.v; await this.gday(0, p.v, "bonus"); } else if (p.t === "tick") u.tick += p.v; else u.promoCase = (u.promoCase || 0) + p.v;
     return { t: p.t, v: p.v, code };
   }
   // поделился ссылкой (для бесплатного кейса) — считаем, не больше 20
@@ -563,7 +579,7 @@ export class Game {
     let r = rand() * ok.reduce((a, x) => a + x[1], 0), v = ok[0][0];
     for (const [a, wt] of ok) { if ((r -= wt) <= 0) { v = a; break; } }
     if (!this.isStaff) { p.spent += v; p.n++; await this.s.put(k, p); }   // персонал не тратит общий фонд
-    u.dropW = w; u.bal += v; await this.stat("drop", v); await this.feed(u, uid, "Дроп", null, v);
+    u.dropW = w; u.bal += v; await this.stat("drop", v); await this.gday(0, v, "bonus"); await this.feed(u, uid, "Дроп", null, v);
     return { prize: v, drop: { on: c.on, budget: c.budget, spent: p.spent, n: p.n, prizes: c.prizes, done: true, end: c.end, period: c.period } };
   }
 
@@ -668,7 +684,7 @@ export class Game {
     if (old) {                                   // брошенная игра: открытые клетки — забираем, ничего не открыто — возврат ставки
       await this.s.delete(k);
       if (old.open.length) await this.payout(u, uid, old.bet * this.L.minesMult(old.n, old.open.length), GAME_NAMES.mines);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.unBet(u, this.uid, old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.unBet(u, this.uid, old.bet); }
     }
     const n = [3, 5, 7].includes(+d.n) ? +d.n : 5, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
@@ -710,7 +726,7 @@ export class Game {
     if (old) {                                   // брошенный забег: пройденные полосы — забираем, не начинал — возврат
       await this.s.delete(k);
       if (old.step) await this.payout(u, uid, old.bet * this.L.chickMult(old.d, old.step), GAME_NAMES.chick);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.unBet(u, this.uid, old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.unBet(u, this.uid, old.bet); }
     }
     const df = [0, 1, 2, 3].includes(+d.d) ? +d.d : 0, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
@@ -766,7 +782,7 @@ export class Game {
   // Шанс победы = доля ставки в банке. Если соперник не пришёл за 3 минуты — ставка возвращается.
   async creditUser(id, n, game) {
     const w = await this.s.get("u:" + id); if (!w) return;
-    n = Math.round(n); w.bal += n; await this.stat("wins", n);
+    n = Math.round(n); w.bal += n; await this.stat("wins", n); await this.gday(0, n, "pvp");
     await this.s.put("u:" + id, w); await this.feed(w, id, game, null, n);
   }
   async pvpTick() {
@@ -780,7 +796,7 @@ export class Game {
       await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: w, prize, bank, at: now });
       await this.s.delete("pvp:cur");
     } else if (!cur.endAt && now - cur.t0 > 180000) {        // никто не пришёл — возврат
-      for (const p of cur.players) { const w = await this.s.get("u:" + p.id); if (w) { w.bal += p.v; await this.unBet(w, p.id, p.v); await this.s.put("u:" + p.id, w); } await this.stat("bets", -p.v); }
+      for (const p of cur.players) { const w = await this.s.get("u:" + p.id); if (w) { w.bal += p.v; await this.unBet(w, p.id, p.v); await this.gday(-p.v, 0, "pvp"); await this.s.put("u:" + p.id, w); } await this.stat("bets", -p.v); }
       await this.s.put("pvp:last", { id: cur.id, players: cur.players, winner: -1, refund: true, at: now });
       await this.s.delete("pvp:cur");
     }
@@ -1013,7 +1029,7 @@ export class Game {
       if (e.st !== "new") fail("Заявка уже обработана");
       if (d.pay) {
         const a = Math.round(+d.amount); if (!(a > 0)) fail("Укажи сумму");
-        const u = await this.user(e.uid); u.bal += a; await this.s.put("u:" + e.uid, u); await this.stat("earn", a);
+        const u = await this.user(e.uid); u.bal += a; await this.s.put("u:" + e.uid, u); await this.stat("earn", a); await this.gday(0, a, "bonus");
         e.st = "paid"; e.paid = a;
       } else { e.st = "rejected"; e.why = String(d.why || "").slice(0, 200); }
       e.done = Date.now(); await this.s.put(k, e);
@@ -1040,11 +1056,12 @@ export class Game {
       }
       for (const k of (await this.s.list({ prefix: "bu:", limit: 50000 })).keys()) aud.add(k.slice(3));
       const gstats = (await this.s.get("gstats")) || {};
+      const gd = [...(await this.s.list({ prefix: "gd:2", reverse: true, limit: 31 })).entries()].map(([k, v]) => ({ d: k.slice(3), g: v })), gdAll = (await this.s.get("gd:all")) || {};
       const days = [...(await this.s.list({ prefix: "sd:", reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ d: k.slice(3), ...v })).reverse();
       await this.tourGet(); const tourPrev = await this.tourPrev(50);
       if (tourPrev) for (const r of tourPrev.top) { const cu = await this.s.get("u:" + r.id); if (cu && cu.name && /^@/.test(cu.name)) r.n = cu.name; }   // актуальный @ из профиля
       for (const id of this.staff) if (all.has("u:" + id)) total--;
-      return { ok: true, stats, gstats, days, tourPrev, total, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
+      return { ok: true, stats, gstats, gd, gdAll, today: dayKey(), days, tourPrev, total, users, withdrawals: [...wq.values()].sort((a, b) => b.t - a.t), bc, audience: aud.size };
     }
     if (op === "bc_start") {
       const text = String(d.text || "").trim().slice(0, 4000);
@@ -1078,7 +1095,7 @@ export class Game {
       return { ok: true, users: n };
     }
     if (op === "resettour") { await this.s.delete(["tour", "tour:prev"]); return { ok: true }; }
-    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); await this.s.delete("gstats"); const sd = [...(await this.s.list({ prefix: "sd:" })).keys()]; for (let i = 0; i < sd.length; i += 100) await this.s.delete(sd.slice(i, i + 100)); return { ok: true }; }
+    if (op === "resetstats") { await this.s.put("stats", { dep: 0, bets: 0, wins: 0 }); await this.s.delete(["gstats", "gd:all"]); const sd = [...(await this.s.list({ prefix: "sd:" })).keys(), ...(await this.s.list({ prefix: "gd:" })).keys()]; for (let i = 0; i < sd.length; i += 100) await this.s.delete(sd.slice(i, i + 100)); return { ok: true }; }
     if (op === "refs") {
       const r = await this.s.get("u:" + id); if (!r) return { ok: true, rows: [] };
       const rows = [];

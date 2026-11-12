@@ -588,8 +588,8 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=b05ee7f9"></script>
-<script src="logic.js?v=41f6a042"></script>
+<script src="i18n.js?v=74750601"></script>
+<script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -614,7 +614,7 @@ const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['wdNeedDep','rwdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['autoPrice','autoK','wdNeedDep','rwdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -624,7 +624,7 @@ function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))
  SYNC.t=setTimeout(()=>{fetch('api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,settings:JSON.parse(p)})})
   .then(r=>r.json()).then(j=>{if(j.ok){SYNC.last=p;SYNC.okAt=Date.now();toast('Сохранено для всех ✅')}else{SYNC.fail=j.err||'ошибка';toast('⚠️ Не сохранено: '+(j.err==='not admin'?'сервер не считает тебя админом':(j.err||'ошибка')))}}).catch(()=>toast('⚠️ Не сохранено: нет связи'))},now?0:900)}
 function loadShared(){fetch('api/settings',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-  if(j&&typeof j==='object'){G_KEYS.forEach(k=>{ADM[k]=j[k]!==undefined?j[k]:(DEF[k]!==undefined?structuredClone(DEF[k]):undefined)});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS)}
+  if(j&&typeof j==='object'){G_KEYS.forEach(k=>{ADM[k]=j[k]!==undefined?j[k]:(DEF[k]!==undefined?structuredClone(DEF[k]):undefined)});if(!ADM.tasks)ADM.tasks=structuredClone(DEF_TASKS);ADM.autoPrices=j.autoPrices||{};ADM.autoAt=j.autoAt||0}
   SYNC.last=gPart();SYNC.ready=true;IS_ADMIN=calcAdmin();maintShow();applyTheme();document.querySelector('.nav .adm').classList.toggle('vis',IS_ADMIN);
   try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
   if(location.hash==='#admin'&&IS_ADMIN)setTab('admin');else if(!S.stack.length&&S.tab!=='admin')setTab(S.tab);navBadge()}).catch(()=>{SYNC.ready=true})}
@@ -1656,6 +1656,13 @@ function chartCard(days){const by={};days.forEach(d=>by[d.d]=d);const N=S.chN,to
  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="rgba(255,255,255,.25)"/>${bars}${lab}</svg>
  <div class="kpi" style="margin-top:8px"><div><b>${fmt(last)}${S.chK==='new'?'':' ★'}</b><small>Сегодня</small></div><div><b style="${S.chK==='profit'&&sum<0?'color:#ff8a8a':''}">${fmt(sum)}${S.chK==='new'?'':' ★'}</b><small>За ${N} дн.</small></div></div>
  <p class="sub" style="text-align:left;margin:6px 0 0;font-size:12px">Дни считаются по Киеву. Данные копятся с ${days.length?days[0].d.split('-').reverse().join('.'):'сегодня'}.</p></div>`}
+let GA=null,GAP=1;const GA_N={case:'🎁 Кейсы',free:'🆓 Бесплатные кейсы',ref:'👥 Кейс Friends',dig:'⛏ Шахта',egg:'🥚 Яйца',crash:'🚀 Краш',mines:'💣 Мины',plinko:'🔵 Plinko',chick:'🐥 Цыпа',slots:'🎰 Слоты',pvp:'⚔️ PvP',upgrade:'⬆️ Апгрейд',contract:'📜 Контракты',hunt:'🗺 Охота за сокровищами',bonus:'🎉 Бонусы (уровни, задания, промо, дроп)'};
+function gaSum(p){const A=GA||{},o={};if(p==='all')return A.gdAll||{};const from=new Date(Date.parse(A.today+'T00:00:00Z')-(p-1)*864e5).toISOString().slice(0,10);
+ for(const r of A.gd||[])if(r.d>=from)for(const[k,v]of Object.entries(r.g||{})){const t=o[k]||(o[k]=[0,0,0]);t[0]+=v[0];t[1]+=v[1];t[2]+=v[2]}return o}
+function gaCard(){const o=gaSum(GAP),ks=Object.keys(o).sort((a,b)=>(o[b][1]-o[b][2])-(o[a][1]-o[a][2]));let tb=0,tp=0;
+ const rows=ks.map(k=>{const[n,b,pay]=o[k],pr=b-pay;tb+=b;tp+=pay;return `<div class="it" style="display:block"><b>${GA_N[k]||k}</b><small style="display:block;color:var(--muted);font-weight:700;margin-top:4px;line-height:1.5">${b?`Игр: <b style="color:#fff">${fmt(n)}</b> · ставки: <b style="color:#fff">${fmt(b)} ★</b><br>`:''}Выплачено: <b style="color:#fff">${fmt(pay)} ★</b>${b?` · RTP: <b style="color:#fff">${(pay/b*100).toFixed(1)}%</b>`:''}<br>Профит: <b style="color:${pr>=0?'#3dff8b':'#ff8a8a'}">${pr>0?'+':''}${fmt(pr)} ★</b>${pr<0?' ⚠️':''}</small></div>`}).join('');
+ const tpr=tb-tp,seg=[[1,'Сегодня'],[7,'7 дней'],[30,'30 дней'],['all','Всё время']].map(([v,t])=>`<button ${GAP===v?'class="on"':''} onclick="GAP=${typeof v==='number'?v:"'all'"};$('#gaBox').outerHTML=gaCard()">${t}</button>`).join('');
+ return `<div class="card" id="gaBox"><div class="ad-h">📊 Аналитика по играм</div><div class="seg" style="margin:0 0 10px">${seg}</div><p class="sub" style="text-align:left;margin:0 0 8px">Итого: ставки <b>${fmt(tb)} ★</b> · выплаты <b>${fmt(tp)} ★</b> · профит <b style="color:${tpr>=0?'#3dff8b':'#ff8a8a'}">${tpr>0?'+':''}${fmt(tpr)} ★</b></p><div class="list">${rows||'<small style="color:var(--muted)">Пока нет данных — считаем с момента обновления</small>'}</div></div>`}
 function gstatCard(gs){const rows=[['upgrade','⬆️ Апгрейд'],['contract','📜 Контракты']].map(([k,n])=>{const g=gs[k]||{n:0,w:0,bet:0,pay:0},pr=g.bet-g.pay;
  return `<div class="it" style="display:block"><b>${n}</b>${g.n?`<small style="display:block;color:var(--muted);font-weight:700;margin-top:4px;line-height:1.5">Игр: <b style="color:#fff">${fmt(g.n)}</b>${k==='upgrade'?` · выиграно: <b style="color:#fff">${fmt(g.w)}</b> (${(g.w/g.n*100).toFixed(1)}%)`:''}<br>Поставлено: <b style="color:#fff">${fmt(g.bet)} ★</b> · выплачено: <b style="color:#fff">${fmt(g.pay)} ★</b><br>Факт. RTP: <b style="color:#fff">${g.bet?(g.pay/g.bet*100).toFixed(1):0}%</b> · профит: <b style="color:${pr>=0?'#3dff8b':'#ff8a8a'}">${fmt(pr)} ★</b></small>`:'<small style="display:block;color:var(--muted)">Ещё не играли</small>'}</div>`}).join('');
  return `<div class="card"><div class="ad-h">⬆️ Апгрейд и контракты</div><div class="list">${rows}</div></div>`}
@@ -1684,6 +1691,7 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="card" id="ubAdm"><div class="ad-h">🎁 Автовыдача NFT (юзербот)</div><div id="ubSt" class="sub" style="text-align:left">Проверяю…</div>
   <p class="sub" style="text-align:left;font-size:12px;margin:6px 0">Скрипт на твоём VPS сам передаёт коллекционные подарки игрокам с аккаунта-склада. Инструкция и скрипт: <a href="ub/README.txt" target="_blank">README</a> · <a href="ub/strela_ub.py" target="_blank">strela_ub.py</a></p>
   <div class="row" style="gap:6px"><button class="btn sm sand" style="flex:1" onclick="ubKey({make:1})">🔑 Новый ключ</button><button class="btn sm ghost" style="flex:1" onclick="if(confirm('Выключить автовыдачу? Старый ключ перестанет работать'))ubKey({off:1})">⏸ Выключить</button></div></div>
+${autoPriceCard()}
  <div class="card"><div class="ad-h">🤖 CryptoBot (оплата в $)</div><div id="cpSt" class="sub" style="text-align:left">Проверяю подключение…</div>
  <p class="sub" style="text-align:left;font-size:13px">1) Открой @CryptoBot → Crypto Pay → Create App → скопируй API Token.<br>2) Вставь его ниже и сохрани (виден только владельцу, игрокам не уходит).<br>3) В приложении CryptoBot → Webhooks → включи и вставь адрес ниже — тогда оплата зачисляется мгновенно, даже если игрок закрыл приложение.</p>
  <div class="field"><input id="cpTok" type="password" placeholder="API Token из @CryptoBot" autocomplete="off"></div>
@@ -1713,7 +1721,7 @@ stats(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <div class="card"><div class="ad-h">📜 Кто что выиграл <small style="background:var(--sea)">${S.feed.length}</small></div><div class="list">${S.feed.length?S.feed.map(feedRow).join(''):'<div class="empty">Пока пусто</div>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="loadFeed();adLoad(1)">Обновить</button></div>`;
  return `<div class="kpi"><div><b>${fmt(us)}</b><small>Игроков</small></div><div><b>${fmt(st.dep)} ★</b><small>Пополнения</small></div>
  <div><b>${fmt(st.bets)} ★</b><small>Оборот ставок</small></div><div><b style="color:${profit>=0?'#3dff8b':'#ff8a8a'}">${fmt(profit)} ★</b><small>Профит проекта</small></div></div>
- ${chartCard(A.days||[])}${tourPrevCard(A.tourPrev)}${wd}${gstatCard(A.gstats||{})}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
+ ${(GA=A,gaCard())}${chartCard(A.days||[])}${tourPrevCard(A.tourPrev)}${wd}${gstatCard(A.gstats||{})}<div class="card"><div class="ad-h">Фактический RTP</div><p class="sub" style="text-align:left;margin:0">${st.bets?(st.wins/st.bets*100).toFixed(1)+'% выплачено игрокам':'Ставок ещё не было'}</p></div>
  <button class="btn ghost" onclick="adApi('resetstats',{}).then(j=>{if(j){toast('Статистика сброшена');adLoad(1)}})">Сбросить статистику</button><button class="btn ghost" style="color:#ff8a8a" onclick="if(confirm('Обнулить баланс и билеты у ВСЕХ игроков и всю статистику? Отменить нельзя.'))adApi('resetall',{}).then(j=>{if(j){toast('Обнулено игроков: '+j.users);adLoad(1)}})">🧹 Обнулить всех</button><button class="btn ghost" onclick="if(confirm('Обнулить турнир (начать новую неделю)?'))adApi('resettour',{}).then(j=>{if(j){S.tour=null;toast('Турнир обнулён')}})">🏆 Обнулить турнир</button>`+extra},
 rtp(){return `<div class="card"><div class="ad-h">🎯 Процент отдачи (RTP)</div><p class="sub" style="text-align:left;margin:0 0 6px">Сколько % от ставок в среднем возвращается игрокам. Остальное — ваш доход.</p>
  ${Object.keys(GNAMES).map(k=>`<div class="rng"><span>${GNAMES[k]}</span><input type="range" min="50" max="99" value="${rtpOf(k)}" oninput="ADM.rtp['${k}']=+this.value;this.nextElementSibling.textContent=this.value+'%';saveAdm();if('${k}'==='upgrade')upPrev()"><b>${rtpOf(k)}%</b></div>`).join('')}
@@ -1953,6 +1961,13 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
+function autoPriceCard(){const ap=ADM.autoPrices||{},T=(window.STRELA||{}).NFT_TON||{},r=+ADM.tonRate>0?+ADM.tonRate:150,k=+ADM.autoK>0?+ADM.autoK:100,on=!!ADM.autoPrice;
+ const ch=Object.entries(ap).map(([s,v])=>{const b=Math.round((T[s]||0)*r),g=giftBy(s);return{s,n:g?g.name:s,b,v:Math.round(v*k/100)}}).filter(x=>x.b).sort((a,b)=>Math.abs(b.v-b.b)/b.b-Math.abs(a.v-a.b)/a.b).slice(0,8);
+ const ago=ADM.autoAt?Math.round((Date.now()-ADM.autoAt)/36e5):-1;
+ return `<div class="card"><div class="ad-h">📈 Цены NFT с маркета</div><p class="sub" style="text-align:left;font-size:12px;margin:0 0 8px">Юзербот раз в 6 ч берёт минимальную цену (floor) каждого NFT на маркете Telegram, и цены в игре подстраиваются — подарки в кейсах не будут дороже, чем на рынке. Свои цены из «Подарки» важнее автоматических.</p>
+ <div class="sub" style="text-align:left;margin-bottom:8px">${ADM.autoAt?`Обновлено ${ago<1?'меньше часа назад':ago+' ч назад'} · цен: <b>${Object.keys(ap).length}</b>`:'Ещё не обновлялись — нужен запущенный юзербот новой версии'}</div>
+ <div class="row" style="gap:6px;align-items:center"><button class="btn sm ${on?'sand':'ghost'}" style="flex:1" onclick="ADM.autoPrice=!ADM.autoPrice;saveAdm(1);setTab('admin')">${on?'✅ Включено':'⏸ Выключено'}</button><div class="field" style="margin:0;flex:0 0 84px"><input id="pAK" type="number" min="50" max="200" value="${k}" onchange="ADM.autoK=Math.max(50,Math.min(200,Math.round(+this.value||100)));saveAdm(1)"></div><span class="sub">% от floor</span></div>
+ ${ch.length?`<div class="list" style="margin-top:8px">${ch.map(x=>{const d=Math.round((x.v-x.b)/x.b*100);return `<div class="it"><b>${esc(x.n)}</b><small style="margin-left:auto;font-weight:700">${fmt(x.b)} → <b style="color:${d>0?'#3dff8b':'#ff8a8a'}">${fmt(x.v)} ★</b> (${d>0?'+':''}${d}%)</small></div>`}).join('')}</div>`:''}</div>`}
 function ubKey(d){API('api/admin/ub_key',d||{}).then(j=>{const e=$('#ubSt');if(!j||!j.ok){if(e)e.textContent='⚠️ '+((j&&j.err)||'ошибка');return}
  const ago=j.seen?Math.round((Date.now()-j.seen)/6e4):-1,live=j.seen&&Date.now()-j.seen<5*6e4;
  if(e)e.innerHTML=!j.on?'⏸ Выключена — создай ключ и запусти скрипт на VPS':(live?'🟢 Скрипт на связи':'🔴 Скрипт не на связи')+(ago>=0?` · последний раз ${ago<1?'только что':ago+' мин назад'}`:' · ещё ни разу не подключался')+'<br>Пока скрипт не на связи, выводы приходят тебе на ручную выдачу.';

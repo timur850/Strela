@@ -9,6 +9,7 @@ STRELA CASE — автовыдача NFT-подарков (юзербот).
   1) pip install https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip
   2) python3 strela_ub.py login      ← один раз: вход в аккаунт-склад, сохранит SESSION в .env
   3) python3 strela_ub.py            ← работает постоянно (лучше через systemd / screen / pm2)
+     Раз в 6 ч он ещё отправляет в игру floor-цены NFT с маркета Telegram (админка → «📈 Цены NFT с маркета»).
 
 Файл .env рядом со скриптом:
   API_ID=...          ← с my.telegram.org → API development tools
@@ -30,6 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ENV = os.path.join(HERE, ".env")
 POLL = 30          # как часто спрашивать сервер о новых выводах, сек
 PAUSE = 8          # пауза между передачами, сек (чтобы Telegram не счёл спамом)
+PRICES_EVERY = 6 * 3600   # как часто отправлять в игру floor-цены NFT с маркета Telegram, сек
 
 
 def load_env():
@@ -57,7 +59,7 @@ def save_env(key, value):
 
 def post(cfg, path, data):
     req = urllib.request.Request(cfg["UB_SERVER"].rstrip("/") + path, data=json.dumps({"key": cfg["UB_KEY"], **data}).encode(),
-                                 headers={"Content-Type": "application/json", "User-Agent": "strela-ub/1.0"})
+                                 headers={"Content-Type": "application/json", "User-Agent": "strela-ub/1.1"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode())
 
@@ -137,6 +139,27 @@ async def give(client, w):
         return False, e.message + (f" — {hint}" if hint else "")
 
 
+async def market_floors(client):
+    """Минимальная цена (floor) каждой коллекции на маркете Telegram, в звёздах: {название: ★}."""
+    r = await client(functions.payments.GetStarGiftsRequest(hash=0))
+    out = {}
+    for g in getattr(r, "gifts", []) or []:
+        v, t = getattr(g, "resell_min_stars", None), getattr(g, "title", None)
+        if v and t:
+            out[t] = min(v, out.get(t, v))
+    return out
+
+
+async def push_prices(client, cfg):
+    try:
+        f = await market_floors(client)
+        if f:
+            r = post(cfg, "/api/ub/prices", {"floors": f})
+            print(time.strftime("%H:%M:%S"), "📈 Цены с маркета отправлены:", r.get("n", r.get("err")), "из", len(f))
+    except Exception as e:
+        print("Цены с маркета — ошибка:", e)
+
+
 async def login(cfg, qr=False):
     client = TelegramClient(StringSession(), int(cfg["API_ID"]), cfg["API_HASH"])
     if qr:   # вход по QR-коду: Telegram на телефоне → Настройки → Устройства → Подключить устройство
@@ -212,7 +235,11 @@ async def main():
         sys.exit("Сессия недействительна — запусти login заново")
     me = await client.get_me()
     print(f"Автовыдача запущена: склад @{me.username or me.id}")
+    last_prices = 0
     while True:
+        if time.time() - last_prices > PRICES_EVERY:
+            last_prices = time.time()
+            await push_prices(client, cfg)
         try:
             q = post(cfg, "/api/ub/take", {})
             if not q.get("ok"):

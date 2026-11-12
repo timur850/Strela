@@ -585,6 +585,7 @@ export default {
         const next = data.settings || {};
         if (!isOwner(user.username)) next.admins = cur.admins || [];   // доступ выдаёт только владелец
         if (cur.tourBan) next.tourBan = cur.tourBan;                   // список «без турнира» меняется только кнопкой в карточке игрока
+        for (const k of ["autoPrices", "autoAt", "autoN"]) { if (cur[k] !== undefined) next[k] = cur[k]; else delete next[k]; }   // цены с рынка пишет только юзербот
         const body = JSON.stringify(next);
         if (body.length > 1_000_000) return json({ ok: false, err: "too big" }, 413);
         await store(env).fetch("https://s/", { method: "POST", body });
@@ -849,10 +850,24 @@ export default {
     }
 
     // ===== юзербот автовыдачи (скрипт на VPS владельца): забирает заявки и сообщает результат =====
-    if ((path === "/api/ub/take" || path === "/api/ub/result") && req.method === "POST") {
+    if ((path === "/api/ub/take" || path === "/api/ub/result" || path === "/api/ub/prices") && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const k = await getKey(env, "ubkey");
       if (!k || String(d.key || "") !== k) return json({ ok: false, err: "bad key" }, 403);
+      if (path === "/api/ub/prices") {               // floor-цены с маркета Telegram (в ★) — от юзербота, раз в несколько часов
+        const S = globalThis.STRELA, norm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""), byName = {};
+        for (const [slug, name] of S.NFT_LIST || []) byName[norm(name)] = slug;
+        const st = await loadSettings(env), T = S.NFT_TON || {}, rate = +st.tonRate > 0 ? +st.tonRate : 150, out = {};
+        for (const [title, v] of Object.entries(d.floors || {})) {
+          const slug = byName[norm(title)], n = Math.round(+v); if (!slug || !(n > 0)) continue;
+          const base = T[slug] ? T[slug] * rate : 0;
+          if (base && (n > base * 4 || n < base / 4)) continue;     // защита от странных цен: слишком далеко от Fragment — пропускаем
+          out[slug] = n;
+        }
+        st.autoPrices = out; st.autoAt = Date.now(); st.autoN = Object.keys(d.floors || {}).length;
+        await store(env).fetch("https://s/", { method: "POST", body: JSON.stringify(st) });
+        return json({ ok: true, n: Object.keys(out).length });
+      }
       if (path === "/api/ub/take") {
         await putKey(env, "ubseen", String(Date.now()));
         const r = await op(env, "admin/ub_take", "0", "", { n: 3 }, true);

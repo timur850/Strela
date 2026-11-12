@@ -41,9 +41,10 @@ function makeLogic(getADM,rand){
  const A=()=>getADM()||{};
  const R=g=>{const r=A().rtp||{};return (r[g]??(g==='contract'?r.upgrade:undefined)??DEF_RTP[g]??90)/100};   // контракты: пока не задан свой % — как у апгрейда
  const tonRate=()=>(+A().tonRate>0?+A().tonRate:150);
- const mkG=([slug,name,p,e,tgid,b,m])=>({slug,name,price:(A().prices||{})[slug]??(NFT_TON[slug]&&!m?Math.round(NFT_TON[slug]*tonRate()):p),e,tgid,reg:!!tgid,...(m?{b,m}:{})});
+ const autoP=slug=>{const a=A(),v=a.autoPrice&&(a.autoPrices||{})[slug];return v>0?Math.round(v*(+a.autoK>0?+a.autoK:100)/100):undefined};
+ const mkG=([slug,name,p,e,tgid,b,m])=>({slug,name,price:(A().prices||{})[slug]??(m?p:autoP(slug)??(NFT_TON[slug]?Math.round(NFT_TON[slug]*tonRate()):p)),e,tgid,reg:!!tgid,...(m?{b,m}:{})});
  let _GC=null,_GK='';
- const GIFTS=()=>{const a=A();const k=JSON.stringify([a.prices,a.giftOff,a.tonRate]);if(k!==_GK||!_GC){_GK=k;_GC=GIFT_LIST.filter(g=>!(a.giftOff||{})[g[0]]).map(mkG)}return _GC};
+ const GIFTS=()=>{const a=A();const k=JSON.stringify([a.prices,a.giftOff,a.tonRate,a.autoPrice,a.autoK,a.autoAt]);if(k!==_GK||!_GC){_GK=k;_GC=GIFT_LIST.filter(g=>!(a.giftOff||{})[g[0]]).map(mkG)}return _GC};
  const _GALL={};GIFT_LIST.forEach(g=>_GALL[g[0]]=g);
  const giftBy=s=>GIFTS().find(g=>g.slug===s)||(_GALL[s]?mkG(_GALL[s]):null);
 
@@ -160,5 +161,5 @@ function digRun(rand,K,tp,force){const p=digTierP(tp),r=rand();const tier=force!
 function digPay(ev,bet,unit){let s=0;for(const e of ev)if(e.e==='b'&&e.v)s+=e.v;return Math.round(bet*s*unit)}
 /* уровни игрока: по обороту (сумме ставок), награда за каждый новый уровень */
 const LEVELS=[['Рейтинг 1',0,0],['Рейтинг 2',1000,10],['Рейтинг 3',5000,40],['Рейтинг 4',20000,150],['Рейтинг 5',60000,400],['Рейтинг 6',200000,1200],['Рейтинг 7',600000,3500]];
-G.STRELA={LEVELS,CHICK_D,digGen,digSim,digPhys,DIG_DT,DIG_W,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
+G.STRELA={NFT_LIST,LEVELS,CHICK_D,digGen,digSim,digPhys,DIG_DT,DIG_W,digRun,digPay,DIG_KS,DIG_TIER,DIG_VAL,digM,digTierP,makeLogic,DEF_TASKS,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,PM0,SLOT_SYMS,PVP_BETS,SLOT_BET,CRASH_K,isStar,MODEL_LIST,NFT_TON};
 })(globalThis);
