@@ -923,7 +923,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  <div class="bal"><div><span class="star">★</span> ${fmt(u.bal||0)}</div><div>🎫 ${fmt(u.tick||0)}</div></div>
  <button class="btn sand" style="margin-bottom:6px" onclick="menuGo(()=>open_('deposit'))">Пополнить</button>
  <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
- <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${!(ADM.boss||{}).on?'':game('boss','👹','Босс недели')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
+ <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${(ADM.boss||{}).on===false?'':game('boss','👹','Босс недели')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
  <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('chick','🐥','Цыпа')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
  <div class="sec">🌐 Язык / Language</div><div class="row" style="gap:6px;padding:0 4px"><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:1" onclick="setLang('ru')">🇷🇺 RU</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:1" onclick="setLang('en')">🇬🇧 EN</button></div>
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
@@ -1104,7 +1104,7 @@ function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).l
  ${FREE_KEYS().length?row("S.ccat='free';setTab('cases')",'🎁','linear-gradient(135deg,#f0b43a,#c0640a)','Бесплатные кейсы','Открывай каждый день','FREE','gold'):''}
  ${row("setTab('tasks')",'📋','linear-gradient(135deg,#6f86ff,#7b5cf5)','Задания','Получай 🎫 билеты за подписки',left?`${left} новых`:'✓')}
  ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир месяца','Топ-3 по обороту получают NFT','Месяц')}
- ${!(ADM.boss||{}).on?'':row("open_('boss')",'👹','linear-gradient(135deg,#ff3d5a,#8a1030)','Босс недели','Бейте босса ставками — делите награду','NEW','gold')}
+ ${(ADM.boss||{}).on===false?'':row("open_('boss')",'👹','linear-gradient(135deg,#ff3d5a,#8a1030)','Босс недели','Бейте босса ставками — делите награду','NEW','gold')}
  ${ADM.off.hunt?'':row("open_('hunt')",'🗺️','linear-gradient(135deg,#1fb59a,#0b6a60)','Охота за сокровищами','Найди 5 тайников за неделю','')}
  ${(ADM.drop||{}).on!==false&&!ADM.off.drop?row("open_('drop')",'📦','linear-gradient(135deg,#8a5cff,#4a2aa0)','Ежедневный дроп','Бесплатный приз раз в день',''):''}
  ${row("setTab('profile')",'🤝','linear-gradient(135deg,#3fb6ff,#1f6fe0)','Пригласить друга','10% с пополнений друзей','10 %')}`}
@@ -1871,7 +1871,7 @@ users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <div class="card list">${L.map(u=>{const b=ADM.banned.includes(u.id);return `<div class="it"><div class="av" style="background:${b?'var(--coral)':'var(--sea)'}">${esc(String(u.name||'?').replace('@','')[0]||'?')}</div><div class="nm" onclick="uInfo('${u.id}')" style="cursor:pointer">${esc(u.name)} ${u.id===ME.id?'(вы)':''}<small>ID ${u.id} · ★ ${fmt(u.bal)} · 🎫 ${u.tick} · 🎁 ${u.inv}</small></div><button class="btn sm ${b?'sand':'ghost'}" onclick="adBan('${u.id}')">${b?'Разбан':'Бан'}</button></div>`}).join('')||'<div class="empty">Никого не найдено</div>'}</div>`},
 };
 /* проверка рефералов: кто приглашён, почему засчитан, есть ли NFT сейчас; снять накрутку */
-function bossAdm(){const B=ADM.boss||{},on=B.on===true,v=(k,d)=>B[k]??d;
+function bossAdm(){const B=ADM.boss||{},on=B.on!==false,v=(k,d)=>B[k]??d;
  return `<div class="card"><div class="ad-h">👹 Босс недели</div><p class="sub" style="text-align:left;margin:0 0 8px">Каждая ★ ставки = 1 урон. Убили до конца недели (пн 00:00 UTC) — фонд делится по урону, добивший получает бонус. Настройки применяются сразу, уже нанесённый урон сохраняется.</p>
  <button class="btn sm ${on?'sand':'ghost'}" style="margin-bottom:8px" onclick="ADM.boss=Object.assign({},ADM.boss,{on:!${on}});saveAdm(1);setTab('admin')">${on?'✅ Включён':'⏸ Выключен'}</button>
  ${[['hp','❤️ Здоровье (★ ставок за неделю)',200000],['pool','💰 Призовой фонд, ★',6000],['min','⚔️ Минимум урона для награды',50],['last','🗡 Бонус за последний удар, ★',1000]].map(([k,t,d])=>`<div class="field"><input type="number" min="0" value="${v(k,d)}" onchange="ADM.boss=Object.assign({},ADM.boss,{${k}:Math.max(0,Math.round(+this.value||0))});saveAdm(1)"><span class="sub">${t}</span></div>`).join('')}

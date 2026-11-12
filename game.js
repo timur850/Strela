@@ -203,7 +203,7 @@ export class Game {
   // друг засчитывается для вывода из реф-кейса: пришёл по ссылке, открыл реф-кейс в мини-аппе, есть Telegram Premium или NFT
   // ===== босс недели: каждая ставка любого игрока — урон, убили до воскресенья — все участники делят награду =====
   bossCfg() { const b = this.st.boss || {}, n = (v, d, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v >= 0 && v !== "" && v != null ? +v : d)));
-    return { on: b.on === true, hp: n(b.hp, 200000, 1000, 1e9), pool: n(b.pool, 6000, 0, 1e8), min: n(b.min, 50, 0, 1e7), last: n(b.last, 1000, 0, 1e7) }; }
+    return { on: b.on !== false, hp: n(b.hp, 200000, 1000, 1e9), pool: n(b.pool, 6000, 0, 1e8), min: n(b.min, 50, 0, 1e7), last: n(b.last, 1000, 0, 1e7) }; }
   async bossGet() {
     let b = await this.s.get("boss"); const wk = weekKey();
     if (!b || b.id !== wk) {
