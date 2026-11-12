@@ -145,7 +145,10 @@ async def login(cfg, qr=False):
                 c = qrcode.QRCode(border=1); c.add_data(q.url); c.make(); c.print_ascii(invert=True)
             except ImportError:
                 print("QR-ссылка (открой как QR в любом генераторе):", q.url)
-            print("Отсканируй QR в Telegram аккаунта-склада: Настройки → Устройства → Подключить устройство. Код живёт ~30 сек.")
+            print("Отсканируй QR в Telegram аккаунта-склада: Настройки → Устройства → Подключить устройство.")
+            print("Нечем сканировать (консоль на том же телефоне)? Скопируй ссылку ниже, вставь в адресную строку Safari/Chrome и открой — Telegram спросит «Подтвердить вход?»:")
+            print("\n    " + q.url + "\n")
+            print("Ссылка и QR живут ~30 сек, потом появятся новые.")
             try:
                 await q.wait(timeout=30)
                 break
