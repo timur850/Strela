@@ -28,8 +28,8 @@ fi
 
 if ! grep -q '^SESSION=' .env; then
   echo
-  echo "→ Вход в аккаунт-склад по номеру телефона."
-  "$PY" strela_ub.py login
+  echo "→ Вход в аккаунт-склад по QR: Telegram на телефоне → Настройки → Устройства → Подключить устройство → наведи камеру на QR."
+  "$PY" strela_ub.py login qr
 fi
 
 echo "→ Включаю автозапуск…"
