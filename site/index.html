@@ -588,7 +588,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=05118c94"></script>
+<script src="i18n.js?v=b05ee7f9"></script>
 <script src="logic.js?v=41f6a042"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -783,7 +783,7 @@ async function withdraw(i){const s=U().inv[i],g=giftBy(s);if(!g||wdBusy)return;
  if(ADM.banned.includes(ME.id))return toast('Аккаунт заблокирован');
  wdBusy=true;try{const j=await API('api/withdraw',{i,slug:s});
   if(j.me)sync(j.me);
-  if(j.ok){closeSheet();setTab('profile');toast(j.auto?'Подарок отправлен вам в Telegram 🎁':'Заявка на вывод отправлена ✅')}
+  if(j.ok){closeSheet();setTab('profile');toast(j.ub?'Подарок придёт в Telegram автоматически в течение пары минут 🎁':j.auto?'Подарок отправлен вам в Telegram 🎁':'Заявка на вывод отправлена ✅',3500)}
   else toast(j.err||'Не удалось отправить заявку')}catch(e){toast('Нет связи с сервером')}wdBusy=false}
 function sellGift(i){srv('sell',{i,slug:U().inv[i]},{lock:1}).then(j=>{if(j){toast(`Продано +${fmt(j.got)} ★`);setTab('profile')}})}
 function sellAll(){srv('sellall',{},{lock:1}).then(j=>{if(j){toast(`Продано +${fmt(j.got)} ★`);setTab('profile')}})}
@@ -1629,7 +1629,7 @@ function adminView(){
   <div class="field"><input id="mtTxt" placeholder="Текст для игроков (необязательно)" value="${esc(MT.text||'')}"></div>
   <button class="btn ${MT.on?'sand':'ghost'}" onclick="maintToggle()">${MT.on?'✅ Выключить перерыв':'🛠 Включить перерыв'}</button></div>`;
   return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]()+(S.adTab==='pay'?(setTimeout(()=>cpAdmLoad()),''):'');
+  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]()+(S.adTab==='pay'?(setTimeout(()=>{cpAdmLoad();ubKey()}),''):'');
 }
 /* ===== графики по дням ===== */
 S.chK=S.chK||'dep';S.chN=S.chN||14;
@@ -1681,6 +1681,9 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="field"><input id="fdP" type="number" min="1" max="100" value="${FDB().pct}"><span class="sub" style="align-self:center">% бонуса</span><input id="fdM" type="number" min="1" value="${FDB().min}"><span class="sub" style="align-self:center">мин. ★</span></div>
  <div class="field"><input id="fdX" type="number" min="1" value="${FDB().max}"><span class="sub" style="align-self:center">★ — максимум бонуса</span></div>
  <button class="btn sand" onclick="ADM.fdb={on:$('#fdOn').classList.contains('on'),pct:Math.max(1,Math.min(100,+$('#fdP').value||10)),min:Math.max(1,Math.round(+$('#fdM').value||100)),max:Math.max(1,Math.round(+$('#fdX').value||300))};saveAdm(1);toast('Сохранено ✅')">Сохранить</button></div>
+ <div class="card" id="ubAdm"><div class="ad-h">🎁 Автовыдача NFT (юзербот)</div><div id="ubSt" class="sub" style="text-align:left">Проверяю…</div>
+  <p class="sub" style="text-align:left;font-size:12px;margin:6px 0">Скрипт на твоём VPS сам передаёт коллекционные подарки игрокам с аккаунта-склада. Инструкция и скрипт: <a href="ub/README.txt" target="_blank">README</a> · <a href="ub/strela_ub.py" target="_blank">strela_ub.py</a></p>
+  <div class="row" style="gap:6px"><button class="btn sm sand" style="flex:1" onclick="ubKey({make:1})">🔑 Новый ключ</button><button class="btn sm ghost" style="flex:1" onclick="if(confirm('Выключить автовыдачу? Старый ключ перестанет работать'))ubKey({off:1})">⏸ Выключить</button></div></div>
  <div class="card"><div class="ad-h">🤖 CryptoBot (оплата в $)</div><div id="cpSt" class="sub" style="text-align:left">Проверяю подключение…</div>
  <p class="sub" style="text-align:left;font-size:13px">1) Открой @CryptoBot → Crypto Pay → Create App → скопируй API Token.<br>2) Вставь его ниже и сохрани (виден только владельцу, игрокам не уходит).<br>3) В приложении CryptoBot → Webhooks → включи и вставь адрес ниже — тогда оплата зачисляется мгновенно, даже если игрок закрыл приложение.</p>
  <div class="field"><input id="cpTok" type="password" placeholder="API Token из @CryptoBot" autocomplete="off"></div>
@@ -1950,6 +1953,10 @@ function ceFitRtp(){const c=ceGet(S.ceKey);const p=c.free?100:(+$('#ceP').value|
  const pr=L.map(([s])=>giftBy(s).price);if(target<=Math.min(...pr)||target>=Math.max(...pr))return toast('RTP недостижим: добавьте дешевле/дороже подарки');
  let lo=-6,hi=6,ws;for(let k=0;k<60;k++){const a=(lo+hi)/2;ws=pr.map(x=>Math.pow(x,-a));const W=ws.reduce((x,y)=>x+y,0);const ev=pr.reduce((x,v,i)=>x+v*ws[i]/W,0);ev>target?lo=a:hi=a}
  const W=ws.reduce((x,y)=>x+y,0);L.forEach((it,i)=>it[1]=+(ws[i]/W*100).toFixed(3));ceRender();toast('Шансы подогнаны')}
+function ubKey(d){API('api/admin/ub_key',d||{}).then(j=>{const e=$('#ubSt');if(!j||!j.ok){if(e)e.textContent='⚠️ '+((j&&j.err)||'ошибка');return}
+ const ago=j.seen?Math.round((Date.now()-j.seen)/6e4):-1,live=j.seen&&Date.now()-j.seen<5*6e4;
+ if(e)e.innerHTML=!j.on?'⏸ Выключена — создай ключ и запусти скрипт на VPS':(live?'🟢 Скрипт на связи':'🔴 Скрипт не на связи')+(ago>=0?` · последний раз ${ago<1?'только что':ago+' мин назад'}`:' · ещё ни разу не подключался')+'<br>Пока скрипт не на связи, выводы приходят тебе на ручную выдачу.';
+ if(d&&d.make&&j.key)sheet(`<h2>🔑 Ключ автовыдачи</h2><p class="sub">Вставь в файл <b>.env</b> рядом со скриптом. Показывается один раз — никому не отправляй.</p><div class="card" style="word-break:break-all;font-family:monospace;user-select:all">UB_KEY=${j.key}<br>UB_SERVER=${j.url}</div><button class="btn sand" onclick="copyText('UB_KEY=${j.key}\\nUB_SERVER=${j.url}');toast('Скопировано')">📋 Скопировать</button>`)}).catch(()=>{})}
 function cpAdmLoad(d){API('api/admin/cp_token',d||{}).then(j=>{const e=$('#cpSt');if(!j||!j.ok){if(e)e.textContent='⚠️ '+((j&&j.err)||'ошибка');if(d&&j&&j.err)toast(j.err);return}
  const ready=!!j.set;if(!!CP().ready!==ready){ADM.cp=Object.assign(CP(),{ready});saveAdm(1)}
  if(e)e.innerHTML=ready?`✅ Подключено${j.app?': <b>'+esc(j.app)+'</b>':''} · токен ${esc(j.mask)}${j.env?' (из секрета Cloudflare)':''}<br>Вебхук: <b style="user-select:all;word-break:break-all">${esc(j.hook)}</b>`:`❌ Токен не задан — игроки не видят CryptoBot<br>Вебхук: <b style="user-select:all;word-break:break-all">${esc(j.hook)}</b>`;if(d)toast(ready?'CryptoBot подключён ✅':'Токен удалён')}).catch(()=>{})}

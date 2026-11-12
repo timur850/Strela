@@ -300,7 +300,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash", "promo"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del", "refs", "refundo"]);
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del", "refs", "refundo", "ub_key"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -703,7 +703,8 @@ export default {
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
       { const ms = await maintStop(env, u); if (ms) return ms; }
-      const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug });
+      const ubOn = !!(await getKey(env, "ubkey")) && Date.now() - (+(await getKey(env, "ubseen")) || 0) < 5 * 6e4;   // юзербот на связи последние 5 мин
+      const r = await op(env, "withdraw", u.id, uname(u), { i: d.i, slug: d.slug, un: u.username || "", ub: ubOn });
       if (!r.ok) return json(r);
       const w = r.wd, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
       // обычный подарок Telegram — бот отправляет сам, за звёзды со своего баланса
@@ -731,6 +732,7 @@ export default {
           return json({ ...r, auto: true });
         }
         autoErr = b.err;
+        if (ubOn) return json({ ...r, auto: true, ub: true });   // выдаст юзербот; если не сможет — владельцу придёт заявка на ручную выдачу
       }
       const text = `📤 <b>Заявка на вывод</b>\n\n🎁 Подарок: <b>${e(w.name)}</b>\n⭐ Цена: ${w.price} ★\n` +
         `👤 Игрок: ${e(uname(u))}\n🆔 ID: <code>${u.id}</code>\n🕒 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Kyiv" })}` +
@@ -846,6 +848,31 @@ export default {
       return json(await op(env, "task", u.id, uname(u), { id: t.id, verified, why }));
     }
 
+    // ===== юзербот автовыдачи (скрипт на VPS владельца): забирает заявки и сообщает результат =====
+    if ((path === "/api/ub/take" || path === "/api/ub/result") && req.method === "POST") {
+      let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
+      const k = await getKey(env, "ubkey");
+      if (!k || String(d.key || "") !== k) return json({ ok: false, err: "bad key" }, 403);
+      if (path === "/api/ub/take") {
+        await putKey(env, "ubseen", String(Date.now()));
+        const r = await op(env, "admin/ub_take", "0", "", { n: 3 }, true);
+        for (const w of r.list || []) { const m = (globalThis.STRELA.MODEL_LIST || []).find(x => x[0] === w.slug); w.title = m ? m[3] : w.gname; w.model = m ? m[4] : ""; }
+        return json(r);
+      }
+      const r = await op(env, "admin/ub_result", "0", "", { id: d.id, ok: !!d.ok, err: d.err }, true);
+      const w = r.w;
+      if (w) {
+        const e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+        const st = await loadSettings(env), to = new Set();
+        for (const o of OWNERS) { const c = await getKey(env, "ownerchat:" + o.toLowerCase()); if (c) to.add(String(c)); }
+        if (!d.ok) for (const a of st.admins || []) to.add(String(a));
+        const text = d.ok ? `🤖 Автовыдача (юзербот): <b>${e(w.gname)}</b> (${w.price} ★) → ${e(w.name)}, ID <code>${w.uid}</code>`
+          : `📤 <b>Заявка на вывод — нужна ручная выдача</b>\n\n🎁 ${e(w.gname)} · ${w.price} ★\n👤 ${e(w.name)} · ID <code>${w.uid}</code>\n\n⚠️ Юзербот не смог: ${e(d.err || "ошибка")}`;
+        for (const chat of to) await tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", reply_markup: d.ok ? undefined : { inline_keyboard: [[{ text: "💬 Написать игроку", url: w.un ? "https://t.me/" + w.un : "tg://user?id=" + w.uid }]] } }).catch(() => {});
+        if (d.ok) await tg(env, "sendMessage", { chat_id: w.uid, text: `🎁 Подарок ${w.gname} отправлен тебе в Telegram! Проверь профиль → Подарки.` }).catch(() => {});
+      }
+      return json({ ok: true });
+    }
     if (path.startsWith("/api/admin/") && req.method === "POST") {
       const name = path.slice(11);
       if (!ADMIN_OPS.has(name)) return json({ ok: false, err: "Неизвестное действие" }, 404);
@@ -853,6 +880,14 @@ export default {
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Нет доступа" }, 403);
       delete d.initData;
+      if (name === "ub_key") {       // ключ для юзербота автовыдачи — только владелец
+        if (!isOwner(u.username)) return json({ ok: false, err: "Только владелец" }, 403);
+        let k = await getKey(env, "ubkey");
+        if (d.make) { k = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, "0")).join(""); await putKey(env, "ubkey", k); }
+        if (d.off) { await putKey(env, "ubkey", ""); k = ""; }
+        const seen = +(await getKey(env, "ubseen")) || 0;
+        return json({ ok: true, key: d.make ? k : (k ? k.slice(0, 6) + "…" : ""), on: !!k, seen, url: url.origin });
+      }
       if (name === "cp_token") {     // токен CryptoBot — только владелец; наружу не отдаём
         if (!isOwner(u.username)) return json({ ok: false, err: "Только владелец" }, 403);
         if (d.token !== undefined) {

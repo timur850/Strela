@@ -874,7 +874,7 @@ export class Game {
     if (refL) { u.refLock.splice(u.refLock.indexOf(g.slug), 1); u.refWd = (u.refWd || 0) + 1; u.refPaid--; }   // следующий вывод из реф-кейса — на 10 друзей больше
     if (fee) { u.bal -= fee; await this.stat("fee", fee); }
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
-    await this.s.put("wdq:" + id, { id, uid, name: u.name, slug: g.slug, gname: g.name, price: g.price, fee, refL: refL ? 1 : 0, t: Date.now(), st: "new" });
+    await this.s.put("wdq:" + id, { id, uid, name: u.name, un: String(d.un || "").slice(0, 40), slug: g.slug, gname: g.name, price: g.price, fee, refL: refL ? 1 : 0, ub: d.ub && !g.tgid ? 1 : 0, t: Date.now(), st: "new" });
     await this.s.put("wd:" + uid, Date.now()); this.hist(u, { k: "wd", id, s: g.slug, a: g.price, fee });
     return { wd: { id, slug: g.slug, name: g.name, price: g.price, tgid: g.tgid || null } };
   }
@@ -1084,6 +1084,20 @@ export class Game {
       const rows = [];
       for (const fid of (r.refs || []).slice(-40).reverse()) { const f = await this.s.get("u:" + fid); rows.push({ id: fid, name: f && f.name, q: !!(f && f.refq), why: f && f.refWhy }); }
       return { ok: true, refQ: r.refQ || 0, rows };
+    }
+    if (op === "ub_take") {                       // юзербот забирает заявки на автовыдачу (по одной, чтобы не отправить дважды)
+      const out = [], now = Date.now();
+      for (const [k, w] of await this.s.list({ prefix: "wdq:", limit: 1000 })) {
+        if (w.st !== "new" || !w.ub || (w.ubAt && now - w.ubAt < 30 * 6e4)) continue;   // взятую заявку повторно не отдаём 30 мин
+        w.ubAt = now; await this.s.put(k, w); out.push({ id: w.id, uid: w.uid, un: w.un || "", slug: w.slug, gname: w.gname, price: w.price });
+        if (out.length >= (d.n || 3)) break;
+      }
+      return { ok: true, list: out };
+    }
+    if (op === "ub_result") {                     // итог: выдано — закрываем заявку; ошибка — заявка остаётся на ручную выдачу
+      const k = "wdq:" + String(d.id || ""), w = await this.s.get(k); if (!w) return { ok: true, gone: 1 };
+      if (d.ok) { await this.s.delete(k); return { ok: true, w }; }
+      w.ub = 0; w.ubErr = String(d.err || "ошибка").slice(0, 200); await this.s.put(k, w); return { ok: true, w };
     }
     if (op === "wd_count") return { ok: true, n: (await this.s.list({ prefix: "wdq:", limit: 500 })).size };
     if (op === "wd_done") { const k = "wdq:" + String(d.wid || ""), w = await this.s.get(k); if (w) await this.s.delete(k); return { ok: true }; }
