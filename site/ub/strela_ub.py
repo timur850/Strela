@@ -18,6 +18,9 @@ STRELA CASE — автовыдача NFT-подарков (юзербот).
   SESSION=...         ← появится сам после «login». Это полный доступ к аккаунту — никому не отдавай!
 """
 import asyncio, json, os, re, sys, time, urllib.request
+import logging
+if os.environ.get("DEBUG"):
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s: %(message)s")
 
 from telethon import TelegramClient, errors
 from telethon.sessions import StringSession
@@ -164,7 +167,13 @@ async def login(cfg, qr=False):
                  types.auth.SentCodeTypeSms: "по SMS", types.auth.SentCodeTypeCall: "звонком (код — в голосовом сообщении)",
                  types.auth.SentCodeTypeFlashCall: "звонком (код — последние цифры номера)", types.auth.SentCodeTypeMissedCall: "пропущенным звонком (код — последние цифры номера)",
                  types.auth.SentCodeTypeEmailCode: "на почту, привязанную к аккаунту", types.auth.SentCodeTypeFragmentSms: "в Fragment (анонимный номер)"}
-        sent = await client.send_code_request(phone)
+        print("→ Подключаюсь к Telegram и прошу код…")
+        try:
+            sent = await asyncio.wait_for(client.send_code_request(phone), 60)
+        except asyncio.TimeoutError:
+            sys.exit("Telegram не ответил за 60 сек. Запусти с подробным логом: DEBUG=1 .venv/bin/python strela_ub.py login — и пришли скрин")
+        except errors.RPCError as e:
+            sys.exit("Telegram отказал: " + e.message)
         while True:
             print("📨 Код отправлен " + where.get(type(sent.type), str(type(sent.type).__name__)))
             code = input("Введи код (или r — отправить код ещё раз другим способом): ").strip()
