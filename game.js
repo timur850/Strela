@@ -199,8 +199,35 @@ export class Game {
   refLocked(u, slug) { const lk = (u.refLock || []).filter(s => s === slug).length; return lk > 0 && lk >= u.inv.filter(s => s === slug).length; }
   noRefLock(u, slug) { if (this.refLocked(u, slug)) fail("Подарок из реф-кейса можно только вывести — продать, поставить или обменять его нельзя"); }
   // друг засчитывается для вывода из реф-кейса: пришёл по ссылке, открыл реф-кейс в мини-аппе, есть Telegram Premium или NFT
+  // ===== мульти-аккаунты: одно устройство (метка в мини-аппе) или один IP (хэш, сам IP не храним) =====
+  async track(u, uid, d) {
+    if (this.isStaff || !d) return;
+    for (const [t, h] of [["dv", d._dv], ["ip", d._ip]]) {
+      if (!h || !/^[a-z0-9]{6,32}$/i.test(h)) continue;
+      const key = t + "H", arr = u[key] || (u[key] = []);
+      if (arr.includes(h)) continue;
+      u[key] = [h, ...arr].slice(0, t === "ip" ? 8 : 4);
+      const ik = "ix:" + t + ":" + h, ix = (await this.s.get(ik)) || [];
+      if (!ix.includes(uid)) { ix.push(uid); await this.s.put(ik, ix.slice(-40)); }
+    }
+  }
+  async linked(u, uid) {                          // { другой uid: {dv, ip} }
+    const out = {};
+    for (const t of ["dv", "ip"]) for (const h of u[t + "H"] || []) {
+      const ix = (await this.s.get("ix:" + t + ":" + h)) || [];
+      if (t === "ip" && ix.length > 15) continue;  // общий IP оператора/кафе — не улика
+      for (const o of ix) if (o !== uid) (out[o] = out[o] || {})[t] = 1;
+    }
+    return out;
+  }
+  async multiRef(u, uid) {                        // приглашённый — тот же человек, что пригласивший?
+    if (!u.ref) return "";
+    const l = (await this.linked(u, uid))[u.ref];
+    return l ? (l.dv ? "одно устройство" : "один IP") : "";
+  }
   async refFreeCount(u) {
     if (!u.ref || !u.refq || !u.rOpen || u.refFc) return;
+    if (u.refMul || (u.refMul = await this.multiRef(u, this.uid))) return;
     const r = await this.s.get("u:" + u.ref); if (!r) return;
     u.refFc = 1; u.refFcAt = Date.now(); r.refF = (r.refF || 0) + 1; await this.s.put("u:" + u.ref, r);
   }
@@ -352,7 +379,8 @@ export class Game {
     if (OP_GAME[op]) onMark(OP_GAME[op], uid, this.isStaff);
     onMark("app", uid, this.isStaff);
     if (u.refLock && u.refLock.length) { const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1; u.refLock = u.refLock.filter(s => left[s]-- > 0); }
-    if (d && d._prem && u.ref && !u.refq && !u.refBan) {   // приглашённый с Telegram Premium (подпись Telegram) — засчитываем при любом действии в игре
+    await this.track(u, uid, d);
+    if (d && d._prem && u.ref && !u.refq && !u.refBan && !(u.refMul || (u.refMul = await this.multiRef(u, uid)))) {   // приглашённый с Telegram Premium (подпись Telegram) — засчитываем при любом действии в игре
       const r = await this.s.get("u:" + u.ref);
       if (r) { u.refq = 1; u.refWhy = "Premium"; u.refAt = Date.now(); r.refQ = (r.refQ || 0) + 1;
         if (u.rOpen && !u.refFc) { u.refFc = 1; u.refFcAt = Date.now(); r.refF = (r.refF || 0) + 1; }
@@ -404,6 +432,7 @@ export class Game {
   // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
   async op_ref_qualify(u, uid, d) {
     if (u.refq || !u.ref || u.refBan) return { done: false };
+    if (u.refMul || (u.refMul = await this.multiRef(u, uid))) return { done: false, mul: u.refMul };
     u.refq = 1; u.refWhy = String(d.why || "").slice(0, 40); u.refAt = Date.now();
     const r = await this.s.get("u:" + u.ref); if (!r) return { done: false };
     r.refQ = (r.refQ || 0) + 1;
@@ -957,7 +986,7 @@ export class Game {
     if (op === "refs") {                          // кого пригласил игрок и кто из них засчитан (для проверки накрутки)
       const r = await this.s.get("u:" + String(d.id || "")); if (!r) fail("Игрок не найден");
       const ids = (r.refs || []).slice().reverse();
-      const list = (await Promise.all(ids.map(async id => { const f = await this.s.get("u:" + id); return f ? { id, n: f.name || "", q: !!f.refq, why: f.refWhy || "", at: f.refAt || 0, open: !!f.rOpen, fc: !!f.refFc, fcAt: f.refFcAt || 0, ban: !!f.refBan, dep: f.depTot || 0, seen: f.seen || 0 } : { id, gone: 1 }; }))).filter(x => !x.gone);
+      const list = (await Promise.all(ids.map(async id => { const f = await this.s.get("u:" + id); return f ? { id, mul: f.refMul || (await this.multiRef(f, id)), n: f.name || "", q: !!f.refq, why: f.refWhy || "", at: f.refAt || 0, open: !!f.rOpen, fc: !!f.refFc, fcAt: f.refFcAt || 0, ban: !!f.refBan, dep: f.depTot || 0, seen: f.seen || 0 } : { id, gone: 1 }; }))).filter(x => !x.gone);
       return { ok: true, id: String(d.id), n: r.name || "", refCount: r.refCount || 0, refQ: r.refQ || 0, refF: r.refF || 0, refNeed: 10 * ((r.refWd || 0) + 1), refWd: r.refWd || 0, list };
     }
     if (op === "refundo") {                       // снять засчитанного друга (накрутка): у пригласившего −1, повторно не засчитается
@@ -966,6 +995,29 @@ export class Game {
       if (r) { if (f.refFc) r.refF = Math.max(0, (r.refF || 0) - 1); if (f.refq) r.refQ = Math.max(0, (r.refQ || 0) - 1); await this.s.put("u:" + f.ref, r); }
       f.refFc = 0; f.refq = 0; f.refBan = 1; await this.s.put("u:" + String(d.id), f);
       return { ok: true };
+    }
+    if (op === "multi") {                         // группы аккаунтов с общим устройством / IP
+      const par = {}, f = x => (par[x] === undefined ? (par[x] = x) : par[x] === x ? x : (par[x] = f(par[x]))), un = (a, b) => { par[f(a)] = f(b); };
+      const why = {};
+      for (const t of ["dv", "ip"]) for (const [, ix] of await this.s.list({ prefix: "ix:" + t + ":", limit: 50000 })) {
+        const ids = (ix || []).filter(x => !this.isStaffId(x)); if (ids.length < 2 || (t === "ip" && ids.length > 15)) continue;
+        for (const x of ids) { un(x, ids[0]); (why[x] = why[x] || {})[t] = 1; }
+      }
+      const groups = {};
+      for (const x of Object.keys(par)) (groups[f(x)] = groups[f(x)] || []).push(x);
+      const out = [];
+      for (const ids of Object.values(groups)) {
+        if (ids.length < 2) continue;
+        const us = []; let dv = 0, refIn = 0, dep = 0;
+        for (const id of ids.slice(0, 25)) {
+          const x = await this.s.get("u:" + id); if (!x) continue;
+          if (why[id] && why[id].dv) dv = 1; if (x.ref && ids.includes(String(x.ref))) refIn++; dep += x.depSum || 0;
+          us.push({ id, n: x.name, dep: x.depSum || 0, bal: x.bal || 0, inv: (x.inv || []).length, ref: x.ref || "", refF: x.refF || 0, dv: !!(why[id] && why[id].dv), banned: (this.st.banned || []).map(String).includes(id) });
+        }
+        out.push({ n: ids.length, dv, refIn, dep, us, score: dv * 3 + Math.min(refIn, 5) * 2 + (dep ? 0 : 1) + ids.length * 0.2 });
+      }
+      out.sort((a, b) => b.score - a.score);
+      return { ok: true, groups: out.slice(0, 60), total: out.length };
     }
     if (op === "uinfo") {                         // полная карточка игрока: по ID или @юзернейму
       let uid = String(d.q || "").trim().replace(/^@/, ""), u = null;
@@ -994,7 +1046,9 @@ export class Game {
       const wins = feedAll.filter(e => String(e.id) === uid).slice(0, 50);
       const tr = (await this.tourGet()).rows[uid];
       const ref = u.ref ? await this.s.get("u:" + u.ref) : null;
-      return { ok: true, u: { id: uid, name: u.name, bal: u.bal, tick: u.tick, inv: u.inv, ps: u.ps || null, hist: u.hist || [], depSum: u.depSum || 0,
+      const lk = await this.linked(u, uid), links = [];
+      for (const [id, f] of Object.entries(lk).slice(0, 30)) { const x = await this.s.get("u:" + id); links.push({ id, n: x ? x.name : id, dv: !!f.dv, ip: !!f.ip, dep: x ? x.depSum || 0 : 0, refMe: x && x.ref === uid, myRef: u.ref === id }); }
+      return { ok: true, links, refMul: u.refMul || "", u: { id: uid, name: u.name, bal: u.bal, tick: u.tick, inv: u.inv, ps: u.ps || null, hist: u.hist || [], depSum: u.depSum || 0,
         ref: u.ref ? { id: u.ref, name: ref && ref.name } : null, refCount: u.refCount || 0, refEarn: u.refEarn || 0, daily: u.daily || 0, nick: u.nick || null,
         lvl: u.lvl || 0, fdb: u.fdb || 0, glog: u.glog || [], banned: (this.st.banned || []).map(String).includes(uid), staff: this.isStaffId(uid) }, deps, wq, wins, tour: tr ? tr[1] : 0, tourBan: (this.st.tourBan || []).map(String).includes(uid) };
     }

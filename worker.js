@@ -244,6 +244,11 @@ export class Store {
   }
 }
 const store = env => env.STORE.get(env.STORE.idFromName("main"));
+async function ipHash(env, ip) {
+  if (!ip) return "";
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("strela-ip:" + (env.BOT_TOKEN || "").slice(-12) + ":" + ip));
+  return [...new Uint8Array(b)].slice(0, 8).map(x => x.toString(16).padStart(2, "0")).join("");
+}
 async function loadSettings(env) {
   let st; try { st = JSON.parse(await (await store(env).fetch("https://s/")).text()); } catch { st = {}; }
   if (st.freeGate === undefined && CONFIG.FREE_GATE) st.freeGate = CONFIG.FREE_GATE;   // по умолчанию — из config.js
@@ -300,7 +305,7 @@ const op = async (env, name, uid, uname, d, admin) =>
   (await store(env).fetch("https://s/op/" + name, { method: "POST", body: JSON.stringify({ uid, name: uname, d, admin }) })).json();
 const uname = u => u.username ? "@" + u.username : ([u.first_name, u.last_name].filter(Boolean).join(" ") || "Игрок");
 const PUBLIC_OPS = new Set(["pvp_state", "me", "case", "egg", "upgrade", "contract", "crash_state", "crash_bet", "crash_cash", "mines_bet", "mines_open", "mines_cash", "plinko", "slots", "pvp", "sell", "sellall", "task_start", "share", "dig", "drop", "drop_state", "hunt_state", "hunt_claim", "earn_apply", "earn_mine", "wallet", "level_claim", "chick_state", "chick_bet", "chick_step", "chick_cash", "promo"]);   // ref_qualify / ref_pending вызывает только сервер
-const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del", "refs", "refundo", "ub_key"]);
+const ADMIN_OPS = new Set(["earn_list", "earn_done", "give", "tick", "gift", "stats", "resetstats", "resetall", "resettour", "wd_done", "bc_start", "bc_stop", "bc_test", "cp_token", "uinfo", "tourkick", "promo_list", "promo_save", "promo_del", "refs", "refundo", "ub_key", "multi"]);
 async function isAdminUser(env, u) {
   if (isOwner(u.username)) return true;
   const st = await loadSettings(env);
@@ -772,6 +777,8 @@ export default {
         }
       }
       d._prem = !!u.is_premium;   // Premium из initData (подписано Telegram) — игра сама засчитает приглашённого
+      d._dv = /^[a-z0-9]{8,32}$/i.test(String(d.dv || "")) ? String(d.dv) : ""; delete d.dv;   // метка устройства из мини-аппа
+      d._ip = await ipHash(env, req.headers.get("CF-Connecting-IP") || "");                  // хэш IP — сам адрес не храним
       const res = await op(env, name, u.id, uname(u), d);
       if (name === "case" && d.free === "ref" && res && res.ok && !u.is_premium && res.me && res.me.refMe === 0) {   // приглашённый открыл реф-кейс без Premium — проверяем NFT в профиле
         const why = await refGood(env, u.id, false); if (why) await op(env, "ref_qualify", u.id, uname(u), { why });
