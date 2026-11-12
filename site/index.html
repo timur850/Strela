@@ -502,6 +502,20 @@ canvas{display:block;width:100%;border-radius:22px}
 .kpi b{font-size:22px;font-weight:900;display:block}
 .kpi small{color:var(--muted);font-weight:700;font-size:12px}
 .tabs2{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+.adm-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 2px 10px}.adm-top b{font-size:20px;font-weight:900}.adm-top small{color:var(--muted);font-weight:700;font-size:12px}
+.adm .tabs2{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;overflow:visible;margin-bottom:10px}
+.adm .tabs2 button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;font-size:10.5px;line-height:1.15;white-space:normal;border-radius:11px}
+.adm .tabs2 button i{font-style:normal;font-size:16px}
+.adm .card{padding:11px 12px;margin-bottom:8px;border-radius:16px}
+.adm .ad-h{font-size:15px;margin-bottom:6px;gap:6px}
+.adm .card>.ad-h:first-child{cursor:pointer;user-select:none}
+.adm .card>.ad-h:first-child::after{content:'▾';margin-left:auto;opacity:.5;font-size:13px;transition:transform .2s}
+.adm .card.col>.ad-h:first-child{margin-bottom:0}.adm .card.col>.ad-h:first-child::after{transform:rotate(-90deg)}
+.adm .card.col>:not(.ad-h:first-child){display:none!important}
+.adm .sub{font-size:12px}.adm p.sub{margin-top:0}
+.adm .btn{padding:11px;font-size:14px;border-radius:13px}
+.adm .btn.sm{padding:6px 10px;font-size:12px;border-radius:10px}
+.adm .field{margin-bottom:6px;gap:6px}.adm .field>input[type=number]:has(+span){flex:0 0 92px}.adm .field>span.sub{text-align:left;margin:0}.adm .field input,.adm .field select{padding:8px 10px;font-size:14px;border-radius:10px}
 .tabs2::-webkit-scrollbar{display:none}
 .tabs2 button{border:1px solid var(--line);background:var(--glass);color:#fff;font:800 13px Nunito,system-ui,sans-serif;padding:8px 12px;border-radius:12px;white-space:nowrap}
 .tabs2 button.on{background:linear-gradient(135deg,var(--sun),var(--sunset));color:#4a2000;border-color:transparent}
@@ -588,7 +602,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=9f9c5430"></script>
+<script src="i18n.js?v=81ab9203"></script>
 <script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1634,16 +1648,24 @@ function applyTheme(){const th=ADM.theme||'autumn',au=th==='autumn';document.bod
 function setTheme(t){ADM.theme=t;applyTheme();saveAdm(1);toast('Тема: '+(THEMES.find(x=>x[0]===t)||[])[1]);setTab('admin')}
 function maintToggle(){const m=ADM.maint||{};ADM.maint={on:!m.on,text:($('#mtTxt')&&$('#mtTxt').value.trim())||m.text||''};saveAdm(1);toast(ADM.maint.on?'🛠 Перерыв включён — игрокам всё закрыто':'✅ Перерыв выключен');setTab('admin')}
 setInterval(()=>{if(!document.hidden&&(ADM.maint||{}).on&&!IS_ADMIN)loadShared()},30000);
+// карточки админки сворачиваются по нажатию на заголовок (запоминается)
+let ADCOL;try{ADCOL=new Set(JSON.parse(localStorage.getItem('strela_adcol')||'[]'))}catch(e){ADCOL=new Set()}
+const adKey=h=>(h.childNodes[0]&&h.childNodes[0].textContent||h.textContent).trim().slice(0,40);
+function adColApply(){document.querySelectorAll('.adm .card>.ad-h:first-child').forEach(h=>h.parentNode.classList.toggle('col',ADCOL.has(adKey(h))))}
+document.addEventListener('click',e=>{const h=e.target.closest&&e.target.closest('.adm .card>.ad-h:first-child');if(!h||e.target.closest('button,input,select,a'))return;
+ const k=adKey(h);ADCOL.has(k)?ADCOL.delete(k):ADCOL.add(k);try{localStorage.setItem('strela_adcol',JSON.stringify([...ADCOL]))}catch(e){}h.parentNode.classList.toggle('col',ADCOL.has(k))});
 function adminView(){
   if(!IS_ADMIN)return `<div class="card empty">Нет доступа</div>`;
-  const tabs=[['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['drop','📦 Дроп'],['earn','🎬 Заработок'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
+  const tabs=[['set','⚙️ Общее'],['stats','📊 Статистика'],['rtp','🎯 Проценты'],['give','⭐ Выдать'],['pay','💎 Оплата'],['access','🔑 Доступ'],['tasks','📜 Задания'],['gifts','🎁 Подарки'],['cases','🧳 Кейсы'],['games','🕹 Игры'],['drop','📦 Дроп'],['earn','🎬 Заработок'],['users','👥 Игроки'],['soc','🔗 Соцсети'],['bc','📣 Рассылка']];
   const MT=ADM.maint||{};const thCard=`<div class="card"><div class="ad-h">🎨 Оформление</div><div class="row" style="gap:8px">${THEMES.map(([k,n])=>`<button class="btn ${(ADM.theme||'autumn')===k?'sand':'ghost'}" onclick="setTheme('${k}')">${n}</button>`).join('')}</div><p class="sub" style="text-align:left;margin:8px 0 0">Меняется сразу у всех игроков.</p></div>`;
   const mtCard=`<div class="card" style="${MT.on?'border-color:var(--coral);background:rgba(255,90,95,.22)':''}"><div class="ad-h">🛠 Технический перерыв <small style="background:${MT.on?'var(--coral)':'var(--palm)'}">${MT.on?'ВКЛЮЧЁН':'выключен'}</small></div>
   <p class="sub" style="text-align:left;margin:0 0 6px">Когда включён, игроки видят экран перерыва и не могут играть, открывать кейсы и выводить. Админы видят всё как обычно.</p>
   <div class="field"><input id="mtTxt" placeholder="Текст для игроков (необязательно)" value="${esc(MT.text||'')}"></div>
   <button class="btn ${MT.on?'sand':'ghost'}" onclick="maintToggle()">${MT.on?'✅ Выключить перерыв':'🛠 Включить перерыв'}</button></div>`;
-  return `<h1>Админ-панель</h1><p class="sub">${TU?'@'+(ME.username||ME.id):'Демо-режим (вне Telegram)'} · владельцы @${OWNER}</p>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
-  <div class="tabs2">${tabs.map(([k,n])=>`<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')">${n}</button>`).join('')}</div>`+mtCard+thCard+AD[S.adTab]()+(S.adTab==='pay'?(setTimeout(()=>{cpAdmLoad();ubKey()}),''):'');
+  if(!AD[S.adTab]&&S.adTab!=='set')S.adTab='stats';setTimeout(adColApply);
+  const mtBar=MT.on&&S.adTab!=='set'?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.22);display:flex;align-items:center;gap:8px"><b style="flex:1">🛠 Технический перерыв включён</b><button class="btn sm sand" onclick="maintToggle()">Выключить</button></div>`:'';
+  return `<div class="adm"><div class="adm-top"><b>🛡 Админ-панель</b><small>${TU?'@'+(ME.username||ME.id):'Демо-режим'}</small></div>${TU&&!isOwnerName(ME.username)&&!(ADM.admins||[]).map(String).includes(ME.id)?`<div class="card" style="border-color:var(--coral);background:rgba(255,90,95,.2)"><b>⚠️ Сервер не считает тебя админом</b><p class="sub" style="text-align:left;margin:6px 0 0">Изменения не сохранятся. Владелец в коде: @${OWNER}. Твой ID: ${ME.id}</p></div>`:''}
+  <div class="tabs2">${tabs.map(([k,n])=>{const i=n.indexOf(' ');return `<button class="${S.adTab===k?'on':''}" onclick="S.adTab='${k}';${k==='stats'||k==='users'||k==='bc'?'adLoad();':''}setTab('admin')"><i>${n.slice(0,i)}</i>${n.slice(i+1)}</button>`}).join('')}</div>`+mtBar+(S.adTab==='set'?mtCard+thCard:AD[S.adTab]())+(S.adTab==='pay'?(setTimeout(()=>{cpAdmLoad();ubKey()}),''):'')+'</div>';
 }
 /* ===== графики по дням ===== */
 S.chK=S.chK||'dep';S.chN=S.chN||14;
