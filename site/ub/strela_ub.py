@@ -20,6 +20,10 @@ STRELA CASE — автовыдача NFT-подарков (юзербот).
 """
 import asyncio, json, os, re, sys, time, urllib.request
 import logging
+try:
+    sys.stdout.reconfigure(line_buffering=True)   # чтобы логи сразу шли в journalctl
+except Exception:
+    pass
 if os.environ.get("DEBUG"):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s: %(message)s")
 

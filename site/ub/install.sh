@@ -40,6 +40,7 @@ Description=STRELA autogift
 After=network-online.target
 [Service]
 WorkingDirectory=$DIR
+Environment=PYTHONUNBUFFERED=1
 ExecStart=$PY $DIR/strela_ub.py
 Restart=always
 RestartSec=10
