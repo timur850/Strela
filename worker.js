@@ -768,10 +768,11 @@ export default {
           if (d.gate.on && d.gate.channel) { const s = await isSub(env, d.gate.channel, u.id); d.subOk = s.ok; d.subWhy = s.why; }
         }
       }
-      if (name === "me" && u.is_premium && !(await getKey(env, "pq:" + u.id))) {   // друг с Premium открыл игру — засчитываем пригласившему (один раз)
-        await putKey(env, "pq:" + u.id, "1"); await op(env, "ref_qualify", u.id, uname(u), { why: "Premium" });
-      }
+      d._prem = !!u.is_premium;   // Premium из initData (подписано Telegram) — игра сама засчитает приглашённого
       const res = await op(env, name, u.id, uname(u), d);
+      if (name === "case" && d.free === "ref" && res && res.ok && !u.is_premium && res.me && res.me.refMe === 0) {   // приглашённый открыл реф-кейс без Premium — проверяем NFT в профиле
+        const why = await refGood(env, u.id, false); if (why) await op(env, "ref_qualify", u.id, uname(u), { why });
+      }
       if (name === "earn_apply" && res.ok && res.earn) {   // новая заявка на оплату ролика → владельцам и админам
         const x = res.earn, e = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
         const K = { gameplay: "Геймплей", gifts: "Подарки Telegram", creative: "Креатив" };

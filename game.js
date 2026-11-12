@@ -89,7 +89,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: u.refPaid || 0, refWdFee: this.st.rwdFee ?? 150, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: u.refPaid || 0, refMe: u.ref ? (u.refq ? 1 : 0) : -1, refWdFee: this.st.rwdFee ?? 150, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -336,6 +336,12 @@ export class Game {
     if (OP_GAME[op]) onMark(OP_GAME[op], uid, this.isStaff);
     onMark("app", uid, this.isStaff);
     if (u.refLock && u.refLock.length) { const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1; u.refLock = u.refLock.filter(s => left[s]-- > 0); }
+    if (d && d._prem && u.ref && !u.refq && !u.refBan) {   // приглашённый с Telegram Premium (подпись Telegram) — засчитываем при любом действии в игре
+      const r = await this.s.get("u:" + u.ref);
+      if (r) { u.refq = 1; u.refWhy = "Premium"; u.refAt = Date.now(); r.refQ = (r.refQ || 0) + 1;
+        if (u.rOpen && !u.refFc) { u.refFc = 1; u.refFcAt = Date.now(); r.refF = (r.refF || 0) + 1; }
+        await this.s.put("u:" + u.ref, r); }
+    }
     if (u.freeLock && u.freeLock.length) {           // блокировка не может быть больше, чем таких подарков в инвентаре
       const left = {}; for (const s of u.inv) left[s] = (left[s] || 0) + 1;
       u.freeLock = u.freeLock.filter(s => left[s]-- > 0);
