@@ -607,7 +607,8 @@ export default {
     // зачисление звёзд из STRELA STARS (покупка «на баланс казино»). Доступ — только с секретом EXT_KEY (одинаковый в обоих воркерах)
     if (path === "/ext/credit" && req.method === "POST") {
       const key = String(env.EXT_KEY || "").trim(), got = String(req.headers.get("x-ext-key") || "").trim();
-      if (!key || key.length < 16 || got.length !== key.length || (await sha256hex("ext:" + got)) !== (await sha256hex("ext:" + key))) return json({ ok: false, err: "bad key" }, 403);
+      if (!key || key.length < 16) return json({ ok: false, err: "no key" }, 403);   // в казино не задан секрет EXT_KEY
+      if (got.length !== key.length || (await sha256hex("ext:" + got)) !== (await sha256hex("ext:" + key))) return json({ ok: false, err: "bad key", len: key.length }, 403);
       const b = await req.json().catch(() => ({}));
       const uid = String(b.uid || ""), a = Math.floor(+b.a || 0), id = String(b.id || "");
       if (!/^\d{3,15}$/.test(uid) || !(a > 0 && a <= 1000000) || !/^[\w:-]{1,64}$/.test(id)) return json({ ok: false, err: "bad params" }, 400);
