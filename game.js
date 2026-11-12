@@ -90,7 +90,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: u.refPaid || 0, refMe: u.ref ? (u.refq ? 1 : 0) : -1, refWdFee: this.st.rwdFee ?? 150, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: this.rwdPaid(u) ? 1 : 0, refMe: u.ref ? (u.refq ? 1 : 0) : -1, refWdFee: this.rwdFee(u), refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -198,6 +198,8 @@ export class Game {
     }
     u.depTot = sum; return sum;
   }
+  rwdFee(u) { return Math.max(1, Math.round(+(this.st.rwdFee ?? 150)) + Math.max(0, Math.round(+(this.st.rwdStep ?? 50))) * (u.refWd || 0)); }   // 1-й вывод из Friends — 150 ★, 2-й — 200, 3-й — 250…
+  rwdPaid(u) { return u.rwdBal == null ? (u.refPaid || 0) > 0 : u.rwdBal >= this.rwdFee(u); }   // оплачен ли текущий вывод (старые оплаты без суммы — засчитываем)
   refLocked(u, slug) { const lk = (u.refLock || []).filter(s => s === slug).length; return lk > 0 && lk >= u.inv.filter(s => s === slug).length; }
   noRefLock(u, slug) { if (this.refLocked(u, slug)) fail("Подарок из реф-кейса можно только вывести — продать, поставить или обменять его нельзя"); }
   // друг засчитывается для вывода из реф-кейса: пришёл по ссылке, открыл реф-кейс в мини-аппе, есть Telegram Premium или NFT
@@ -961,14 +963,14 @@ export class Game {
     if (needDep && !this.isStaff && !refL) { const dt = await this.depTotal(u, uid); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
     if (g.price < minWd && !refL) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     if (refL && (u.refF || 0) < refNeed) fail(`Подарок из реф-кейса можно вывести, когда пригласишь ${refNeed} друзей (${u.refF || 0}/${refNeed}). Друг засчитывается, когда заходит по твоей ссылке, открывает реф-кейс и у него есть Telegram Premium или NFT`);
-    if (refL && !((u.refPaid || 0) > 0)) fail(`Оплати вывод ${this.st.rwdFee ?? 150} ★ с баланса Telegram`);   // вывод из реф-кейса — за звёзды Telegram
+    if (refL && !this.rwdPaid(u)) fail(`Оплати вывод ${this.rwdFee(u)} ★ с баланса Telegram`);   // вывод из реф-кейса — за звёзды Telegram
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
       fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
     const pct = refL ? 0 : Math.max(0, Math.min(50, +(this.st.wdFee ?? 5) || 0)), fee = pct ? Math.ceil(g.price * pct / 100) : 0;   // комиссия за вывод, ★ с баланса
     if (fee && (u.bal || 0) < fee) fail(`Комиссия за вывод — ${fee} ★ (${pct}%). Пополни баланс`);
     u.inv.splice(i, 1);
-    if (refL) { u.refLock.splice(u.refLock.indexOf(g.slug), 1); u.refWd = (u.refWd || 0) + 1; u.refPaid--; }   // следующий вывод из реф-кейса — на 10 друзей больше
+    if (refL) { u.refLock.splice(u.refLock.indexOf(g.slug), 1); if (u.rwdBal == null) u.refPaid--; else { u.rwdBal = Math.max(0, u.rwdBal - this.rwdFee(u)); u.refPaid = 0; } u.refWd = (u.refWd || 0) + 1; }   // следующий вывод из реф-кейса — на 10 друзей больше
     if (fee) { u.bal -= fee; await this.stat("fee", fee); }
     const id = Date.now().toString(36) + randInt(1e6).toString(36);
     await this.s.put("wdq:" + id, { id, uid, name: u.name, un: String(d.un || "").slice(0, 40), slug: g.slug, gname: g.name, price: g.price, fee, refL: refL ? 1 : 0, ub: d.ub && !g.tgid ? 1 : 0, t: Date.now(), st: "new" });
@@ -985,7 +987,7 @@ export class Game {
     if (!w || w.uid !== uid || w.st !== "new") return {};
     await this.s.delete(k); await this.s.delete("wd:" + uid); u.inv.push(w.slug);
     if (w.fee) u.bal = (u.bal || 0) + w.fee;     // комиссию возвращаем
-    if (w.refL) { (u.refLock = u.refLock || []).push(w.slug); u.refWd = Math.max(0, (u.refWd || 0) - 1); u.refPaid = (u.refPaid || 0) + 1; }
+    if (w.refL) { (u.refLock = u.refLock || []).push(w.slug); u.refWd = Math.max(0, (u.refWd || 0) - 1); if (u.rwdBal == null) u.refPaid = (u.refPaid || 0) + 1; else u.rwdBal += this.rwdFee(u); }
     u.hist = (u.hist || []).filter(h => h.id !== w.id);
     return {};
   }
@@ -998,7 +1000,7 @@ export class Game {
     if (p.uid !== uid) fail("Чужой платёж");
     if (p.claimed) return { got: 0, already: true };
     p.claimed = true; await this.s.put(key, JSON.stringify(p));
-    if (p.kind === "rwd") { u.refPaid = (u.refPaid || 0) + 1; await this.stat("rwdfee", p.a); return { rwd: 1, got: 0 }; }   // оплата вывода из реф-кейса
+    if (p.kind === "rwd") { if (u.rwdBal == null) u.rwdBal = (u.refPaid || 0) > 0 ? this.rwdFee(u) : 0; u.rwdBal += Math.round(p.a) || 0; u.refPaid = 1; await this.stat("rwdfee", p.a); return { rwd: 1, got: 0 }; }   // оплата вывода из реф-кейса
     u.bal += p.a; await this.stat("dep", p.a); this.hist(u, { k: "dep", m: "stars", a: p.a }); const bonus = this.depDone(u, p.a); await this.stat("fdb", bonus); await this.refBonus(u, p.a);
     return { got: p.a, bonus };
   }

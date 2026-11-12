@@ -609,7 +609,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=f052be7a"></script>
+<script src="i18n.js?v=7f392277"></script>
 <script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -635,7 +635,7 @@ const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['boss','autoPrice','autoK','wdNeedDep','rwdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['boss','autoPrice','autoK','wdNeedDep','rwdFee','rwdStep','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -1149,7 +1149,7 @@ function refSheet(wi){const u=U(),need=u.refNeed||10,n=Math.min(u.refF||0,need),
  <div class="card"><div class="ad-h">Вывод: пригласи ${need} друзей</div><div class="frbar"><i style="width:${n/need*100}%"></i></div><p class="sub" style="margin:8px 0 0">Засчитано: <b>${n}/${need}</b>${n<need?` · осталось ${need-n}`:' · можно выводить ✅'}</p></div>
  ${g?'':`<button class="btn sand" ${left>0?'disabled':''} onclick="closeSheet();freeCase('ref',1)">${left>0?`⏳ Через ${left>=36e5?Math.ceil(left/36e5)+' ч':Math.ceil(left/6e4)+' мин'}`:'🎁 Открыть кейс'}</button>`}
  <button class="btn ${g?'sand':'ghost'}" style="margin-top:8px" onclick="shareRef()">📨 Пригласить друзей</button><button class="btn ghost" style="margin-top:8px" onclick="refCheck(${wi==null?'null':wi})">🔄 Проверить друзей</button>
- <div class="card" style="margin-top:10px"><div class="ad-h">Кто засчитывается</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. Открывает мини-апп и <b>этот реф-кейс</b>.<br>3. У него есть <b>Telegram Premium</b> или <b>NFT-подарок</b> в профиле (не скрытый).<br><br>Первый вывод — 10 друзей, второй — 20, третий — 30 и так далее.</p></div>
+ <div class="card" style="margin-top:10px"><div class="ad-h">Кто засчитывается</div><p class="sub" style="text-align:left;margin:0;font-size:13px">1. Друг заходит в бота по твоей ссылке.<br>2. Открывает мини-апп и <b>этот реф-кейс</b>.<br>3. У него есть <b>Telegram Premium</b> или <b>NFT-подарок</b> в профиле (не скрытый).<br><br>Первый вывод — 10 друзей, второй — 20, третий — 30 и так далее.<br>Оплата вывода сейчас — <b>★ ${fmt(u.refWdFee||150)}</b>, каждый следующий вывод дороже.</p></div>
  ${g?'':`<h2 style="margin:18px 0 10px;text-align:left">Содержимое кейса</h2>${caseItemsHtml(FREE('ref'))}`}`)}
 function promoSheet(){const n=U().promoCase||0;
  sheet(`<div class="frhead"><div class="frbadge">🎟</div><h2>Промо-кейс</h2><p class="sub">Открывается за промокод. Промокоды публикуем в канале и у партнёров.</p></div>
@@ -1737,7 +1737,8 @@ pay(){return `<div class="card"><div class="ad-h">💎 TON-кошелёк для
  <div class="field"><input id="pMW" type="number" min="0" max="100000" placeholder="★" value="${MIN_WD()}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — подарки дешевле можно только продать</span></div>
  <div class="ad-h" style="margin-top:14px">🔒 Вывод только после пополнения</div>
  <div class="field"><input id="pND" type="number" min="0" value="${ADM.wdNeedDep??100}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — сколько игрок должен пополнить за всё время, чтобы выводить (0 — без условия)</span></div>
- <div class="field"><input id="pRWF" type="number" min="1" value="${ADM.rwdFee??150}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — оплата вывода подарка из реф-кейса Friends (звёздами из Telegram)</span></div>
+ <div class="field"><input id="pRWF" type="number" min="1" value="${ADM.rwdFee??150}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — оплата первого вывода из реф-кейса Friends (звёздами из Telegram)</span></div>
+ <div class="field"><input id="pRWS" type="number" min="0" value="${ADM.rwdStep??50}" onfocus="this.select()"><span class="sub" style="align-self:center">★ — на сколько дороже каждый следующий вывод (150 → 200 → 250…)</span></div>
  <div class="ad-h" style="margin-top:14px">💸 Комиссия за вывод</div>
  <div class="field"><input id="pWF" type="number" min="0" max="50" step="0.5" placeholder="%" value="${WD_FEE()}" onfocus="this.select()"><span class="sub" style="align-self:center">% от цены подарка, звёздами с баланса (0 — без комиссии)</span></div>
  <div class="ad-h" style="margin-top:14px">🎁 Бонус новым игрокам</div>
@@ -2055,7 +2056,7 @@ function paySave(){const w=$('#pW').value.trim(),r=Math.round(+$('#pR').value);l
  /* кошелёк/курс проверяем отдельно — ошибка в них больше не блокирует сохранение минимального вывода и бонусов */
  if(!w||/^(?:[UEk0]Q[A-Za-z0-9_\-+/]{46}|-?\d:[0-9a-fA-F]{64})$/.test(w))ADM.tonWallet=w;else warn='адрес TON не похож на кошелёк — его не сохранил';
  if(r>0)ADM.tonRate=r;else warn=warn||'курс TON не указан — оставил прежний';
- ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));ADM.wdFee=Math.max(0,Math.min(50,+$('#pWF').value||0));ADM.wdNeedDep=Math.max(0,Math.round(+$('#pND').value||0));ADM.rwdFee=Math.max(1,Math.round(+$('#pRWF').value||150));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
+ ADM.startBal=Math.max(0,Math.round(+$('#pSB').value||0));ADM.startTick=Math.max(0,Math.round(+$('#pST').value||0));ADM.minWd=Math.max(0,Math.round(+$('#pMW').value||0));ADM.wdFee=Math.max(0,Math.min(50,+$('#pWF').value||0));ADM.wdNeedDep=Math.max(0,Math.round(+$('#pND').value||0));ADM.rwdFee=Math.max(1,Math.round(+$('#pRWF').value||150));ADM.rwdStep=Math.max(0,Math.round(+$('#pRWS').value||0));TON.info=null;saveAdm(1);setTab('admin');if(warn)setTimeout(()=>toast('⚠️ '+warn),1600)}
 function ceSave(){const c=ceGet(S.ceKey);const cfg=ceCfg(c.n);const L=S.ceItems.filter(([s,w])=>giftBy(s)&&w>0);if(!L.length)return toast('Добавьте хотя бы 1 подарок с весом > 0');
  cfg.items=L.map(x=>[x[0],x[1]]);cfg.cover=$('#ceC').value;if(!c.free){cfg.p=Math.max(1,Math.round(+$('#ceP').value||c.p));cfg.cat=($('#ceCat').value||'').trim().slice(0,30);cfg.lim=$('#ceL').classList.contains('on');cfg.hidden=$('#ceH').classList.contains('on')}
  saveAdm();closeSheet();setTab('admin');toast('Кейс сохранён ✅')}
