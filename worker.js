@@ -614,7 +614,7 @@ export default {
       const u = await checkInitData(d.initData || "", env.BOT_TOKEN || ""); if (u) await seenOwner(env, u);
       if (!u) return json({ ok: false, err: "Открой игру через бота" }, 403);
       const rwd = d.kind === "rwd";   // оплата вывода подарка из реф-кейса Friends — фиксированная сумма из настроек
-      const a = rwd ? Math.max(1, Math.round(Number((await loadSettings(env)).refWdFee ?? 50))) : Math.round(Number(d.amount));
+      const a = rwd ? Math.max(1, Math.round(Number((await loadSettings(env)).rwdFee ?? 150))) : Math.round(Number(d.amount));
       if (!(a >= 1 && a <= 10000)) return json({ ok: false, err: "От 1 до 10 000 ★ за раз" }, 400);
       const payload = `${rwd ? "rwd" : "dep"}:${u.id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
       const r = await tg(env, "createInvoiceLink", rwd ? { title: "Вывод подарка из Friends", description: `Оплата вывода подарка из реф-кейса ${NAME}`, payload, currency: "XTR", prices: [{ label: `Вывод ${a} ⭐`, amount: a }] }

@@ -89,7 +89,7 @@ export class Game {
     return u;
   }
 
-  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: u.refPaid || 0, refWdFee: this.st.refWdFee ?? 50, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
+  view(u) { return { bal: u.bal, tick: u.tick, inv: u.inv, done: u.done || {}, daily: u.daily || 0, shares: u.shares || 0, freeLock: u.freeLock || [], refQ: u.refQ || 0, refDaily: u.refDaily || 0, refD: { ref: u.refDaily || 0, ...(u.refD || {}) }, promoCase: u.promoCase || 0, refLock: u.refLock || [], refF: u.refF || 0, refNeed: REF_STEP * ((u.refWd || 0) + 1), refPaid: u.refPaid || 0, refWdFee: this.st.rwdFee ?? 150, refCount: u.refCount || 0, refEarn: u.refEarn || 0, fdbOk: this.fdbOk(u), hunt: this.huntView(u), ps: u.ps || null, lvl: u.lvl || 0, nick: u.nick || null, hist: u.hist || [] }; }
 
   // рефералы: новый игрок пришёл по ссылке → привязываем. Билеты пригласившему — только когда друг пополнит от 50 ★
   // (защита от накрутки фейк-аккаунтами)
@@ -858,7 +858,7 @@ export class Game {
     if (needDep && !this.isStaff && !refL) { const dt = await this.depTotal(u, uid); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
     if (g.price < minWd && !refL) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     if (refL && (u.refF || 0) < refNeed) fail(`Подарок из реф-кейса можно вывести, когда пригласишь ${refNeed} друзей (${u.refF || 0}/${refNeed}). Друг засчитывается, когда заходит по твоей ссылке, открывает реф-кейс и у него есть Telegram Premium или NFT`);
-    if (refL && !((u.refPaid || 0) > 0)) fail(`Оплати вывод ${this.st.refWdFee ?? 50} ★ с баланса Telegram`);   // вывод из реф-кейса — за звёзды Telegram
+    if (refL && !((u.refPaid || 0) > 0)) fail(`Оплати вывод ${this.st.rwdFee ?? 150} ★ с баланса Telegram`);   // вывод из реф-кейса — за звёзды Telegram
     const lockN = (u.freeLock || []).filter(s => s === g.slug).length, haveN = u.inv.filter(s => s === g.slug).length;
     if (lockN && lockN >= haveN && (u.refCount || 0) < FREE_NFT_REFS)
       fail(`NFT из бесплатного кейса можно вывести, когда пригласишь ${FREE_NFT_REFS} друзей (${u.refCount || 0}/${FREE_NFT_REFS})`);
