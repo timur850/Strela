@@ -502,6 +502,13 @@ canvas{display:block;width:100%;border-radius:22px}
 .kpi b{font-size:22px;font-weight:900;display:block}
 .kpi small{color:var(--muted);font-weight:700;font-size:12px}
 .tabs2{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+.boss{text-align:center;padding:18px 14px;background:radial-gradient(circle at 50% 30%,rgba(255,60,60,.28),transparent 70%),var(--glass)}
+.bossE{font-size:96px;line-height:1.1;animation:bossBob 2.4s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(0,0,0,.45))}.boss.dead .bossE{animation:none;filter:grayscale(1)}
+@keyframes bossBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.bossN{display:block;font-size:22px;font-weight:900;margin:2px 0 10px}
+.bossBar{position:relative;height:26px;border-radius:13px;background:rgba(0,0,0,.35);overflow:hidden;border:1px solid rgba(255,255,255,.12)}
+.bossBar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#ff2d55,#ff7a3d);transition:width .6s}
+.bossBar span{position:relative;font:900 13px Nunito,system-ui,sans-serif;line-height:26px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .adm-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 2px 10px}.adm-top b{font-size:20px;font-weight:900}.adm-top small{color:var(--muted);font-weight:700;font-size:12px}
 .adm .tabs2{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;overflow:visible;margin-bottom:10px}
 .adm .tabs2 button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;font-size:10.5px;line-height:1.15;white-space:normal;border-radius:11px}
@@ -602,7 +609,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=fe8667e5"></script>
+<script src="i18n.js?v=f052be7a"></script>
 <script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -628,7 +635,7 @@ const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
-const G_KEYS=['autoPrice','autoK','wdNeedDep','rwdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
+const G_KEYS=['boss','autoPrice','autoK','wdNeedDep','rwdFee','remind','fdb','nick','cp','upMax','minWd','wdFee','drop','hunt','freeGate','maint','theme','digTier','socials','tonWallet','tonRate','startBal','startTick','admins','rtp','pvpFee','off','tasks','caseCfg','customCases','prices','giftOff','caseP','banned'];
 const gPart=()=>{const o={};G_KEYS.forEach(k=>o[k]=ADM[k]);return JSON.stringify(o)};
 let SYNC={ready:false,last:'',t:0};
 function saveAdm(now){try{localStorage.setItem('strela_adm',JSON.stringify(ADM))}catch(e){}
@@ -820,6 +827,7 @@ drop(){dropOpen();return null},
 earn(){return earnHub()},
 earntt(){return earnPage()},
 hunt(){huntOpen();return null},
+boss(){setTimeout(bossLoad);return bossHtml()},
 free(){const K=FREE_KEYS(),card=k=>k==='daily'?caseCard(FREE(k),"freeCase('daily')"):k==='tick'?caseCard(FREE(k),"freeCase('tick')").replace('бесплатно','🎫 1'):k==='promo'?caseCard(FREE(k),"freeCase('promo')").replace('<i>бесплатно</i>',`<i>🎟 ${U().promoCase||0}</i>`):caseCard(FREE(k),"freeCase('ref')").replace('<i>бесплатно</i>','<i>раз в 24ч</i>').replace('class="ccard"','class="ccard friends"');
  sheet(`<h2>Бесплатно</h2>${K.length?`<div class="cgrid">${K.map(card).join('')}</div>`:'<div class="empty">Сейчас бесплатных кейсов нет</div>'}`);return null},
 caseOpen(){const c=S.curCase;return `<h1>${c.n}</h1><p class="sub">Цена: ${c.p?`<span class="star">★</span> ${fmt(c.p)}`:S.freeK==='tick'?'🎫 1':S.freeK==='promo'?'🎟 1':'бесплатно'}</p>${c.free&&S.freeK==='daily'?``:''}<div id="rouls">${roulsHtml()}</div>
@@ -915,7 +923,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  <div class="bal"><div><span class="star">★</span> ${fmt(u.bal||0)}</div><div>🎫 ${fmt(u.tick||0)}</div></div>
  <button class="btn sand" style="margin-bottom:6px" onclick="menuGo(()=>open_('deposit'))">Пополнить</button>
  <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
- <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
+ <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${(ADM.boss||{}).on===false?'':game('boss','👹','Босс недели')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
  <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('chick','🐥','Цыпа')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
  <div class="sec">🌐 Язык / Language</div><div class="row" style="gap:6px;padding:0 4px"><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:1" onclick="setLang('ru')">🇷🇺 RU</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:1" onclick="setLang('en')">🇬🇧 EN</button></div>
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
@@ -1096,6 +1104,7 @@ function bonusPage(){const u=U(),d=u.done||{},left=TASKS().filter(t=>!d[t.id]).l
  ${FREE_KEYS().length?row("S.ccat='free';setTab('cases')",'🎁','linear-gradient(135deg,#f0b43a,#c0640a)','Бесплатные кейсы','Открывай каждый день','FREE','gold'):''}
  ${row("setTab('tasks')",'📋','linear-gradient(135deg,#6f86ff,#7b5cf5)','Задания','Получай 🎫 билеты за подписки',left?`${left} новых`:'✓')}
  ${row("setTab('tour')",'🏆','linear-gradient(135deg,#ffcf3a,#e08a00)','Турнир месяца','Топ-3 по обороту получают NFT','Месяц')}
+ ${(ADM.boss||{}).on===false?'':row("open_('boss')",'👹','linear-gradient(135deg,#ff3d5a,#8a1030)','Босс недели','Бейте босса ставками — делите награду','NEW','gold')}
  ${ADM.off.hunt?'':row("open_('hunt')",'🗺️','linear-gradient(135deg,#1fb59a,#0b6a60)','Охота за сокровищами','Найди 5 тайников за неделю','')}
  ${(ADM.drop||{}).on!==false&&!ADM.off.drop?row("open_('drop')",'📦','linear-gradient(135deg,#8a5cff,#4a2aa0)','Ежедневный дроп','Бесплатный приз раз в день',''):''}
  ${row("setTab('profile')",'🤝','linear-gradient(135deg,#3fb6ff,#1f6fe0)','Пригласить друга','10% с пополнений друзей','10 %')}`}
@@ -1231,6 +1240,22 @@ function huntFx(h){if(!h)return;const d=document.createElement('div');d.classNam
  toast(h.n>=5?`Все 5 сокровищ найдены! Открой сундук 🗺️`:`Найдено сокровище ${huntE(h.e)} (${h.n}/5)!`)}
 const HUNT_DELAY={case:5600,dig:6000,egg:3500,upgrade:5600,plinko:3500,contract:3000};
 function huntGo(k){closeSheet();if(k==='cases'){S.ccat='all';setTab('cases')}else open_(k)}
+/* ===== босс недели ===== */
+async function bossLoad(){const j=await srv('boss_state',{},{quiet:1});if(j){S.boss=j;if(S.stack[S.stack.length-1]==='boss'){const sc=view.scrollTop;render(bossHtml());view.scrollTop=sc}}}
+function bossHtml(){const J=S.boss;if(!J)return `<h1>👹 Босс недели</h1><div class="card empty">Загрузка…</div>`;
+ const b=J.boss,my=J.my||{dmg:0,rw:0},pct=b.max?b.hp/b.max*100:0,done=b.max-b.hp,share=my.dmg>=b.min&&done?Math.floor(b.pool*my.dmg/Math.max(done,1)):0;
+ if(!J.on)return `<h1>👹 Босс недели</h1><div class="card empty">Босс сейчас выключен</div>`;
+ return `<h1>👹 Босс недели</h1><p class="sub">Каждая ставка в любой игре — удар по боссу. Убейте его вместе до конца недели — все участники поделят награду.</p>
+ <div class="card boss ${b.dead?'dead':''}"><div class="bossE">${b.dead?'💀':b.e}</div><b class="bossN">${esc(b.name)}</b>
+  <div class="bossBar"><i style="width:${pct}%"></i><span>${b.dead?'ПОВЕРЖЕН':`❤️ ${fmt(b.hp)} / ${fmt(b.max)}`}</span></div>
+  <p class="sub" style="margin:8px 0 0">${b.dead?`Добил ${esc((b.killer||{}).n||'игрок')} · награду получили ${fmt(b.paidN||0)} игроков · новый босс в понедельник через ${dropLeft(b.end)}`:`Участников: <b>${fmt(b.n)}</b> · убежит через <b>${dropLeft(b.end)}</b>`}</p></div>
+ <div class="row" style="gap:8px"><div class="card" style="flex:1;margin:0;text-align:center"><small class="sub" style="margin:0">Твой урон</small><br><b style="font-size:20px">⚔️ ${fmt(my.dmg)}</b></div>
+  <div class="card" style="flex:1;margin:0;text-align:center"><small class="sub" style="margin:0">${b.dead?'Ты получил':'Твоя доля сейчас'}</small><br><b style="font-size:20px" class="star">★ ${fmt(b.dead?my.rw:share)}</b></div></div>
+ ${!b.dead&&my.dmg<b.min?`<p class="sub" style="margin:8px 0 0">Чтобы получить долю, нанеси минимум <b>${fmt(b.min)}</b> урона (осталось ${fmt(b.min-my.dmg)})</p>`:''}
+ ${b.dead?'':`<button class="btn sand" style="margin:12px 0" onclick="goBack();setTab('games')">⚔️ Бить босса — играть</button>`}
+ <div class="card" style="margin-top:12px"><div class="ad-h">🎁 Награда</div><p class="sub" style="text-align:left;margin:0;line-height:1.6">💰 Призовой фонд <b class="star">★ ${fmt(b.pool)}</b> делится между всеми, кто нанёс от <b>${fmt(b.min)}</b> урона — чем больше урона, тем больше доля.<br>🗡 Кто нанесёт последний удар — ещё <b class="star">+★ ${fmt(b.last)}</b>.<br>⭐ 1 ★ ставки = 1 урон. Звёзды приходят на баланс сразу, как босс падает.<br>⏳ Не успели до конца недели — босс убегает, награды нет.</p></div>
+ ${(b.top||[]).length?`<div class="card"><div class="ad-h">🏅 Больше всех урона</div><div class="list">${b.top.map((x,i)=>`<div class="it"><b style="width:24px">${i+1}</b><div class="nm">${esc(x[1]||'Игрок')}</div><b>⚔️ ${fmt(x[2])}</b></div>`).join('')}</div></div>`:''}
+ ${J.prev?`<p class="sub" style="font-size:12px">Прошлая неделя: ${J.prev.e} ${esc(J.prev.name)} — ${J.prev.dead?`повержен, раздали ★ ${fmt(J.prev.paid)}${J.prev.my?` (тебе ★ ${fmt(J.prev.my)})`:''}`:'убежал'}</p>`:''}`}
 async function huntOpen(){huntSheet();const j=await srv('hunt_state',{},{quiet:1});if(j){S.huntInfo=j;huntSheet()}}
 function huntSheet(res){const H=U().hunt,I=S.huntInfo;
  if(!H||H.off){sheet(`<h2>🗺️ Охота за сокровищами</h2><div class="card empty">${H&&H.off?'Охота сейчас выключена':'Загрузка…'}</div>`);return}
@@ -1693,7 +1718,7 @@ function chartCard(days){const by={};days.forEach(d=>by[d.d]=d);const N=S.chN,to
  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="rgba(255,255,255,.25)"/>${bars}${lab}</svg>
  <div class="kpi" style="margin-top:8px"><div><b>${fmt(last)}${S.chK==='new'?'':' ★'}</b><small>Сегодня</small></div><div><b style="${S.chK==='profit'&&sum<0?'color:#ff8a8a':''}">${fmt(sum)}${S.chK==='new'?'':' ★'}</b><small>За ${N} дн.</small></div></div>
  <p class="sub" style="text-align:left;margin:6px 0 0;font-size:12px">Дни считаются по Киеву. Данные копятся с ${days.length?days[0].d.split('-').reverse().join('.'):'сегодня'}.</p></div>`}
-let GA=null,GAP=1;const GA_N={case:'🎁 Кейсы',free:'🆓 Бесплатные кейсы',ref:'👥 Кейс Friends',dig:'⛏ Шахта',egg:'🥚 Яйца',crash:'🚀 Краш',mines:'💣 Мины',plinko:'🔵 Plinko',chick:'🐥 Цыпа',slots:'🎰 Слоты',pvp:'⚔️ PvP',upgrade:'⬆️ Апгрейд',contract:'📜 Контракты',hunt:'🗺 Охота за сокровищами',bonus:'🎉 Бонусы (уровни, задания, промо, дроп)'};
+let GA=null,GAP=1;const GA_N={case:'🎁 Кейсы',free:'🆓 Бесплатные кейсы',ref:'👥 Кейс Friends',dig:'⛏ Шахта',egg:'🥚 Яйца',crash:'🚀 Краш',mines:'💣 Мины',plinko:'🔵 Plinko',chick:'🐥 Цыпа',slots:'🎰 Слоты',pvp:'⚔️ PvP',upgrade:'⬆️ Апгрейд',contract:'📜 Контракты',hunt:'🗺 Охота за сокровищами',bonus:'🎉 Бонусы (уровни, задания, промо, дроп)',boss:'👹 Босс недели'};
 function gaSum(p){const A=GA||{},o={};if(p==='all')return A.gdAll||{};const from=new Date(Date.parse(A.today+'T00:00:00Z')-(p-1)*864e5).toISOString().slice(0,10);
  for(const r of A.gd||[])if(r.d>=from)for(const[k,v]of Object.entries(r.g||{})){const t=o[k]||(o[k]=[0,0,0]);t[0]+=v[0];t[1]+=v[1];t[2]+=v[2]}return o}
 function gaCard(){const o=gaSum(GAP),ks=Object.keys(o).sort((a,b)=>(o[b][1]-o[b][2])-(o[a][1]-o[a][2]));let tb=0,tp=0;
@@ -1816,7 +1841,7 @@ drop(){const D=ADM.drop||{},wk=D.period==='week';return `<div class="card"><div 
  <div class="field"><input id="drP" value="${esc((D.prizes||[[5,40],[10,30],[15,15],[25,10],[50,5]]).map(([v,w])=>v+':'+w).join(' '))}"><span class="sub" style="align-self:center;white-space:nowrap">★:вес</span></div>
  <p class="sub" style="text-align:left;margin:0 0 8px;font-size:12px">Призы через пробел в виде <b>звёзды:вес</b>, например <b>5:40 10:30</b>. Проценты считаются автоматически, игроки их видят.</p>
 <button class="btn sand" onclick="dropSave()">Сохранить</button></div>${huntAdm()}${promoAdm()}`},
-games(){return `<div class="card"><div class="ad-h">🕹 Включение игр</div>
+games(){return bossAdm()+`<div class="card"><div class="ad-h">🕹 Включение игр</div>
  ${GAMES.map(([id,,ic,t])=>`<div class="grow"><span style="font-size:28px">${ic}</span><div class="nm">${t}</div><button class="sw ${ADM.off[id]?'':'on'}" onclick="ADM.off['${id}']=!ADM.off['${id}'];this.classList.toggle('on');saveAdm()"></button></div>`).join('')}</div>`},
 soc(){if(!ADM.socials)ADM.socials=structuredClone(DEF_SOCIALS);
  return `<div class="card"><div class="ad-h">🔗 Соцсети проекта</div><p class="sub" style="text-align:left;margin:0 0 10px">Включённые ссылки видны игрокам кнопками на главной. Пустые и выключенные — скрыты.</p>
@@ -1846,6 +1871,11 @@ users(){const A=S.adm;if(!A){adLoad();return `<div class="card empty">Загру
  <div class="card list">${L.map(u=>{const b=ADM.banned.includes(u.id);return `<div class="it"><div class="av" style="background:${b?'var(--coral)':'var(--sea)'}">${esc(String(u.name||'?').replace('@','')[0]||'?')}</div><div class="nm" onclick="uInfo('${u.id}')" style="cursor:pointer">${esc(u.name)} ${u.id===ME.id?'(вы)':''}<small>ID ${u.id} · ★ ${fmt(u.bal)} · 🎫 ${u.tick} · 🎁 ${u.inv}</small></div><button class="btn sm ${b?'sand':'ghost'}" onclick="adBan('${u.id}')">${b?'Разбан':'Бан'}</button></div>`}).join('')||'<div class="empty">Никого не найдено</div>'}</div>`},
 };
 /* проверка рефералов: кто приглашён, почему засчитан, есть ли NFT сейчас; снять накрутку */
+function bossAdm(){const B=ADM.boss||{},on=B.on!==false,v=(k,d)=>B[k]??d;
+ return `<div class="card"><div class="ad-h">👹 Босс недели</div><p class="sub" style="text-align:left;margin:0 0 8px">Каждая ★ ставки = 1 урон. Убили до конца недели (пн 00:00 UTC) — фонд делится по урону, добивший получает бонус. Настройки применяются сразу, уже нанесённый урон сохраняется.</p>
+ <button class="btn sm ${on?'sand':'ghost'}" style="margin-bottom:8px" onclick="ADM.boss=Object.assign({},ADM.boss,{on:!${on}});saveAdm(1);setTab('admin')">${on?'✅ Включён':'⏸ Выключен'}</button>
+ ${[['hp','❤️ Здоровье (★ ставок за неделю)',200000],['pool','💰 Призовой фонд, ★',6000],['min','⚔️ Минимум урона для награды',50],['last','🗡 Бонус за последний удар, ★',1000]].map(([k,t,d])=>`<div class="field"><input type="number" min="0" value="${v(k,d)}" onchange="ADM.boss=Object.assign({},ADM.boss,{${k}:Math.max(0,Math.round(+this.value||0))});saveAdm(1)"><span class="sub">${t}</span></div>`).join('')}
+ <p class="sub" style="text-align:left;margin:0;font-size:12px">Совет: здоровье ≈ твой оборот ставок за 4–5 дней (видно в «📊 Аналитика по играм»), фонд ≈ 2–4% от здоровья.</p></div>`}
 async function multiSheet(){sheet('<div class="empty">Ищу…</div>');const j=await adApi('multi',{});if(!j){closeSheet();return}
  sheet(`<h2>🕵️ Мульти-аккаунты</h2><p class="sub">Групп: ${j.total}. Сверху — самые подозрительные. Нажми на игрока — откроется карточка.</p>
  ${j.groups.length?j.groups.map(g=>`<div class="card"><div class="ad-h" style="flex-wrap:wrap">${g.n} акк. ${g.dv?'<small style="background:var(--coral)">📱 одно устройство</small>':'<small style="background:#b7791f">🌐 один IP</small>'}${g.refIn?`<small style="background:var(--coral)">приглашали друг друга: ${g.refIn}</small>`:''}${g.dep?`<small style="background:var(--palm)">пополнили ★ ${fmt(g.dep)}</small>`:'<small>без пополнений</small>'}</div>

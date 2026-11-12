@@ -25,6 +25,7 @@ const rand = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); re
 const randInt = n => Math.floor(rand() * n);
 const bet = v => { const n = Math.round(Number(v)); return n >= 1 && n <= MAX_BET ? n : 0; };
 class GameError extends Error {}
+const BOSSES = [["Кракен", "🐙"], ["Дракон", "🐉"], ["Голем", "🗿"], ["Мегалодон", "🦈"], ["Призрак", "👻"], ["Робот", "🤖"], ["Йети", "🦍"], ["Скорпион", "🦂"]];
 const fail = m => { throw new GameError(m); };
 
 const KYIV = "Europe/Kyiv";
@@ -154,6 +155,7 @@ export class Game {
     if (op === "case") return d && d.free ? (d.free === "ref" ? "ref" : "free") : "case";
     const m = /^(crash|mines|chick|pvp|hunt)/.exec(op || ""); if (m) return m[1];
     if (["dig", "egg", "upgrade", "contract", "plinko", "slots"].includes(op)) return op;
+    if (op === "boss_state") return "";
     return "bonus";                                // уровни, задания, промо, дроп, заработок — раздача без ставки
   }
   async gday(bet, pay, gk = this._gk) {
@@ -179,7 +181,7 @@ export class Game {
   async charge(u, n) {
     if (!(n > 0)) fail("Неверная ставка");
     if (u.bal < n) fail("Недостаточно звёзд");
-    u.bal -= n; await this.stat("bets", n); await this.gday(n, 0); await this.tourAdd(u, n);
+    u.bal -= n; await this.stat("bets", n); await this.gday(n, 0); await this.tourAdd(u, n); await this.bossHit(u, this.uid, n);
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });   // личная статистика игрока
     ps.t += Math.round(n); ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
@@ -199,6 +201,56 @@ export class Game {
   refLocked(u, slug) { const lk = (u.refLock || []).filter(s => s === slug).length; return lk > 0 && lk >= u.inv.filter(s => s === slug).length; }
   noRefLock(u, slug) { if (this.refLocked(u, slug)) fail("Подарок из реф-кейса можно только вывести — продать, поставить или обменять его нельзя"); }
   // друг засчитывается для вывода из реф-кейса: пришёл по ссылке, открыл реф-кейс в мини-аппе, есть Telegram Premium или NFT
+  // ===== босс недели: каждая ставка любого игрока — урон, убили до воскресенья — все участники делят награду =====
+  bossCfg() { const b = this.st.boss || {}, n = (v, d, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v >= 0 && v !== "" && v != null ? +v : d)));
+    return { on: b.on !== false, hp: n(b.hp, 200000, 1000, 1e9), pool: n(b.pool, 6000, 0, 1e8), min: n(b.min, 50, 0, 1e7), last: n(b.last, 1000, 0, 1e7) }; }
+  async bossGet() {
+    let b = await this.s.get("boss"); const wk = weekKey();
+    if (!b || b.id !== wk) {
+      if (b) await this.s.put("boss:prev", b);
+      const c = this.bossCfg(), i = Math.floor(weekStart() / 6048e5) % BOSSES.length;
+      b = { id: wk, name: BOSSES[i][0], e: BOSSES[i][1], max: c.hp, hp: c.hp, n: 0, dead: 0, top: [], pool: c.pool, min: c.min, last: c.last };
+      await this.s.put("boss", b);
+    }
+    if (!b.dead) {                                 // настройки из админки применяются сразу (урон уже нанесённый сохраняется)
+      const c = this.bossCfg(); b.pool = c.pool; b.min = c.min; b.last = c.last;
+      if (c.hp !== b.max) { b.hp = Math.max(1, c.hp - (b.max - b.hp)); b.max = c.hp; await this.s.put("boss", b); }
+    }
+    return b;
+  }
+  async bossHit(u, uid, n) {
+    n = Math.round(n); if (!n || this.isStaff || !uid || !this.bossCfg().on) return;
+    const b = await this.bossGet(); if (b.dead) return;
+    const k = "bd:" + b.id + ":" + uid, r = (await this.s.get(k)) || [u.name, 0, 0];
+    if (n < 0) n = -Math.min(-n, r[1]);
+    if (!r[1] && n > 0) b.n++;
+    r[0] = u.name; r[1] += n; b.hp = Math.min(b.max, Math.max(0, b.hp - n));
+    const t = (b.top || []).filter(x => x[0] !== uid); if (r[1] > 0) t.push([uid, u.name, r[1]]); b.top = t.sort((x, y) => y[2] - x[2]).slice(0, 10);
+    await this.s.put(k, r);
+    if (b.hp <= 0) await this.bossKill(b, u, uid); else await this.s.put("boss", b);
+  }
+  async bossKill(b, u, uid) {                      // награда: призовой фонд делится по урону, добивший — бонус
+    b.dead = 1; b.at = Date.now(); b.killer = { id: uid, n: u.name };
+    const pre = "bd:" + b.id + ":", rows = [...(await this.s.list({ prefix: pre, limit: 5000 }))].map(([k, v]) => [k.slice(pre.length), v]);
+    const ok = rows.filter(([, v]) => v[1] >= b.min), tot = ok.reduce((a, [, v]) => a + v[1], 0) || 1;
+    let paid = 0, cnt = 0;
+    for (const [id, v] of rows) {
+      const rw = (v[1] >= b.min ? Math.floor(b.pool * v[1] / tot) : 0) + (id === uid ? b.last : 0);
+      if (!(rw > 0)) continue;
+      v[2] = rw; await this.s.put(pre + id, v); paid += rw; cnt++;
+      if (id === uid) u.bal += rw;
+      else { const x = await this.s.get("u:" + id); if (!x) continue; x.bal += rw; await this.s.put("u:" + id, x); }
+    }
+    b.paid = paid; b.paidN = cnt; await this.s.put("boss", b);
+    await this.stat("boss", paid); await this.gday(0, paid, "boss");
+    await this.feed(u, uid, "Босс " + b.name + " повержен", null, b.last);
+  }
+  async op_boss_state(u, uid) {
+    const b = await this.bossGet(), me = (await this.s.get("bd:" + b.id + ":" + uid)) || [u.name, 0, 0], prev = await this.s.get("boss:prev");
+    const pm = prev ? await this.s.get("bd:" + prev.id + ":" + uid) : null;
+    return { boss: { ...b, end: weekEnd() }, my: { dmg: me[1], rw: me[2] || 0 }, on: this.bossCfg().on,
+      prev: prev ? { name: prev.name, e: prev.e, dead: prev.dead, killer: prev.killer, paid: prev.paid || 0, paidN: prev.paidN || 0, my: pm ? pm[2] || 0 : 0 } : null };
+  }
   // ===== мульти-аккаунты: одно устройство (метка в мини-аппе) или один IP (хэш, сам IP не храним) =====
   async track(u, uid, d) {
     if (this.isStaff || !d) return;
@@ -242,7 +294,7 @@ export class Game {
     if (u.ps) { u.ps.t = Math.max(0, u.ps.t - n); u.ps.g = Math.max(0, u.ps.g - 1); }
   }
   async betNoCharge(u, n) {                       // ставка подарком (апгрейд, контракт): в оборот игрока и турнир
-    n = Math.round(n); if (!(n > 0)) return; await this.gday(n, 0); await this.tourAdd(u, n);
+    n = Math.round(n); if (!(n > 0)) return; await this.gday(n, 0); await this.tourAdd(u, n); await this.bossHit(u, this.uid, n);
     const ps = u.ps || (u.ps = { t: 0, g: 0, w: 0, best: null, fav: {} });
     ps.t += n; ps.g++; const op = this._op || "?"; ps.fav[op] = (ps.fav[op] || 0) + 1;
   }
@@ -713,7 +765,7 @@ export class Game {
     if (old) {                                   // брошенная игра: открытые клетки — забираем, ничего не открыто — возврат ставки
       await this.s.delete(k);
       if (old.open.length) await this.payout(u, uid, old.bet * this.L.minesMult(old.n, old.open.length), GAME_NAMES.mines);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.unBet(u, this.uid, old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.bossHit(u, this.uid, -old.bet); await this.unBet(u, this.uid, old.bet); }
     }
     const n = [3, 5, 7].includes(+d.n) ? +d.n : 5, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
@@ -755,7 +807,7 @@ export class Game {
     if (old) {                                   // брошенный забег: пройденные полосы — забираем, не начинал — возврат
       await this.s.delete(k);
       if (old.step) await this.payout(u, uid, old.bet * this.L.chickMult(old.d, old.step), GAME_NAMES.chick);
-      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.unBet(u, this.uid, old.bet); }
+      else { u.bal += old.bet; await this.stat("bets", -old.bet); await this.gday(-old.bet, 0); await this.bossHit(u, this.uid, -old.bet); await this.unBet(u, this.uid, old.bet); }
     }
     const df = [0, 1, 2, 3].includes(+d.d) ? +d.d : 0, v = bet(d.bet); if (!v) fail("Неверная ставка");
     await this.charge(u, v);
