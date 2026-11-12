@@ -588,7 +588,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=7332f007"></script>
+<script src="i18n.js?v=9f9c5430"></script>
 <script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -1304,8 +1304,9 @@ function upRange(a){const P=upPool(a);return P.length?[Math.max(.1,upChance(a.pr
 function upByChance(a,v){const P=upPool(a);if(!P.length)return null;let best=P[0],bd=1e9;for(const g of P){const d=Math.abs(upChance(a.price,g.price)-v);if(d<bd){bd=d;best=g}}return best}
 function upSliderHtml(a,ch){const b=S.upB&&ch?giftBy(S.upB):null,[lo,hi]=upRange(a);if(!(hi>lo))return '';const v=ch||Math.min(hi,50);
  return `<div class="card"><div class="ad-h" style="display:flex;justify-content:space-between"><span>🎯 Выбери шанс</span><b id="upSV">${v.toFixed(1)}%</b></div>
- <input type="range" id="upSR" min="${lo.toFixed(1)}" max="${hi.toFixed(1)}" step="0.1" value="${v.toFixed(1)}" style="width:100%" oninput="upSlide(+this.value)" onchange="upSlide(+this.value,1)">
- <div class="row" style="gap:6px;margin-top:8px">${[75,50,25,10].filter(x=>x>=lo&&x<=hi).map(x=>`<button class="btn sm ghost" style="flex:1" onclick="upSlide(${x},1)">${x}%</button>`).join('')}</div>
+ <input type="range" id="upSR" min="0" max="100" step="0.1" value="${v.toFixed(1)}" style="width:100%" oninput="upSlide(+this.value)" onchange="upSlide(+this.value,1)">
+ <div class="row" style="gap:6px;margin-top:8px">${[90,75,50,25,10,1].map(x=>`<button class="btn sm ghost" style="flex:1;padding:8px 0" onclick="upSlide(${x},1)">${x}%</button>`).join('')}</div>
+ <div class="row" style="justify-content:space-between;margin-top:6px"><small class="sub" style="margin:0">0%</small><small class="sub" style="margin:0">доступно ${lo.toFixed(1)}–${hi.toFixed(1)}%</small><small class="sub" style="margin:0">100%</small></div>
  <p class="sub" id="upSG" style="margin:8px 0 0">${b?`${esc(b.name)} · <span class="star">★</span> ${fmt(b.price)} · x${(b.price/a.price).toFixed(2)}`:'Подарок подбирается под шанс: чем меньше шанс — тем дороже приз'}</p></div>`}
 function upSlide(v,done){const a=S.upA!=null?giftBy(U().inv[S.upA]):null;if(!a)return;const g=upByChance(a,v);if(!g)return;S.upB=g.slug;const ch=upChance(a.price,g.price);
  const e=$('#upSV');if(e)e.textContent=ch.toFixed(1)+'%';const t=$('#upSG');if(t)t.innerHTML=`${esc(g.name)} · <span class="star">★</span> ${fmt(g.price)} · x${(g.price/a.price).toFixed(2)}`;

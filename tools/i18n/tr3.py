@@ -93,6 +93,7 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+    "доступно {0}–{1}%": "available {0}–{1}%",
     "Подарок подбирается под шанс: чем меньше шанс — тем дороже приз": "The gift is matched to your chance: the lower the chance, the pricier the prize",
     "🎯 Выбери шанс": "🎯 Pick your chance",
     "% от floor": "% of floor",
