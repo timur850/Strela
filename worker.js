@@ -607,11 +607,17 @@ export default {
     // зачисление звёзд из STRELA STARS (покупка «на баланс казино»). Доступ — только с секретом EXT_KEY (одинаковый в обоих воркерах)
     if (path === "/ext/credit" && req.method === "POST") {
       const key = String(env.EXT_KEY || "").trim(), got = String(req.headers.get("x-ext-key") || "").trim();
-      if (!key || key.length < 16) return json({ ok: false, err: "no key" }, 403);   // в казино не задан секрет EXT_KEY
-      if (got.length !== key.length || (await sha256hex("ext:" + got)) !== (await sha256hex("ext:" + key))) return json({ ok: false, err: "bad key", len: key.length }, 403);
       const b = await req.json().catch(() => ({}));
       const uid = String(b.uid || ""), a = Math.floor(+b.a || 0), id = String(b.id || "");
       if (!/^\d{3,15}$/.test(uid) || !(a > 0 && a <= 1000000) || !/^[\w:-]{1,64}$/.test(id)) return json({ ok: false, err: "bad params" }, 400);
+      const keyOk = key.length >= 16 && got.length === key.length && (await sha256hex("ext:" + got)) === (await sha256hex("ext:" + key));
+      if (!keyOk) {
+        // без ключа: спрашиваем сам STRELA STARS, есть ли такой оплаченный заказ «в казино» на этого игрока и сумму
+        const sid = id.match(/^stars:(\d{1,10})$/), base = String(CONFIG.STARS_URL || "").replace(/\/$/, "");
+        if (!sid || !base) return json({ ok: false, err: key ? "bad key" : "no key" }, 403);
+        const v = await fetch(base + "/ext/verify?id=" + sid[1]).then(r => r.json()).catch(() => null);
+        if (!v || !v.ok || String(v.uid) !== uid || Number(v.qty) !== a) return json({ ok: false, err: "заказ не подтверждён STRELA STARS" }, 403);
+      }
       const r = await op(env, "credit_ext", uid, String(b.name || "").slice(0, 64), { id, a, from: String(b.from || "").slice(0, 32) });
       if (r.ok && r.got) { try { await tg(env, "sendMessage", { chat_id: Number(uid), text: `💫 На баланс зачислено ${a} ★ из ${String(b.from || "STRELA STARS").slice(0, 32)}`, reply_markup: { inline_keyboard: [[{ text: "🎁 Открыть", web_app: { url: origin + "/" } }]] } }); } catch (e) {} }
       return json(r.ok ? { ok: true, got: r.got || 0, already: !!r.already, bal: r.me && r.me.bal } : { ok: false, err: r.err || r.error || "ошибка" });
