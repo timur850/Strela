@@ -11,6 +11,7 @@ echo "→ Ставлю Python и нужные пакеты (может заня�
 if command -v apt-get >/dev/null 2>&1; then (sudo apt-get update -qq && sudo apt-get install -y -qq python3 python3-pip curl) >/dev/null 2>&1 || true; fi
 python3 -m pip install -q --break-system-packages https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip 2>/dev/null \
   || python3 -m pip install -q https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip
+python3 -m pip install -q --break-system-packages qrcode 2>/dev/null || python3 -m pip install -q qrcode 2>/dev/null || true
 curl -sL "$SERVER/ub/strela_ub.py" -o strela_ub.py
 
 if [ ! -f .env ] || ! grep -q '^UB_KEY=' .env; then
@@ -24,8 +25,8 @@ fi
 
 if ! grep -q '^SESSION=' .env; then
   echo
-  echo "→ Вход в аккаунт-склад: введи его номер телефона, код из Telegram и пароль 2FA (если есть)."
-  python3 strela_ub.py login
+  echo "→ Вход в аккаунт-склад по QR-коду: Telegram на телефоне (аккаунт-склад) → Настройки → Устройства → Подключить устройство → наведи камеру на QR ниже."
+  python3 strela_ub.py login qr
 fi
 
 echo "→ Включаю автозапуск…"

@@ -134,9 +134,28 @@ async def give(client, w):
         return False, e.message + (f" — {hint}" if hint else "")
 
 
-async def login(cfg):
+async def login(cfg, qr=False):
     client = TelegramClient(StringSession(), int(cfg["API_ID"]), cfg["API_HASH"])
-    await client.start()   # спросит телефон, код и пароль 2FA
+    if qr:   # вход по QR-коду: Telegram на телефоне → Настройки → Устройства → Подключить устройство
+        await client.connect()
+        q = await client.qr_login()
+        while True:
+            try:
+                import qrcode
+                c = qrcode.QRCode(border=1); c.add_data(q.url); c.make(); c.print_ascii(invert=True)
+            except ImportError:
+                print("QR-ссылка (открой как QR в любом генераторе):", q.url)
+            print("Отсканируй QR в Telegram аккаунта-склада: Настройки → Устройства → Подключить устройство. Код живёт ~30 сек.")
+            try:
+                await q.wait(timeout=30)
+                break
+            except asyncio.TimeoutError:
+                await q.recreate()
+            except errors.SessionPasswordNeededError:
+                await client.sign_in(password=input("Пароль двухэтапной проверки: "))
+                break
+    else:
+        await client.start()   # спросит телефон, код и пароль 2FA
     me = await client.get_me()
     save_env("SESSION", client.session.save())
     print(f"Готово: вошли как @{me.username or me.id}. SESSION сохранён в .env — никому его не отдавай.")
@@ -149,7 +168,7 @@ async def main():
         if not cfg.get(k):
             sys.exit(f"Нет {k} в .env — смотри инструкцию в начале файла")
     if len(sys.argv) > 1 and sys.argv[1] == "login":
-        return await login(cfg)
+        return await login(cfg, qr=len(sys.argv) > 2 and sys.argv[2] == "qr")
     if not cfg.get("SESSION"):
         sys.exit("Сначала: python3 strela_ub.py login")
     client = TelegramClient(StringSession(cfg["SESSION"]), int(cfg["API_ID"]), cfg["API_HASH"])
