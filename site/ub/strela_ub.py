@@ -157,8 +157,31 @@ async def login(cfg, qr=False):
             except errors.SessionPasswordNeededError:
                 await client.sign_in(password=input("Пароль двухэтапной проверки: "))
                 break
-    else:
-        await client.start()   # спросит телефон, код и пароль 2FA
+    else:   # вход по номеру: показываем, КУДА Telegram отправил код, и даём запросить код ещё раз
+        await client.connect()
+        phone = re.sub(r"[^0-9+]", "", input("Номер аккаунта-склада (с +, например +380...): "))
+        where = {types.auth.SentCodeTypeApp: "в приложение Telegram на этом аккаунте — чат «Telegram» с синей галочкой",
+                 types.auth.SentCodeTypeSms: "по SMS", types.auth.SentCodeTypeCall: "звонком (код — в голосовом сообщении)",
+                 types.auth.SentCodeTypeFlashCall: "звонком (код — последние цифры номера)", types.auth.SentCodeTypeMissedCall: "пропущенным звонком (код — последние цифры номера)",
+                 types.auth.SentCodeTypeEmailCode: "на почту, привязанную к аккаунту", types.auth.SentCodeTypeFragmentSms: "в Fragment (анонимный номер)"}
+        sent = await client.send_code_request(phone)
+        while True:
+            print("📨 Код отправлен " + where.get(type(sent.type), str(type(sent.type).__name__)))
+            code = input("Введи код (или r — отправить код ещё раз другим способом): ").strip()
+            if code.lower() == "r":
+                try:
+                    sent = await client(functions.auth.ResendCodeRequest(phone_number=phone, phone_code_hash=sent.phone_code_hash))
+                except errors.RPCError as e:
+                    print("Telegram не дал переотправить:", e.message)
+                continue
+            try:
+                await client.sign_in(phone=phone, code=re.sub(r"\D", "", code), phone_code_hash=sent.phone_code_hash)
+                break
+            except errors.SessionPasswordNeededError:
+                await client.sign_in(password=input("Пароль двухэтапной проверки: "))
+                break
+            except (errors.PhoneCodeInvalidError, errors.PhoneCodeExpiredError) as e:
+                print("Неверный или устаревший код:", e.message, "— попробуй ещё раз или введи r")
     me = await client.get_me()
     save_env("SESSION", client.session.save())
     print(f"Готово: вошли как @{me.username or me.id}. SESSION сохранён в .env — никому его не отдавай.")

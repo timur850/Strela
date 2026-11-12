@@ -25,8 +25,8 @@ fi
 
 if ! grep -q '^SESSION=' .env; then
   echo
-  echo "→ Вход в аккаунт-склад по QR-коду: Telegram на телефоне (аккаунт-склад) → Настройки → Устройства → Подключить устройство → наведи камеру на QR ниже."
-  python3 strela_ub.py login qr
+  echo "→ Вход в аккаунт-склад по номеру телефона."
+  python3 strela_ub.py login
 fi
 
 echo "→ Включаю автозапуск…"
