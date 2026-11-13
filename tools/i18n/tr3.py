@@ -93,6 +93,7 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+    "заказ не подтверждён STRELA STARS": "order not confirmed by STRELA STARS",
     "⏸ Кейс Friends скрыт": "⏸ Friends case hidden",
     "✅ Кейс Friends включён": "✅ Friends case on",
     "Скрытый кейс нельзя открыть. Уже выигранные подарки остаются у игроков.": "A hidden case cannot be opened. Gifts already won stay with players.",
