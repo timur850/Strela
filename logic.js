@@ -77,7 +77,7 @@ function makeLogic(getADM,rand){
  const CASES=()=>ALL_CASES().filter(c=>!c.hidden);
  const FK={daily:0,tick:1,ref:2,ref20:3,ref30:4,promo:5};
  const FREE=k=>caseObj(FREE_DEF[FK[k]||0],1);
- const FREE_KEYS=()=>['daily','tick','ref','promo'].filter(k=>k==='ref'||!FREE(k).del);   // бесплатные, не удалённые в админке; реф-кейс Friends есть всегда
+ const FREE_KEYS=()=>['daily','tick','ref','promo'].filter(k=>k==='ref'?A().refOn===true:!FREE(k).del);   // бесплатные, не удалённые в админке; реф-кейс Friends включается в админке (refOn), по умолчанию скрыт
  function itemsPick(items){const L0=items.filter(([s])=>giftBy(s)),L=L0.some(x=>x[1]>0)?L0.filter(x=>x[1]>0):L0;   // вес 0 = только витрина, не выпадает
  let r=rand()*L.reduce((a,[,w])=>a+w,0);for(const [s,w] of L){if((r-=w)<=0)return giftBy(s)}return giftBy(L[0][0])}
  function autoDist(cost,rtp){const pool=prizePool(cost);const P=pool.length?pool:GIFTS();const target=cost*rtp;let lo=0,hi=4,ws=[];
