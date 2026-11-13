@@ -93,6 +93,7 @@ T = {
 "кейса": "cases",
 "кейсов": "cases",
 "Бесплатно": "Free",
+    "© STRELA CASE {0} · Все права защищены": "© STRELA CASE {0} · All rights reserved",
     ", каждый следующий вывод дороже.": ", each next withdrawal costs more.",
     "Вывод уже оплачен — выводи подарок": "Withdrawal already paid — withdraw the gift",
     "Оплата вывода сейчас —": "Withdrawal fee now —",

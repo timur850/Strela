@@ -609,7 +609,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=7f392277"></script>
+<script src="i18n.js?v=12690581"></script>
 <script src="logic.js?v=4754367a"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -675,6 +675,7 @@ const calcAdmin=()=>!TU || isOwnerName(ME.username) || (ADM.admins||[]).map(Stri
 let IS_ADMIN=calcAdmin();
 if(!ADM.users[ME.id])ADM.users[ME.id]={name:ME.name,bal:0,tick:0,inv:[]};
 const U=()=>ADM.users[ME.id];
+const COPY=`<p class="sub" style="margin:10px 0 0;font-size:12px;opacity:.7">© STRELA CASE ${new Date().getFullYear()} · Все права защищены</p>`;
 const S={tab:'games',stack:[]};
 
 function upd(){$('#bal').textContent=fmt(U().bal);$('#tick').textContent=U().tick;saveAdm()}
@@ -754,7 +755,7 @@ const T={
 games(){
   const g=liveIcons();
   return `<div class="brand"><div class="lg lgimg"><img src="img/gift.webp" alt=""></div><h1>${esc(APP_NAME.split(' ')[0].toUpperCase())}<span>${esc(APP_NAME.split(' ').slice(1).join(' ').toUpperCase())}</span></h1></div><div class="live"><b><i></i>LIVE</b><div class="tw"><div class="track">${g}</div></div></div>`+
-  socialsRow()+'<div class="tiles">'+GAMES.filter(x=>!ADM.off[x[0]]&&(x[0]!=='free'||FREE_KEYS().length)&&(x[0]!=='drop'||(ADM.drop||{}).on!==false)&&(x[0]!=='earn'||(ADM.earn||{}).on!==false)).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<span class="onl" data-g="${id}"${S.on&&S.on[id]?'':' hidden'}><i></i>${S.on&&S.on[id]?onTxt(S.on[id]):''}</span><div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('')+'</div>';
+  socialsRow()+'<div class="tiles">'+GAMES.filter(x=>!ADM.off[x[0]]&&(x[0]!=='free'||FREE_KEYS().length)&&(x[0]!=='drop'||(ADM.drop||{}).on!==false)&&(x[0]!=='earn'||(ADM.earn||{}).on!==false)).map(([id,c,ic,t,s])=>`<div class="tile ${c}" onclick="open_('${id}')">${bubbles()}<span class="onl" data-g="${id}"${S.on&&S.on[id]?'':' hidden'}><i></i>${S.on&&S.on[id]?onTxt(S.on[id]):''}</span><div class="ic"><img src="${GICON[id]}" alt="${ic}"></div><div><h3>${t}</h3><small>${s}</small></div></div>`).join('')+'</div>'+COPY;
 },
 tasks(){const d=U().done||{},st=U().started||{};const L=TASKS();
   return `<p class="sub">Выполняйте задания и получайте билеты 🎫 — их можно использовать для открытия бесплатного кейса</p>
@@ -777,7 +778,7 @@ profile(){
   <div class="row" style="align-items:center;margin:18px 0 10px"><h1 style="font-size:22px;flex:1;text-align:left">Ваши подарки</h1>${U().inv.length?`<button class="btn sm ghost" onclick="sellAll()">Продать все</button>`:''}</div>
   ${U().inv.length&&MIN_WD()?`<p class="sub" style="margin:-4px 0 10px">📤 Вывод в Telegram — для подарков от ${fmt(MIN_WD())} ★</p>`:''}
   ${inv?`<div class="inv">${inv}</div>`:`<div class="card"><div class="empty">У вас ничего нет<br><br><button class="btn sm ghost" onclick="open_('addgift')">⊕ Добавить подарок</button></div></div>`}
-  <p class="sub" style="margin-top:14px">Ваш ID: ${ME.id}</p>`;
+  <p class="sub" style="margin-top:14px">Ваш ID: ${ME.id}</p>${COPY}`;
 },
 cases(){return casesPage()},
 earn(){return earnHub()},
