@@ -483,6 +483,15 @@ export class Game {
     for (const [, w] of q) if (w && w.uid === uid) open.push({ id: w.id, s: w.slug, n: w.gname, a: w.price, t: w.t });
     return { open };
   }
+  // игрок отправил коллекционный подарок аккаунту-складу — кладём в инвентарь (один раз на экземпляр). Вызывает только сервер
+  async op_gift_dep(u, uid, d) {
+    const gid = String(d.gid || ""); if (!gid) fail("Нет ID подарка");
+    if (await this.s.get("gdep:" + gid)) return { done: false };
+    const g = this.L.giftBy(String(d.slug || "")); if (!g || isStar(g)) fail("Такого подарка нет в каталоге");
+    u.inv.push(g.slug); u.gdep = (u.gdep || 0) + g.price;   // внесённые подарки считаются пополнением для вывода
+    await this.s.put("gdep:" + gid, { uid, slug: g.slug, p: g.price, t: Date.now() });
+    return { done: true, gname: g.name, price: g.price };
+  }
   // друг прошёл проверку (NFT или уровень 2+) — засчитываем пригласившему один раз. Вызывает только сервер
   async op_ref_qualify(u, uid, d) {
     if (u.refq || !u.ref || u.refBan) return { done: false };
@@ -960,7 +969,7 @@ export class Game {
     const minWd = Math.max(0, Math.round(this.st.minWd ?? 100));
     const needDep = Math.max(0, Math.round(this.st.wdNeedDep ?? 100));     // вывод — только после пополнения
     const refL = this.refLocked(u, g.slug), refNeed = REF_STEP * ((u.refWd || 0) + 1);
-    if (needDep && !this.isStaff && !refL) { const dt = await this.depTotal(u, uid); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
+    if (needDep && !this.isStaff && !refL) { const dt = (await this.depTotal(u, uid)) + (u.gdep || 0); if (dt < needDep) fail(`Вывод доступен после пополнения от ${needDep} ★ (пополнено ${dt} ★). Подарок можно продать или сыграть им`); }
     if (g.price < minWd && !refL) fail(`Вывод — от ${minWd} ★. Этот подарок можно продать`);
     if (refL && (u.refF || 0) < refNeed) fail(`Подарок из реф-кейса можно вывести, когда пригласишь ${refNeed} друзей (${u.refF || 0}/${refNeed}). Друг засчитывается, когда заходит по твоей ссылке, открывает реф-кейс и у него есть Telegram Premium или NFT`);
     if (refL && !this.rwdPaid(u)) fail(`Оплати вывод ${this.rwdFee(u)} ★ с баланса Telegram`);   // вывод из реф-кейса — за звёзды Telegram

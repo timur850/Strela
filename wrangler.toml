@@ -19,4 +19,4 @@ tag = "v1"
 new_sqlite_classes = ["Store"]
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]

@@ -609,7 +609,7 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=6dc30666"></script>
+<script src="i18n.js?v=6840aab4"></script>
 <script src="logic.js?v=11de430c"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
@@ -898,8 +898,9 @@ pvp(){return `<div class="wheel-wrap"><div class="pin">🔻</div><div class="whe
 slots(){return `<h1>Слоты</h1><div class="card" style="margin-top:14px"><div class="reels">${[0,1,2].map(i=>`<div class="reel" id="r${i}">🍉</div>`).join('')}</div><p class="sub" style="margin:0">3 одинаковых — x${(10*R('slots')/.9).toFixed(1)} · 2 одинаковых — x${(2*R('slots')/.9).toFixed(1)}</p></div>
  <button class="btn sand" onclick="spinSlots()">Крутить за ★ 100</button>`},
 addgift(){sheet(`<h2>Добавить подарок</h2><div class="card" style="background:rgba(255,90,95,.3)"><b>Не дарите подарки с Telegram маркета!</b><br><small style="color:var(--muted)">Отправляйте подарки только напрямую со своего аккаунта</small></div>
- <div class="card steps">${[['Откройте аккаунт '+'@'+GIFT_ACC,'Сюда принимаются все подарки'],['Отправьте ему подарок','Модель, фон и символ не учитываются'],['Подарок добавится в профиль','В течении нескольких минут']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
- <button class="btn" onclick="closeSheet();openUrl('https://t.me/'+GIFT_ACC)">Перейти</button>`);return null},
+ <div class="card steps">${[['Откройте аккаунт '+'@'+GIFT_ACC,'Сюда принимаются все подарки'],['Отправьте ему подарок','Модель, фон и символ не учитываются'],['Подарок добавится в профиль','Сам, в течение минуты']].map((s,i)=>`<div class="st"><div class="n">${i+1}</div><div><b>${s[0]}</b><small>${s[1]}</small></div></div>`).join('')}</div>
+ <button class="btn" onclick="openUrl('https://t.me/'+GIFT_ACC)">Перейти</button>
+ <button class="btn ghost" style="margin-top:8px" onclick="giftCheck()">Я отправил — проверить</button>`);return null},
 };
 
 /* ================== РОУТЕР ================== */
@@ -1162,6 +1163,7 @@ async function promoUse(fromCase){const el=$('#pcode'),code=(el&&el.value||'').t
  toast(j.t==='stars'?`Промокод активирован: +${fmt(j.v)} ★`:j.t==='tick'?`Промокод активирован: +${j.v} 🎫`:`Промокод активирован: +${j.v} промо-кейс`);
  if(el)el.value='';if(fromCase)promoSheet();else if(S.tab==='bonus'&&!S.stack.length)setTab('bonus')}
 function shareRef(){try{tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(refLink())+'&text='+encodeURIComponent('🏝 Заходи в '+APP_NAME+' — бесплатные кейсы с подарками!'))}catch(e){copyText(refLink())}}
+async function giftCheck(){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');toast('Проверяю…');try{const j=await API('api/giftcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');if(j.added){closeSheet();toast('Подарок зачислен в инвентарь 🎁',4000)}else toast('Пока не вижу подарка. Он зачислится сам в течение минуты',4500)}catch(e){toast('Нет связи с сервером')}}
 async function refCheck(wi){if(!(tg&&tg.initData))return toast('Открой игру через бота в Telegram');try{const j=await API('api/refcheck',{});if(j.me)sync(j.me);if(!j.ok)return toast(j.err||'Ошибка');toast(j.added?`Найдено друзей с NFT: +${j.added}. В вывод засчитаются, когда откроют реф-кейс`:(j.checked?'Новых друзей с NFT нет':'Все приглашённые уже проверены'),4500);refSheet(wi)}catch(e){toast('Нет связи с сервером')}}
 /* ===== заработок: ролики TikTok / Shorts ===== */
 const EARN_DEF={on:true,channel:'',half:true,rows:[['gameplay','Геймплей в '+'STRELA',3000,[100,8000,60000]],['gifts','Подарки Telegram',3000,[50,3000,20000]],['creative','Креатив (мемы, нарезки, тренды)',6000,[10,500,5000]]]};
