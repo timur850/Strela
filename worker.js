@@ -414,29 +414,30 @@ async function bizTransfer(env, slug, toId) {
 }
 
 // ===== АВТОЗАЧИСЛЕНИЕ: игрок отправил коллекционный подарок аккаунту-складу → подарок сам появляется в его инвентаре =====
-// Раз в минуту (cron) и по кнопке «Я отправил» смотрим склад; новые экземпляры зачисляем отправителю.
-// Модель/фон/символ не учитываются — зачисляется подарок этой коллекции. Первый запуск только запоминает, что уже лежит на складе.
-async function giftDeposits(env) {
-  const conn = await bizConn(env);
-  if (!conn || !conn.on) return { n: 0, off: true };
-  const list = await bizGifts(env, conn), ids = list.map(g => g.owned_gift_id).filter(Boolean);
-  let seen = null; try { const r = await getKey(env, "bizseen"); seen = r ? JSON.parse(r) : null; } catch { seen = null; }
-  if (!Array.isArray(seen)) { await putKey(env, "bizseen", ids); return { n: 0, first: true }; }
-  const S = new Set(seen), fresh = list.filter(g => g.owned_gift_id && !S.has(g.owned_gift_id));
-  if (!fresh.length) { if (ids.length !== seen.length) await putKey(env, "bizseen", ids); return { n: 0 }; }
+// Склад раз в минуту присылает юзербот (/api/ub/gifts), а если склад подключён через Telegram Business — смотрит cron.
+// Модель/фон/символ не учитываются — зачисляется подарок этой коллекции.
+// Первый запуск только запоминает время: зачисляются подарки, пришедшие ПОСЛЕ него (старые на складе не трогаем).
+// items: [{ gid, base, name, date, from: { id, username, first_name, is_bot, language_code } | null }]
+async function depositScan(env, key, items) {
+  let stt = null; try { const r = await getKey(env, key); stt = r ? JSON.parse(r) : null; } catch { stt = null; }
+  if (!stt || !stt.t0 || !Array.isArray(stt.ids)) { await putKey(env, key, { t0: Math.floor(Date.now() / 1000), ids: items.map(g => g.gid) }); return { n: 0, first: true }; }
+  const S = new Set(stt.ids), fresh = items.filter(g => g.gid && !S.has(g.gid));
+  if (!fresh.length) return { n: 0 };
+  const save = () => putKey(env, key, { t0: stt.t0, ids: [...S].slice(-6000) });
   const e = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const owners = async text => { const st = await loadSettings(env), to = new Set();
     for (const o of OWNERS) { const c = await getKey(env, "ownerchat:" + o.toLowerCase()); if (c) to.add(String(c)); }
     for (const a of st.admins || []) to.add(String(a));
     for (const chat of to) await tg(env, "sendMessage", { chat_id: chat, parse_mode: "HTML", text, disable_web_page_preview: true }).catch(() => {}); };
-  let n = 0;
-  for (const g of fresh.slice(0, 15)) {             // остальные — в следующую минуту
-    const gid = g.owned_gift_id, gf = g.gift || {}, title = gf.name || gf.base_name || "подарок", from = g.sender_user;
-    const link = gf.name ? `\n🔗 https://t.me/nft/${e(gf.name)}` : "";
+  let n = 0, work = 0;
+  for (const g of fresh) {
+    S.add(g.gid);
+    if (!(g.date > stt.t0)) continue;               // лежал на складе ещё до включения автозачисления
+    if (++work > 15) { S.delete(g.gid); continue; } // остальные — в следующую минуту
+    const title = g.name || g.base || "подарок", from = g.from, link = g.name ? `\n🔗 https://t.me/nft/${e(g.name)}` : "";
     let res = null, why = "";
-    if (!from || from.is_bot) why = "отправитель неизвестен";
-    else { res = await op(env, "gift_dep", from.id, uname(from), { gid, slug: giftKey(gf.base_name) }); if (!res.done) why = res.err || (res.ok === false ? "ошибка" : ""); }
-    S.add(gid);
+    if (!from || !from.id || from.is_bot) why = "отправитель неизвестен";
+    else { res = await op(env, "gift_dep", from.id, uname(from), { gid: g.gid, slug: giftKey(g.base) }); if (!res.done) why = res.err || (res.ok === false ? "ошибка" : ""); }
     if (res && res.done) {
       n++;
       await tg(env, "sendMessage", { chat_id: from.id, parse_mode: "HTML", text: isEn(from)
@@ -444,12 +445,20 @@ async function giftDeposits(env) {
         : `🎁 Подарок <b>${e(res.gname)}</b> зачислен в инвентарь (★ ${res.price}).` }).catch(() => {});
       await owners(`📥 Автозачисление: <b>${e(title)}</b> → ${e(uname(from))}, ID <code>${from.id}</code> · в инвентарь «${e(res.gname)}» (★ ${res.price})${link}`);
     } else if (why) {
-      await owners(`⚠️ <b>Подарок на складе не зачислен</b>: ${e(title)}\nПричина: ${e(why)}` + (from && !from.is_bot ? `\n👤 ${e(uname(from))}, ID <code>${from.id}</code>` : "") + link + `\n\nЕсли это подарок игрока — выдай вручную: /admin → игрок → подарок.`);
+      await owners(`⚠️ <b>Подарок на складе не зачислен</b>: ${e(title)}\nПричина: ${e(why)}` + (from && from.id && !from.is_bot ? `\n👤 ${e(uname(from))}, ID <code>${from.id}</code>` : "") + link + `\n\nЕсли это подарок игрока — выдай вручную: /admin → игрок → подарок.`);
     }
-    await putKey(env, "bizseen", [...S]);           // после каждого — чтобы сбой посередине не зачислил дважды
+    await save();                                   // после каждого — чтобы сбой посередине не прислал отчёт дважды
   }
-  if (fresh.length <= 15) await putKey(env, "bizseen", ids);   // всё обработано — помним только то, что лежит на складе сейчас
+  await save();
   return { n };
+}
+const ubAlive = async env => !!(await getKey(env, "ubkey")) && Date.now() - (+(await getKey(env, "ubseen")) || 0) < 5 * 6e4;   // юзербот на связи последние 5 мин
+async function giftDeposits(env) {                  // склад через Telegram Business (если юзербот не работает)
+  if (await ubAlive(env)) return { n: 0, ub: true };
+  const conn = await bizConn(env);
+  if (!conn || !conn.on) return { n: 0, off: true };
+  const list = await bizGifts(env, conn);
+  return depositScan(env, "depseen:biz", list.filter(g => g.owned_gift_id).map(g => ({ gid: "b" + g.owned_gift_id, base: g.gift && g.gift.base_name, name: g.gift && g.gift.name, date: g.send_date, from: g.sender_user || null })));
 }
 
 async function handleUpdate(env, origin, upd) {
@@ -925,10 +934,17 @@ export default {
     }
 
     // ===== юзербот автовыдачи (скрипт на VPS владельца): забирает заявки и сообщает результат =====
-    if ((path === "/api/ub/take" || path === "/api/ub/result" || path === "/api/ub/prices") && req.method === "POST") {
+    if ((path === "/api/ub/take" || path === "/api/ub/result" || path === "/api/ub/prices" || path === "/api/ub/gifts") && req.method === "POST") {
       let d; try { d = await req.json(); } catch { return json({ ok: false }, 400); }
       const k = await getKey(env, "ubkey");
       if (!k || String(d.key || "") !== k) return json({ ok: false, err: "bad key" }, 403);
+      if (path === "/api/ub/gifts") {                // весь склад от юзербота (раз в минуту) — новые подарки зачисляем отправителям
+        await putKey(env, "ubseen", String(Date.now()));
+        if (!Array.isArray(d.gifts) || d.gifts.length > 5000) return json({ ok: false, err: "bad list" }, 400);
+        const items = d.gifts.map(g => ({ gid: "u" + String(g.id || ""), base: String(g.title || ""), name: String(g.slug || ""), date: +g.date || 0,
+          from: g.from ? { id: +g.from, username: g.un || "", first_name: String(g.fn || "").slice(0, 60), language_code: g.lang || "" } : null })).filter(g => g.gid.length > 1);
+        return json({ ok: true, ...(await depositScan(env, "depseen:ub", items)) });
+      }
       if (path === "/api/ub/prices") {               // floor-цены с маркета Telegram (в ★) — от юзербота, раз в несколько часов
         const S = globalThis.STRELA, norm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""), byName = {};
         for (const [slug, name] of S.NFT_LIST || []) byName[norm(name)] = slug;

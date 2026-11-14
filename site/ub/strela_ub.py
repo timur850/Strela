@@ -9,6 +9,7 @@ STRELA CASE — автовыдача NFT-подарков (юзербот).
   1) pip install https://github.com/LonamiWebs/Telethon/archive/refs/heads/v1.zip
   2) python3 strela_ub.py login      ← один раз: вход в аккаунт-склад, сохранит SESSION в .env
   3) python3 strela_ub.py            ← работает постоянно (лучше через systemd / screen / pm2)
+     Раз в минуту он проверяет, не прислал ли игрок подарок на склад, — такой подарок сам появляется у игрока в инвентаре.
      Раз в 6 ч он ещё отправляет в игру floor-цены NFT с маркета Telegram (админка → «📈 Цены NFT с маркета»).
 
 Файл .env рядом со скриптом:
@@ -35,6 +36,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ENV = os.path.join(HERE, ".env")
 POLL = 30          # как часто спрашивать сервер о новых выводах, сек
 PAUSE = 8          # пауза между передачами, сек (чтобы Telegram не счёл спамом)
+GIFTS_EVERY = 60   # как часто проверять, не прислал ли кто-то из игроков подарок на склад, сек
 PRICES_EVERY = 6 * 3600   # как часто отправлять в игру floor-цены NFT с маркета Telegram, сек
 
 
@@ -63,7 +65,7 @@ def save_env(key, value):
 
 def post(cfg, path, data):
     req = urllib.request.Request(cfg["UB_SERVER"].rstrip("/") + path, data=json.dumps({"key": cfg["UB_KEY"], **data}).encode(),
-                                 headers={"Content-Type": "application/json", "User-Agent": "strela-ub/1.1"})
+                                 headers={"Content-Type": "application/json", "User-Agent": "strela-ub/1.2"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode())
 
@@ -78,11 +80,14 @@ def model_of(gift):
     return ""
 
 
-async def my_unique_gifts(client):
-    """Все коллекционные (NFT) подарки на аккаунте-складе."""
+async def my_unique_gifts(client, users=None):
+    """Все коллекционные (NFT) подарки на аккаунте-складе. users — сюда складываются отправители {id: User}."""
     out, offset = [], ""
-    for _ in range(20):
+    for _ in range(30):
         r = await client(functions.payments.GetSavedStarGiftsRequest(peer=types.InputPeerSelf(), offset=offset, limit=100, exclude_unlimited=True))
+        if users is not None:
+            for u in getattr(r, "users", []) or []:
+                users[u.id] = u
         for g in r.gifts:
             if isinstance(g.gift, types.StarGiftUnique) and g.msg_id:
                 out.append(g)
@@ -90,6 +95,37 @@ async def my_unique_gifts(client):
         if not offset:
             break
     return out
+
+
+def ts(d):
+    """Дата из Telegram (datetime или число) → unix-время."""
+    try:
+        return int(d.timestamp()) if hasattr(d, "timestamp") else int(d or 0)
+    except Exception:
+        return 0
+
+
+async def push_gifts(client, cfg):
+    """Автозачисление: отправляем в игру список подарков на складе — новые она сама кладёт в инвентарь отправителю."""
+    users = {}
+    gifts = await my_unique_gifts(client, users)   # при ошибке Telegram — исключение, неполный список не уйдёт
+    rows = []
+    for g in gifts:
+        uid = getattr(getattr(g, "from_id", None), "user_id", None)
+        u = users.get(uid) if uid else None
+        if u is not None and getattr(u, "bot", False):
+            uid = None
+        rows.append({"id": g.msg_id, "title": g.gift.title, "slug": getattr(g.gift, "slug", "") or "",
+                     "date": ts(getattr(g, "date", 0)), "from": uid,
+                     "un": (getattr(u, "username", "") or "") if u else "", "fn": (getattr(u, "first_name", "") or "") if u else "",
+                     "lang": (getattr(u, "lang_code", "") or "") if u else ""})
+    r = post(cfg, "/api/ub/gifts", {"gifts": rows})
+    if not r.get("ok"):
+        print("Автозачисление — сервер:", r.get("err"))
+    elif r.get("first"):
+        print(time.strftime("%H:%M:%S"), f"📥 Автозачисление включено: на складе {len(rows)} подарков, новые будут зачисляться игрокам")
+    elif r.get("n"):
+        print(time.strftime("%H:%M:%S"), "📥 Зачислено подарков игрокам:", r["n"])
 
 
 async def find_peer(client, w):
@@ -239,8 +275,14 @@ async def main():
         sys.exit("Сессия недействительна — запусти login заново")
     me = await client.get_me()
     print(f"Автовыдача запущена: склад @{me.username or me.id}")
-    last_prices = 0
+    last_prices = last_gifts = 0
     while True:
+        if time.time() - last_gifts >= GIFTS_EVERY - 1:
+            last_gifts = time.time()
+            try:
+                await push_gifts(client, cfg)
+            except Exception as e:
+                print("Автозачисление — ошибка:", e)
         if time.time() - last_prices > PRICES_EVERY:
             last_prices = time.time()
             await push_prices(client, cfg)
