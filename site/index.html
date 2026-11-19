@@ -359,7 +359,18 @@ body.earn-on .nav{background:rgba(26,29,52,.92);border-color:rgba(255,255,255,.0
 .g-pvp{background:linear-gradient(120deg,#ff8a2a,#dc4c0a)}
 .g-slots{background:linear-gradient(120deg,#f5b829,#c98a00)} .g-dice{background:linear-gradient(120deg,#7c5cff,#3b2ab0)}
 /* dice */
-.dk-res{font:900 54px/1 Nunito,sans-serif;text-align:center;margin:14px 0 12px;letter-spacing:1px;transition:color .25s;text-shadow:0 4px 18px rgba(0,0,0,.35)}
+.dk-stage{height:150px;display:grid;place-items:center;perspective:700px;margin-top:6px}
+.dk-cube{position:relative;width:84px;height:84px;transform-style:preserve-3d;transform:rotateX(-20deg) rotateY(25deg)}
+.dk-cube.roll{transition:transform 1.1s cubic-bezier(.2,.75,.25,1)}
+.dk-cube.hop{animation:dkHop 1.1s cubic-bezier(.3,.6,.4,1)}
+@keyframes dkHop{0%{translate:0 0}30%{translate:0 -46px}60%{translate:0 0}75%{translate:0 -10px}100%{translate:0 0}}
+.dk-f{position:absolute;inset:0;border-radius:16px;background:radial-gradient(circle at 30% 25%,#fff,#dbe7f3 75%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.7),inset 0 -6px 14px rgba(40,70,110,.25);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:12px;backface-visibility:hidden}
+.dk-f i{width:15px;height:15px;border-radius:50%;place-self:center;background:radial-gradient(circle at 35% 30%,#ff7a7f,#c81e3a);box-shadow:inset 0 2px 3px rgba(0,0,0,.3)}
+.dk-core{position:absolute;inset:3px;border-radius:10px;background:#c4d4e6}.dk-c2{transform:rotateY(90deg)}.dk-c3{transform:rotateX(90deg)}
+.dk-f1{transform:translateZ(42px)}.dk-f6{transform:rotateY(180deg) translateZ(42px)}.dk-f3{transform:rotateY(90deg) translateZ(42px)}
+.dk-f4{transform:rotateY(-90deg) translateZ(42px)}.dk-f2{transform:rotateX(90deg) translateZ(42px)}.dk-f5{transform:rotateX(-90deg) translateZ(42px)}
+.dk-shadow{width:80px;height:14px;border-radius:50%;background:rgba(0,0,0,.35);filter:blur(6px);margin:-6px auto 0}
+.dk-res{font:900 40px/1 Nunito,sans-serif;text-align:center;margin:10px 0 4px;letter-spacing:1px;transition:color .25s;text-shadow:0 4px 18px rgba(0,0,0,.35)}
 .dk-res.win{color:#3dff8b}.dk-res.lose{color:#ff6b6f}
 .dk-bar{position:relative;height:18px;border-radius:10px;background:rgba(255,90,95,.55);margin:30px 6px 6px}
 .dk-zone{position:absolute;top:0;bottom:0;border-radius:10px;background:#22c55e;box-shadow:0 0 14px rgba(34,197,94,.6)}
@@ -882,7 +893,7 @@ mines(){return `<div class="mgrid" id="mg"></div>
  <div class="seg" style="margin:14px 0">${[3,5,7].map(n=>`<button ${n==5?'class="on"':''} onclick="mSize(this,${n})">${n}x${n}</button>`).join('')}</div>
  <div class="card"><div class="row" style="align-items:center">${gbBtn('mbet')}<span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
  <button class="btn sand" id="mbtn" onclick="minesAct()">Сделать ставку</button>`},
-dice(){return `<div class="dk-res" id="dres">${D.last!=null?D.last.toFixed(2):'50.00'}</div>
+dice(){return `<div class="dk-stage"><div class="dk-cube" id="dcube">${dFaces()}</div></div><div class="dk-shadow"></div><div class="dk-res" id="dres">${D.last!=null?D.last.toFixed(2):'50.00'}</div>
  <div class="dk-bar"><div class="dk-zone" id="dzone"></div><div class="dk-mark" id="dmark" style="left:${D.last!=null?D.last:50}%"><span id="dmv">${D.last!=null?D.last.toFixed(2):'50.00'}</span></div></div>
  <div class="dk-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
  <div class="seg" style="margin:12px 0"><button class="${D.dir==='under'?'on':''}" onclick="dDir(this,'under')">⬇️ Меньше</button><button class="${D.dir==='over'?'on':''}" onclick="dDir(this,'over')">⬆️ Больше</button></div>
@@ -1523,7 +1534,18 @@ function dUpd(){if(!$('#dzone'))return;const c=D.ch,m=LG.diceMult(c),z=$('#dzone
  if(D.dir==='under'){z.style.left='0';z.style.width=c+'%'}else{z.style.left=(100-c)+'%';z.style.width=c+'%'}
  $('#dchv').textContent=c+'%';$('#dmul').textContent='×'+m.toFixed(2);$('#dwin').textContent=fmt(Math.round(dBetVal()*m))+' ★';
  $('#dcond').textContent=D.dir==='under'?'< '+c.toFixed(2):'≥ '+(100-c).toFixed(2)}
-function dInit(){D.busy=0;dUpd()}
+const DK_PIPS={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+function dFaces(){return '<div class="dk-core"></div><div class="dk-core dk-c2"></div><div class="dk-core dk-c3"></div>'+[1,2,3,4,5,6].map(n=>`<div class="dk-f dk-f${n}">${Array.from({length:9},(_,i)=>DK_PIPS[n].includes(i+1)?'<i style="grid-area:'+(Math.floor(i/3)+1)+'/'+(i%3+1)+'"></i>':'').join('')}</div>`).join('')}
+/* какая грань сверху смотрит на игрока: поворот куба [X,Y] */
+const DK_ROT={1:[0,0],6:[0,180],3:[0,-90],4:[0,90],2:[-90,0],5:[90,0]};
+function dFace(roll){return Math.min(6,Math.floor(roll/100*6)+1)}   // 0–16.66 → 1 … 83.34–99.99 → 6
+function dCubeSet(face,spin){const c=$('#dcube');if(!c)return;const [x,y]=DK_ROT[face];
+ if(spin){D.rx=(D.rx||0)+720+Math.floor(Math.random()*2)*360;D.ry=(D.ry||0)+720+Math.floor(Math.random()*2)*360;
+  const bx=D.rx-((D.rx%360)+360)%360,by=D.ry-((D.ry%360)+360)%360;D.rx=bx+x-20;D.ry=by+y+25;
+  c.classList.remove('hop');void c.offsetWidth;c.classList.add('roll','hop')}
+ else{D.rx=x-20;D.ry=y+25;c.classList.remove('roll')}
+ c.style.transform=`rotateX(${D.rx}deg) rotateY(${D.ry}deg)`}
+function dInit(){D.busy=0;dCubeSet(D.last!=null?dFace(D.last):5,0);dUpd()}
 function dDir(b,d){if(D.busy)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));D.dir=d;dUpd()}
 function dBet(k){const e=$('#dbet');if(!e||D.busy)return;e.value=Math.max(1,Math.round((+e.value||0)*k));dUpd()}
 async function diceRoll(){if(D.busy)return;const v=dBetVal();if(!(v>0))return toast('Введите ставку');
@@ -1531,9 +1553,10 @@ async function diceRoll(){if(D.busy)return;const v=dBetVal();if(!(v>0))return to
  const ga=gbArgs('dbet');const j=await srv('dice',{bet:v,chance:D.ch,dir:D.dir,...ga},{hold:j=>j.win});
  if(!j){D.busy=0;if(btn)btn.disabled=false;return}if(ga.gi!=null)gbDone('dbet');
  const r=$('#dres'),mk=$('#dmark'),mv=$('#dmv');if(r)r.className='dk-res';if(mk)mk.style.left=j.roll+'%';
- const from=D.last??50,t0=Date.now(),T0=700;
+ dCubeSet(dFace(j.roll),1);try{tg.HapticFeedback.impactOccurred('medium')}catch(e){}
+ const from=D.last??50,t0=Date.now(),T0=1100;
  (function tk(){const k=Math.min(1,(Date.now()-t0)/T0),e=1-Math.pow(1-k,3),x=(from+(j.roll-from)*e).toFixed(2);if(r&&document.body.contains(r))r.textContent=x;if(mv)mv.textContent=x;if(k<1)return requestAnimationFrame(tk);
-  D.last=j.roll;D.busy=0;sync(j.me);if(r)r.className='dk-res '+(j.won?'win':'lose');const b2=$('#dbtn');if(b2)b2.disabled=false;
+  D.last=j.roll;D.busy=0;sync(j.me);if(r)r.className='dk-res '+(j.won?'win':'lose');try{tg.HapticFeedback.notificationOccurred(j.won?'success':'error')}catch(e){}const b2=$('#dbtn');if(b2)b2.disabled=false;
   if(j.won){toast(`×${j.mult.toFixed(2)}  +${fmt(j.win)} ★`);loadFeed()}else toast('Не повезло — '+j.roll.toFixed(2));dUpd()})()}
 /* plinko */
 let P={risk:0,balls:[]};
