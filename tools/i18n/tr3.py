@@ -873,4 +873,12 @@ T = {
 "Подарок на складе не зачислен": "Gift in stock was not credited",
 ": {0} Причина: {1}": ": {0} Reason: {1}",
 "Если это подарок игрока — выдай вручную: /admin → игрок → подарок.": "If it is a player's gift, give it manually: /admin → player → gift.",
+"Не повезло —": "No luck —",
+"Нужно выпасть": "Need to roll",
+"Сам выбери шанс": "Pick your own odds",
+"Шанс": "Chance",
+"Шанс от {0} до {1}%": "Chance from {0} to {1}%",
+"⬆️ Больше": "⬆️ Over",
+"⬇️ Меньше": "⬇️ Under",
+"🎲 Бросить": "🎲 Roll",
 }

@@ -21,7 +21,7 @@ const EGGS=[['jellybunny','3 кокоса',249],['ionicdryer','3 кокоса',2
 const PM0=[[5.6,2.1,1.1,1,.5,1,1.1,2.1,5.6],[13,3,1.3,.7,.4,.7,1.3,3,13],[29,4,1.5,.3,.2,.3,1.5,4,29]];
 const BIN=[1,8,28,56,70,56,28,8,1].map(x=>x/256);   // шансы лунок plinko (8 рядов)
 const SLOT_SYMS=['🍉','🥥','🐚','🌺','🍹','💎'];
-const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,dig:90,chick:95};
+const DEF_RTP={cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,dig:90,chick:95,dice:95};
 /* Цыпа: [шанс пройти полосу, число полос] по сложности */
 const CHICK_D=[[.9,20],[.8,16],[.7,12],[.55,9]]; // как в админке по умолчанию
 const PVP_BETS=[100,500,2500], SLOT_BET=100, CRASH_K=.12;
@@ -97,10 +97,14 @@ function makeLogic(getADM,rand){
  /* апгрейд */
  const UP_MAX=()=>Math.min(95,Math.max(1,+A().upMax||95));   // потолок шанса апгрейда из админки (1–95%)
  const upChance=(a,b)=>Math.min(UP_MAX(),a/b*R('upgrade')*100);
+ /* dice: игрок сам выбирает шанс (1–95%), множитель = RTP ÷ шанс */
+ const DICE_MIN=1,DICE_MAX=95;
+ const diceChance=c=>{c=Math.round(+c*100)/100;return c>=DICE_MIN&&c<=DICE_MAX?c:0};
+ const diceMult=c=>Math.floor(R('dice')*100/c*1e4)/1e4;
  /* краш: P(дойти до x) = RTP/x */
  const crashPoint=()=>Math.max(1,Math.floor(100*R('crash')/(1-rand()))/100);
  const crashMult=sec=>Math.pow(Math.E,CRASH_K*Math.max(0,sec));
- return {R,UP_MAX,GIFTS,giftBy,pickGift,prizePool,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,chickMult,slotsMult,upChance,crashPoint,crashMult};
+ return {R,UP_MAX,GIFTS,giftBy,pickGift,prizePool,fitW,caseObj,ALL_CASES,CASES,FREE,FREE_KEYS,itemsPick,MODEL_LIST,autoDist,caseGift,caseDist,PM,plinkoBin,minesBombs,minesMult,chickMult,slotsMult,upChance,crashPoint,crashMult,diceChance,diceMult,DICE_MIN,DICE_MAX};
 }
 
 /* ===== ШАХТА: общая симуляция (сервер считает выигрыш, мини-апп проигрывает те же события) ===== */

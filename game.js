@@ -7,9 +7,9 @@ const { makeLogic, DEF_TASKS, EGGS, SLOT_BET, SLOT_SYMS, CRASH_K, isStar, LEVELS
 const ONLINE = new Map(), ON_TTL = 5 * 60e3;
 const FEED_MIN = 50;
 const feedOk = (gift, amount) => (gift && !isStar(gift) && !gift.reg) || amount >= FEED_MIN;
-const GIFT_BET_OPS = new Set(["crash_bet", "mines_bet", "plinko", "chick_bet"]);
-const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
-const GAME_IDS = new Set(["app", "chick", "cases", "crash", "mines", "plinko", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
+const GIFT_BET_OPS = new Set(["crash_bet", "mines_bet", "plinko", "chick_bet", "dice"]);
+const OP_GAME = { case: "cases", crash_bet: "crash", crash_cash: "crash", crash_state: "crash", mines_bet: "mines", mines_open: "mines", mines_cash: "mines", plinko: "plinko", dice: "dice", slots: "slots", chick_bet: "chick", chick_step: "chick", chick_cash: "chick", upgrade: "upgrade", contract: "contracts", egg: "eggs", dig: "dig", pvp: "pvp", pvp_state: "pvp", drop: "drop", hunt_claim: "hunt", hunt_state: "hunt" };
+const GAME_IDS = new Set(["app", "chick", "cases", "crash", "mines", "plinko", "dice", "slots", "upgrade", "contracts", "eggs", "dig", "pvp", "drop", "hunt", "earn", "free"]);
 function onMark(g, uid, staff) { if (staff || !GAME_IDS.has(g) || !uid || uid === "0") return; let m = ONLINE.get(g); if (!m) ONLINE.set(g, m = new Map()); m.set(String(uid), Date.now()); }
 function onCounts() { const now = Date.now(), o = {}; for (const [g, m] of ONLINE) { for (const [u, t] of m) if (now - t > ON_TTL) m.delete(u); if (m.size) o[g] = m.size; } return o; }
 const REF_MIN_DEP = 15;   // со скольки ★ пополнения друга пригласивший получает 5 🎫
@@ -18,7 +18,7 @@ const TICKET_CASE = 1;     // сколько 🎫 стоит кейс за би�
 const FREE_NFT_REFS = 5;  // NFT из ежедневного кейса выводится после стольких приглашённых  // сколько друзей с NFT или уровнем 2+ нужно для кейса Friends
 
 const MAX_BET = 1_000_000;
-const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", chick: "Цыпа", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
+const GAME_NAMES = { dig: "Шахта", case: "Кейс", egg: "Яйца", crash: "Краш", mines: "Мины", plinko: "Plinko", dice: "Dice", chick: "Цыпа", pvp: "PvP", slots: "Слоты", upgrade: "Апгрейд", contract: "Контракты" };
 
 // честный случайный генератор (криптостойкий)
 const rand = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); return (a[0] * 2 ** 21 + (a[1] >>> 11)) / 2 ** 53; };
@@ -154,7 +154,7 @@ export class Game {
   gameKey(op, d) {
     if (op === "case") return d && d.free ? (d.free === "ref" ? "ref" : "free") : "case";
     const m = /^(crash|mines|chick|pvp|hunt)/.exec(op || ""); if (m) return m[1];
-    if (["dig", "egg", "upgrade", "contract", "plinko", "slots"].includes(op)) return op;
+    if (["dig", "egg", "upgrade", "contract", "plinko", "dice", "slots"].includes(op)) return op;
     if (op === "boss_state") return "";
     return "bonus";                                // уровни, задания, промо, дроп, заработок — раздача без ставки
   }
@@ -857,6 +857,20 @@ export class Game {
     await this.payout(u, uid, v * mult, GAME_NAMES.plinko);
     await this.huntHit(u, uid, { t: "plinko", k }, v);
     return { path, k, mult, win: Math.round(v * mult) };
+  }
+
+  // ---- dice: число 0.00–99.99, игрок ставит на «меньше» или «больше» с выбранным шансом ----
+  async op_dice(u, uid, d) {
+    if ((this.st.off || {}).dice) fail("Игра выключена");
+    const L = this.L, v = bet(d.bet); if (!v) fail("Неверная ставка");
+    const ch = L.diceChance(d.chance); if (!ch) fail(`Шанс от ${L.DICE_MIN} до ${L.DICE_MAX}%`);
+    const over = d.dir === "over";
+    await this.charge(u, v);
+    const roll = randInt(10000) / 100;                          // 0.00 … 99.99
+    const won = over ? roll >= 100 - ch : roll < ch;
+    const mult = won ? L.diceMult(ch) : 0;
+    await this.payout(u, uid, v * mult, GAME_NAMES.dice);
+    return { roll, won, mult, chance: ch, win: Math.round(v * mult) };
   }
 
   // ---- слоты ----

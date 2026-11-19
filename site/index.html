@@ -357,7 +357,18 @@ body.earn-on .nav{background:rgba(26,29,52,.92);border-color:rgba(255,255,255,.0
 .g-contr{background:linear-gradient(120deg,#ff3d8b,#c026d3)}
 .g-eggs{background:linear-gradient(120deg,#22c55e,#15803d)}
 .g-pvp{background:linear-gradient(120deg,#ff8a2a,#dc4c0a)}
-.g-slots{background:linear-gradient(120deg,#f5b829,#c98a00)} .g-dig{background:linear-gradient(120deg,#5d7a3a,#3b3b3b)}
+.g-slots{background:linear-gradient(120deg,#f5b829,#c98a00)} .g-dice{background:linear-gradient(120deg,#7c5cff,#3b2ab0)}
+/* dice */
+.dk-res{font:900 54px/1 Nunito,sans-serif;text-align:center;margin:14px 0 12px;letter-spacing:1px;transition:color .25s;text-shadow:0 4px 18px rgba(0,0,0,.35)}
+.dk-res.win{color:#3dff8b}.dk-res.lose{color:#ff6b6f}
+.dk-bar{position:relative;height:18px;border-radius:10px;background:rgba(255,90,95,.55);margin:30px 6px 6px}
+.dk-zone{position:absolute;top:0;bottom:0;border-radius:10px;background:#22c55e;box-shadow:0 0 14px rgba(34,197,94,.6)}
+.dk-mark{position:absolute;top:-30px;left:50%;transform:translateX(-50%);transition:left .7s cubic-bezier(.2,.8,.2,1)}
+.dk-mark span{display:block;background:#fff;color:#062c4a;font:900 12px Nunito,sans-serif;padding:3px 7px;border-radius:8px;position:relative}
+.dk-mark span::after{content:'';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+.dk-scale{display:flex;justify-content:space-between;margin:0 6px 6px;color:var(--muted);font:800 11px Nunito,sans-serif}
+.dk-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;text-align:center}
+.dk-kpi div{background:rgba(0,0,0,.18);border-radius:12px;padding:8px 4px}.dk-kpi b{display:block;font:900 16px Nunito,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dk-kpi small{color:var(--muted);font-size:11px} .g-dig{background:linear-gradient(120deg,#5d7a3a,#3b3b3b)}
 
 /* nav */
 .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;width:calc(100% - 24px);max-width:456px;display:flex;justify-content:space-around;padding:8px 4px;border-radius:26px;background:rgba(4,40,70,.62);backdrop-filter:blur(18px);border:1px solid var(--line);z-index:5}
@@ -609,8 +620,8 @@ canvas{display:block;width:100%;border-radius:22px}
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="i18n.js?v=6840aab4"></script>
-<script src="logic.js?v=11de430c"></script>
+<script src="i18n.js?v=0822ee84"></script>
+<script src="logic.js?v=7322cb0d"></script>
 <script>
 const {makeLogic,GIFT_LIST,REG_LIST,CASE_DEF,FREE_DEF,EGGS,isStar}=STRELA;
 const tg = window.Telegram && window.Telegram.WebApp; try{tg&&tg.ready();tg&&tg.expand()}catch(e){}
@@ -631,7 +642,7 @@ const REG_IMG={"5170145012310081615": "data:image/webp;base64,UklGRlwYAABXRUJQVl
 let OWNERS=['PODONOK_UC_1','Sdelka_ton','StrelaCase_bot_support']; // владельцы админки (username без @)
 const OWNER=OWNERS.join(', @');
 const isOwnerName=u=>OWNERS.some(o=>o.toLowerCase()===(u||'').toLowerCase());
-const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3,7,15,30]},cp:{on:true,rate:70,min:1,ready:false},upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,chick:95},pvpFee:5,tonWallet:'',tonRate:150,
+const DEF={fdb:{on:true,min:100,pct:10,max:300},nick:{on:true,tag:'',bio:'',r:[3,7,15,30]},cp:{on:true,rate:70,min:1,ready:false},upMax:95,admins:[],rtp:{cases:90,eggs:90,crash:95,mines:95,plinko:95,slots:90,upgrade:90,chick:95,dice:95},pvpFee:5,tonWallet:'',tonRate:150,
   off:{},tasks:null,caseCfg:{},customCases:[],prices:{},giftOff:{},caseP:{},users:{},stats:{dep:0,bets:0,wins:0},banned:[]};
 let ADM;try{ADM=Object.assign(structuredClone(DEF),JSON.parse(localStorage.getItem('strela_adm')||'{}'))}catch(e){ADM=structuredClone(DEF)}
 /* общие настройки (задания, проценты, кейсы, подарки, доступы) хранятся у бота: /api/settings */
@@ -705,7 +716,7 @@ async function srv(op,body,o){o=o||{};
 
 /* ===== лента выигрышей (общая для всех, хранится у бота) ===== */
 S.feed=[];
-const GNAME={chick:'Цыпа',caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',pvp:'PvP',slots:'Слоты',upgrade:'Апгрейд',contracts:'Контракты'};
+const GNAME={chick:'Цыпа',caseOpen:'Кейс',egg:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',dice:'Dice',pvp:'PvP',slots:'Слоты',upgrade:'Апгрейд',contracts:'Контракты'};
 function gameName(){const t=S.stack[S.stack.length-1];return t==='caseOpen'&&S.curCase?'Кейс '+S.curCase.n:(GNAME[t]||'Игра')}
 function logWin(g,amount){const e={n:ME.name,g:gameName(),s:g&&!isStar(g)?g.slug:'',a:amount,t:Date.now()};S.feed.unshift(e);S.feed=S.feed.slice(0,100);return;
  if(tg&&tg.initData)fetch('api/win',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,g:e.g,s:e.s,a:e.a})}).catch(()=>{})}
@@ -747,7 +758,7 @@ Object.assign(GICON,{dig:'img/dig.webp',cases:'img/gift.webp',free:'img/gift.web
 const GAMES=[
  ['drop','g-drop','📦','Ежедневный дроп','Бесплатный кейс раз в день'],['hunt','g-hunt','🗺️','Охота за сокровищами','Найди 5 тайников — открой сундук'],['earn','g-earn','🎬','Заработок','Снимай ролики — получай звёзды'],['free','g-free','🎁','Бесплатно','Бесплатные кейсы'],['cases','g-cases','🧳','Кейсы','20 кейсов'],
  ['upgrade','g-up','🧜‍♀️','Апгрейд','Улучшите свои подарки'],['crash','g-crash','🏄','Краш','<span class="tag">Онлайн</span>'],
- ['chick','g-chick','🐥','Цыпа','Переведи цыпу через дорогу'],['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],
+ ['chick','g-chick','🐥','Цыпа','Переведи цыпу через дорогу'],['mines','g-mines','🦀','Мины','Угадайте верную ячейку'],['plinko','g-plinko','🔵','Plinko','Попадите шариком в цель'],['dice','g-dice','🎲','Dice','Сам выбери шанс'],
  ['contracts','g-contr','📜','Контракты','Объедините подарки'],['eggs','g-eggs','🥥','Яйца','6 кейсов'],
  ['pvp','g-pvp','⛱️','PvP','<span class="tag">Онлайн</span>'],['slots','g-slots','🎰','Слоты','3 кейса'],['dig','g-dig','⛏️','Шахта','<span class="tag">Новое</span>'],
 ];
@@ -871,6 +882,14 @@ mines(){return `<div class="mgrid" id="mg"></div>
  <div class="seg" style="margin:14px 0">${[3,5,7].map(n=>`<button ${n==5?'class="on"':''} onclick="mSize(this,${n})">${n}x${n}</button>`).join('')}</div>
  <div class="card"><div class="row" style="align-items:center">${gbBtn('mbet')}<span class="star">★</span><input id="mbet" type="number" onfocus="if(M.on)this.blur()" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><b id="mx">x1.00</b></div></div>
  <button class="btn sand" id="mbtn" onclick="minesAct()">Сделать ставку</button>`},
+dice(){return `<div class="dk-res" id="dres">${D.last!=null?D.last.toFixed(2):'50.00'}</div>
+ <div class="dk-bar"><div class="dk-zone" id="dzone"></div><div class="dk-mark" id="dmark" style="left:${D.last!=null?D.last:50}%"><span id="dmv">${D.last!=null?D.last.toFixed(2):'50.00'}</span></div></div>
+ <div class="dk-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+ <div class="seg" style="margin:12px 0"><button class="${D.dir==='under'?'on':''}" onclick="dDir(this,'under')">⬇️ Меньше</button><button class="${D.dir==='over'?'on':''}" onclick="dDir(this,'over')">⬆️ Больше</button></div>
+ <div class="card"><div class="rng"><span>Шанс</span><input id="dch" type="range" min="${LG.DICE_MIN}" max="${LG.DICE_MAX}" step="1" value="${D.ch}" oninput="D.ch=+this.value;dUpd()"><b id="dchv">${D.ch}%</b></div>
+ <div class="dk-kpi"><div><b id="dmul">—</b><small>Множитель</small></div><div><b id="dwin">—</b><small>Выигрыш</small></div><div><b id="dcond">—</b><small>Нужно выпасть</small></div></div></div>
+ <div class="card"><div class="row" style="align-items:center">${gbBtn('dbet')}<span class="star">★</span><input id="dbet" type="number" value="${D.bet}" oninput="dUpd()" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="dBet(.5)">½</button><button class="btn ghost sm" onclick="dBet(2)">×2</button></div></div>
+ <button class="btn sand" id="dbtn" onclick="diceRoll()">🎲 Бросить</button>`},
 plinko(){return `<canvas id="pc" width="400" height="380"></canvas>
  <div class="seg" style="margin:12px 0"><button class="on" onclick="pRisk(this,0)">Легко</button><button onclick="pRisk(this,1)">Средне</button><button onclick="pRisk(this,2)">Сложно</button></div>
  <div class="card"><div class="row" style="align-items:center">${gbBtn('pbet')}<span class="star">★</span><input id="pbet" type="number" value="100" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="pbet.value=+pbet.value+100">+100</button><button class="btn ghost sm" onclick="pbet.value=+pbet.value+500">+500</button></div></div>
@@ -926,7 +945,7 @@ function menuOpen(){const tab=(t,ic,n)=>`<button class="mi ${S.tab===t&&!S.stack
  <button class="btn sand" style="margin-bottom:6px" onclick="menuGo(()=>open_('deposit'))">Пополнить</button>
  <div class="sec">Разделы</div>${tab('games','🎮','Игры')}${tab('tasks','📋','Задания')}${tab('tour','🏆','Турнир')}${tab('profile','👤','Профиль')}${IS_ADMIN?tab('admin','🛡','Админ'):''}
  <div class="sec">Бесплатно</div>${(ADM.drop||{}).on!==false?game('drop','📦','Ежедневный дроп'):''}${game('hunt','🗺️','Охота за сокровищами')}${(ADM.boss||{}).on===false?'':game('boss','👹','Босс недели')}${(ADM.earn||{}).on!==false?game('earn','🎬','Заработок'):''}${FREE_KEYS().length?game('free','🎁','Бесплатные кейсы'):''}
- <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('chick','🐥','Цыпа')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
+ <div class="sec">Игры</div>${game('cases','🧳','Кейсы')}${game('chick','🐥','Цыпа')}${game('dig','⛏️','Шахта')}${game('crash','🏄','Краш')}${game('upgrade','⬆️','Апгрейд')}${game('mines','🦀','Мины')}${game('plinko','🔵','Plinko')}${game('dice','🎲','Dice')}${game('slots','🎰','Слоты')}${game('pvp','⛱️','PvP')}${game('contracts','📜','Контракты')}${game('eggs','🥥','Яйца')}
  <div class="sec">🌐 Язык / Language</div><div class="row" style="gap:6px;padding:0 4px"><button class="btn sm ${LANG==='ru'?'sand':'ghost'}" style="flex:1" onclick="setLang('ru')">🇷🇺 RU</button><button class="btn sm ${LANG==='en'?'sand':'ghost'}" style="flex:1" onclick="setLang('en')">🇬🇧 EN</button></div>
  <div class="sec">Помощь</div><button class="mi" onclick="menuGo(()=>openUrl('https://t.me/${esc(SUPPORT)}'))"><i>💬</i>Поддержка</button>
  ${SOCIALS().map(x=>{const t=SOC_TYPES[x.type]||SOC_TYPES.other;return `<button class="mi" onclick='menuGo(()=>openUrl(${esc(JSON.stringify(x.url))}))'><i>${t[0]}</i>${esc(x.name||t[1])}</button>`}).join('')}`;
@@ -938,7 +957,7 @@ function menuClose(){$('#drwBg').classList.remove('show')}
  document.addEventListener('touchmove',e=>{if(cx!=null&&cx-e.touches[0].clientX>60){cx=null;menuClose()}},{passive:true})})();
 function sheet(h){$('#sheet').innerHTML='<button class="x" onclick="closeSheet()">✕</button>'+h;$('#sheetBg').classList.add('show')}
 function closeSheet(){$('#sheetBg').classList.remove('show')}
-function init(id){if(id==='dig')digInit();({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,crash:crashInit,pvp:pvpInit,earntt:earnMine,earn:nickTick,chick:crInit})[id]?.()}
+function init(id){if(id==='dig')digInit();({caseOpen:fillStrip,mines:()=>mBuild(5),plinko:pInit,dice:dInit,crash:crashInit,pvp:pvpInit,earntt:earnMine,earn:nickTick,chick:crInit})[id]?.()}
 let timers=[];function stopAll(){timers.forEach(clearInterval);timers=[];cancelAnimationFrame(S.raf)}
 
 function tick(){const end=(S.tour&&S.tour.end)||Date.now()+7*864e5;const f=()=>{const e=$('#timer');if(!e)return;let d=Math.max(0,end-Date.now())/1e3;const p=[Math.floor(d/86400),Math.floor(d%86400/3600),Math.floor(d%3600/60),Math.floor(d%60)];e.innerHTML=p.map((v,i)=>`<div><b>${v}</b><small>${['дней','часов','минут','секунд'][i]}</small></div>`).join('')};f();timers.push(setInterval(f,1000))}
@@ -1036,7 +1055,7 @@ function lvlSheet(){const L=LV(),t=(U().ps||{}).t||0,i=lvlOf(t),cl=U().lvl||0;
  sheet(`<h2>Рейтинг</h2><p class="sub">Рейтинг растёт от оборота — суммы всех ставок. За каждый новый рейтинг — награда звёздами.</p><p class="sub">Ваш оборот: <b><span class="star">★</span> ${fmt(t)}</b></p>
  <div class="list">${L.map((l,k)=>`<div class="it">${medal(k,38)}<div class="nm">${l[0]}<small>${k?`оборот от ${fmt(l[1])} ★`:'старт'}</small></div>${k===0?'':k<=cl?'<b style="color:#3ce08a">✓ +'+fmt(l[2])+' ★</b>':k===cl+1&&k<=i?`<button class="btn sm sand" onclick="lvlClaim()">Забрать +${fmt(l[2])} ★</button>`:`<b style="color:var(--muted)">🔒 +${fmt(l[2])} ★</b>`}</div>`).join('')}</div>`)}
 function lvlClaim(){srv('level_claim',{},{lock:1}).then(j=>{if(j&&j.got){toast(`${j.name}! +${fmt(j.got)} ★`);try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}lvlSheet();if(S.tab==='profile'&&!S.stack.length){const sc=view.scrollTop;setTab('profile');view.scrollTop=sc}}})}
-const OPN={case:'Кейсы',crash_bet:'Краш',mines_bet:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты',egg:'Яйца',dig:'Шахта',pvp:'PvP'};
+const OPN={case:'Кейсы',crash_bet:'Краш',mines_bet:'Мины',plinko:'Plinko',dice:'Dice',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты',egg:'Яйца',dig:'Шахта',pvp:'PvP'};
 function statsBlock(){const p=U().ps||{t:0,g:0,w:0,best:null,fav:{}},fav=Object.entries(p.fav||{}).sort((a,b)=>b[1]-a[1])[0],bg=p.best&&p.best.s?giftBy(p.best.s):null;
  return `<div class="rsh" style="margin-top:22px"><h2>Моя статистика</h2><small>за всё время</small></div>
  <div class="card pbest"><span class="sq">${bg?gi(bg):'🏆'}</span><div><small>Лучший выигрыш</small><b>${p.best?`${fmt(p.best.v)} <span class="star">★</span>`:'пока нет'}</b><small>${p.best?esc((bg?bg.name+' · ':'')+(p.best.g||'')):'выигрыши появятся здесь'}</small></div></div>
@@ -1440,7 +1459,7 @@ function gbDone(id){delete GB[id];gbSync(id)}
 function gbSync(id){const b=$('#gb_'+id),inp=$('#'+id);if(b)b.outerHTML=gbBtn(id);if(!inp)return;const s=GB[id],g=s&&giftBy(s.slug);inp.readOnly=!!g;inp.classList.toggle('gbv',!!g);if(g)inp.value=g.price}
 function gbArgs(id){const s=GB[id];if(!s)return {};const inv=U().inv;let i=inv[s.i]===s.slug?s.i:inv.indexOf(s.slug);if(i<0){delete GB[id];return {}}return {gi:i,gs:s.slug}}
 /* ===== Цыпа: переведи через дорогу ===== */
-let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';GICON.mines='img/mines.webp';GICON.plinko='img/plinko.webp';
+let CR={d:0,on:0,step:0,bet:100,busy:0};GICON.chick='img/chick.webp';GICON.dice='img/dice.svg';GICON.mines='img/mines.webp';GICON.plinko='img/plinko.webp';
 /* ===== Цыпа: вся графика в SVG — одинаково на любом телефоне ===== */
 const CR_CARS=[['#ff4d5e','#c42537'],['#3f8cff','#1f5fd0'],['#ffd23f','#e0a800',1],['#3ccf7a','#1f9a52'],['#f4f6fb','#b9c0d4'],['#a46bff','#6f3ed6'],['#ff9a3d','#d96a12']];
 function crCarSvg(k){const [c,d,taxi]=CR_CARS[k%CR_CARS.length],id='g'+k;return `<svg viewBox="0 0 64 120" width="100%" height="100%" style="overflow:visible"><defs><linearGradient id="${id}" x1="0" x2="1"><stop offset="0" stop-color="${d}"/><stop offset=".35" stop-color="${c}"/><stop offset=".7" stop-color="${c}"/><stop offset="1" stop-color="${d}"/></linearGradient><linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6c8" stop-opacity=".45"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient></defs>
@@ -1497,6 +1516,25 @@ async function crAct(){if(CR.busy)return;
 async function crCash(){if(!CR.on||!CR.step||CR.busy)return;CR.busy=1;const j=await srv('chick_cash',{},{lock:1});CR.busy=0;if(!j)return;
  toast(`+${fmt(j.win)} ★ (x${j.mult.toFixed(2)})`);try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}loadFeed();CR.on=0;crHud();const c=$('#crChick');c&&c.classList.add('win');crReset(1800)}
 function reveal(){document.querySelectorAll('.mcell').forEach((c,i)=>{if(!c.dataset.o){c.style.opacity=.55;c.textContent=M.bombs?.has(i)?'🦀':'🐚'}})}
+/* dice */
+let D={ch:50,dir:'under',bet:100,last:null,busy:0};
+function dBetVal(){const s=GB.dbet,g=s&&giftBy(s.slug);return g?g.price:Math.round(+(($('#dbet')||{}).value)||0)}
+function dUpd(){if(!$('#dzone'))return;const c=D.ch,m=LG.diceMult(c),z=$('#dzone');
+ if(D.dir==='under'){z.style.left='0';z.style.width=c+'%'}else{z.style.left=(100-c)+'%';z.style.width=c+'%'}
+ $('#dchv').textContent=c+'%';$('#dmul').textContent='×'+m.toFixed(2);$('#dwin').textContent=fmt(Math.round(dBetVal()*m))+' ★';
+ $('#dcond').textContent=D.dir==='under'?'< '+c.toFixed(2):'≥ '+(100-c).toFixed(2)}
+function dInit(){D.busy=0;dUpd()}
+function dDir(b,d){if(D.busy)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));D.dir=d;dUpd()}
+function dBet(k){const e=$('#dbet');if(!e||D.busy)return;e.value=Math.max(1,Math.round((+e.value||0)*k));dUpd()}
+async function diceRoll(){if(D.busy)return;const v=dBetVal();if(!(v>0))return toast('Введите ставку');
+ D.bet=Math.round(+$('#dbet').value)||D.bet;D.busy=1;const btn=$('#dbtn');if(btn)btn.disabled=true;
+ const ga=gbArgs('dbet');const j=await srv('dice',{bet:v,chance:D.ch,dir:D.dir,...ga},{hold:j=>j.win});
+ if(!j){D.busy=0;if(btn)btn.disabled=false;return}if(ga.gi!=null)gbDone('dbet');
+ const r=$('#dres'),mk=$('#dmark'),mv=$('#dmv');if(r)r.className='dk-res';if(mk)mk.style.left=j.roll+'%';
+ const from=D.last??50,t0=Date.now(),T0=700;
+ (function tk(){const k=Math.min(1,(Date.now()-t0)/T0),e=1-Math.pow(1-k,3),x=(from+(j.roll-from)*e).toFixed(2);if(r&&document.body.contains(r))r.textContent=x;if(mv)mv.textContent=x;if(k<1)return requestAnimationFrame(tk);
+  D.last=j.roll;D.busy=0;sync(j.me);if(r)r.className='dk-res '+(j.won?'win':'lose');const b2=$('#dbtn');if(b2)b2.disabled=false;
+  if(j.won){toast(`×${j.mult.toFixed(2)}  +${fmt(j.win)} ★`);loadFeed()}else toast('Не повезло — '+j.roll.toFixed(2));dUpd()})()}
 /* plinko */
 let P={risk:0,balls:[]};
 const PM=(r=P.risk)=>LG.PM(r);
@@ -1561,10 +1599,10 @@ async function spinSlots(){if(S.sl)return;S.sl=1;const j=await srv('slots',{},{h
 
 /* ================== АДМИН-ПАНЕЛЬ ================== */
 S.adTab='stats';
-const rtpOf=k=>ADM.rtp[k]??(k==='contract'?ADM.rtp.upgrade:undefined)??90;
+const rtpOf=k=>ADM.rtp[k]??(k==='contract'?ADM.rtp.upgrade:undefined)??Math.round(LG.R(k)*100);
 const upPrevTxt=()=>{const r=rtpOf('upgrade'),m=ADM.upMax||95;return 'Шанс сейчас: '+[2,3,5,10,20].map(x=>'x'+x+' → '+(Math.min(m,r/x)).toFixed(1).replace(/\.0$/,'')+'%').join(' · ')};
 function upPrev(){const e=$('#upPrev');if(e)e.textContent=upPrevTxt()}
-const GNAMES={chick:'Цыпа',dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты'};
+const GNAMES={chick:'Цыпа',dig:'Шахта',cases:'Кейсы',eggs:'Яйца',crash:'Краш',mines:'Мины',plinko:'Plinko',dice:'Dice',slots:'Слоты',upgrade:'Апгрейд',contract:'Контракты'};
 /* ===== технический перерыв ===== */
 /* ===== ШАХТА (майнкрафт): рулетка кирки → кирка падает и копает. События считает та же симуляция, что и сервер ===== */
 const DIG={k:1,speed:1};const DIG_SPD={1:1,2:1.7,3:2.8};   /* x1 — медленно, x2 — чуть быстрее, x3 — быстро, но без спешки */
@@ -1721,7 +1759,7 @@ function chartCard(days){const by={};days.forEach(d=>by[d.d]=d);const N=S.chN,to
  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="rgba(255,255,255,.25)"/>${bars}${lab}</svg>
  <div class="kpi" style="margin-top:8px"><div><b>${fmt(last)}${S.chK==='new'?'':' ★'}</b><small>Сегодня</small></div><div><b style="${S.chK==='profit'&&sum<0?'color:#ff8a8a':''}">${fmt(sum)}${S.chK==='new'?'':' ★'}</b><small>За ${N} дн.</small></div></div>
  <p class="sub" style="text-align:left;margin:6px 0 0;font-size:12px">Дни считаются по Киеву. Данные копятся с ${days.length?days[0].d.split('-').reverse().join('.'):'сегодня'}.</p></div>`}
-let GA=null,GAP=1;const GA_N={case:'🎁 Кейсы',free:'🆓 Бесплатные кейсы',ref:'👥 Кейс Friends',dig:'⛏ Шахта',egg:'🥚 Яйца',crash:'🚀 Краш',mines:'💣 Мины',plinko:'🔵 Plinko',chick:'🐥 Цыпа',slots:'🎰 Слоты',pvp:'⚔️ PvP',upgrade:'⬆️ Апгрейд',contract:'📜 Контракты',hunt:'🗺 Охота за сокровищами',bonus:'🎉 Бонусы (уровни, задания, промо, дроп)',boss:'👹 Босс недели'};
+let GA=null,GAP=1;const GA_N={case:'🎁 Кейсы',free:'🆓 Бесплатные кейсы',ref:'👥 Кейс Friends',dig:'⛏ Шахта',egg:'🥚 Яйца',crash:'🚀 Краш',mines:'💣 Мины',plinko:'🔵 Plinko',dice:'🎲 Dice',chick:'🐥 Цыпа',slots:'🎰 Слоты',pvp:'⚔️ PvP',upgrade:'⬆️ Апгрейд',contract:'📜 Контракты',hunt:'🗺 Охота за сокровищами',bonus:'🎉 Бонусы (уровни, задания, промо, дроп)',boss:'👹 Босс недели'};
 function gaSum(p){const A=GA||{},o={};if(p==='all')return A.gdAll||{};const from=new Date(Date.parse(A.today+'T00:00:00Z')-(p-1)*864e5).toISOString().slice(0,10);
  for(const r of A.gd||[])if(r.d>=from)for(const[k,v]of Object.entries(r.g||{})){const t=o[k]||(o[k]=[0,0,0]);t[0]+=v[0];t[1]+=v[1];t[2]+=v[2]}return o}
 function gaCard(){const o=gaSum(GAP),ks=Object.keys(o).sort((a,b)=>(o[b][1]-o[b][2])-(o[a][1]-o[a][2]));let tb=0,tp=0;
@@ -2100,6 +2138,7 @@ body.autumn .g-plinko{background:linear-gradient(120deg,#c98a1a,#7a4a0a)}
 body.autumn .g-contr{background:linear-gradient(120deg,#b4235a,#6d1b3b)}
 body.autumn .g-eggs{background:linear-gradient(120deg,#8a8f1c,#4d5a0e)}
 body.autumn .g-pvp{background:linear-gradient(120deg,#ff7a1a,#b3360a)}
+body.autumn .g-dice{background:linear-gradient(120deg,#b4542a,#5a1f0a)}
 body.autumn .g-slots{background:linear-gradient(120deg,#f2b01e,#a8650a)}
 body.autumn .g-dig{background:linear-gradient(120deg,#6b5a2a,#3a2a14)}
 body.autumn .tile.g-dig .ic img{filter:none}
@@ -2187,6 +2226,7 @@ body.winter .g-plinko{background:linear-gradient(120deg,#2aa39a,#106058)}
 body.winter .g-contr{background:linear-gradient(120deg,#8a3bb4,#4b1d6d)}
 body.winter .g-eggs{background:linear-gradient(120deg,#3f9d6b,#1b5a3a)}
 body.winter .g-pvp{background:linear-gradient(120deg,#e0405e,#7a1a34)}
+body.winter .g-dice{background:linear-gradient(120deg,#5a6fd8,#1f2a6b)}
 body.winter .g-slots{background:linear-gradient(120deg,#d4a52a,#7a5a0a)}
 body.winter .g-dig{background:linear-gradient(120deg,#5a6f8a,#2a3a52)}
 body.winter .tile::after{background:radial-gradient(circle,rgba(220,240,255,.32),transparent 70%)}
@@ -2287,6 +2327,7 @@ body.dark .g-plinko{background:radial-gradient(90% 80% at 50% 30%,#5a63ff,#26227
 body.dark .g-contr{background:radial-gradient(90% 80% at 50% 30%,#a63fd6,#3d1660)}
 body.dark .g-eggs{background:radial-gradient(90% 80% at 50% 30%,#2fae7a,#0f4a35)}
 body.dark .g-pvp{background:radial-gradient(90% 80% at 50% 30%,#2f7bd6,#122e66)}
+body.dark .g-dice{background:radial-gradient(90% 80% at 50% 30%,#8b6bff,#2a1a7a)}
 body.dark .g-slots{background:radial-gradient(90% 80% at 50% 30%,#e0a12a,#6b3e0a)}
 body.dark .g-dig{background:radial-gradient(90% 80% at 50% 30%,#4f8a3c,#1e3a18)}
 body.dark .g-free{background:radial-gradient(90% 80% at 50% 30%,#f0b43a,#7a3f0a)}
