@@ -897,7 +897,7 @@ dice(){return `<div class="dk-stage"><div class="dk-cube" id="dcube">${dFaces()}
  <div class="dk-bar"><div class="dk-zone" id="dzone"></div><div class="dk-mark" id="dmark" style="left:${D.last!=null?D.last:50}%"><span id="dmv">${D.last!=null?D.last.toFixed(2):'50.00'}</span></div></div>
  <div class="dk-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
  <div class="seg" style="margin:12px 0"><button class="${D.dir==='under'?'on':''}" onclick="dDir(this,'under')">⬇️ Меньше</button><button class="${D.dir==='over'?'on':''}" onclick="dDir(this,'over')">⬆️ Больше</button></div>
- <div class="card"><div class="rng"><span>Шанс</span><input id="dch" type="range" min="${LG.DICE_MIN}" max="${LG.DICE_MAX}" step="1" value="${D.ch}" oninput="D.ch=+this.value;dUpd()"><b id="dchv">${D.ch}%</b></div>
+ <div class="card"><div class="rng"><span>Шанс</span><input id="dch" type="range" min="${LG.DICE_MIN}" max="${LG.DICE_MAX}" step="1" value="${D.ch}" oninput="if(D.busy){this.value=D.ch;return}D.ch=+this.value;dUpd()"><b id="dchv">${D.ch}%</b></div>
  <div class="dk-kpi"><div><b id="dmul">—</b><small>Множитель</small></div><div><b id="dwin">—</b><small>Выигрыш</small></div><div><b id="dcond">—</b><small>Нужно выпасть</small></div></div></div>
  <div class="card"><div class="row" style="align-items:center">${gbBtn('dbet')}<span class="star">★</span><input id="dbet" type="number" value="${D.bet}" oninput="dUpd()" style="flex:1;min-width:0;background:none;border:0;color:#fff;font:900 18px Nunito,sans-serif;outline:none"><button class="btn ghost sm" onclick="dBet(.5)">½</button><button class="btn ghost sm" onclick="dBet(2)">×2</button></div></div>
  <button class="btn sand" id="dbtn" onclick="diceRoll()">🎲 Бросить</button>`},
@@ -1462,10 +1462,10 @@ async function mClick(i,el){if(!M.on||el.dataset.o||M.busy)return;M.busy=1;el.da
 const GB={};
 function gbBtn(id){const s=GB[id],g=s&&giftBy(s.slug);return `<button class="gbb${g?' on':''}" id="gb_${id}" onclick="${g?`gbClear('${id}')`:`gbPick('${id}')`}" title="Ставка подарком">${g?`<span class="gbi">${gi(g)}</span><i>✕</i>`:'🎁'}</button>`}
 function gbList(){return U().inv.map((sl,i)=>[giftBy(sl),i]).filter(([g])=>g&&!isStar(g)).sort((a,b)=>b[0].price-a[0].price)}
-function gbPick(id){if(id==='crBet'&&CR.on||id==='mbet'&&M.on)return toast('Дождись конца игры');const L=gbList();
+function gbPick(id){if(id==='crBet'&&CR.on||id==='mbet'&&M.on||id==='dbet'&&D.busy)return toast('Дождись конца игры');const L=gbList();
  sheet(`<h2>Ставка подарком</h2><p class="sub">Подарок станет ставкой по своей цене. Выигрыш — звёздами по множителю.</p>${L.length?`<div class="inv">${L.map(([g,i])=>`<div class="case" onclick="gbSet('${id}',${i})" style="cursor:pointer">${gi(g)}<small>${esc(g.name)}</small><b class="gbp"><span class="star">★</span> ${fmt(g.price)}</b></div>`).join('')}</div>`:`<div class="empty">Нет подарков для ставки<br><br><button class="btn sm ghost" onclick="closeSheet();open_('addgift')">⊕ Добавить подарок</button></div>`}`)}
 function gbSet(id,i){const sl=U().inv[i],g=giftBy(sl);if(!g)return;GB[id]={i,slug:sl};closeSheet();gbSync(id);toast(`🎁 Ставка: ${g.name} · ★ ${fmt(g.price)}`)}
-function gbClear(id){delete GB[id];gbSync(id)}
+function gbClear(id){if(id==='dbet'&&D.busy)return;delete GB[id];gbSync(id)}
 function gbDone(id){delete GB[id];gbSync(id)}
 function gbSync(id){const b=$('#gb_'+id),inp=$('#'+id);if(b)b.outerHTML=gbBtn(id);if(!inp)return;const s=GB[id],g=s&&giftBy(s.slug);inp.readOnly=!!g;inp.classList.toggle('gbv',!!g);if(g)inp.value=g.price}
 function gbArgs(id){const s=GB[id];if(!s)return {};const inv=U().inv;let i=inv[s.i]===s.slug?s.i:inv.indexOf(s.slug);if(i<0){delete GB[id];return {}}return {gi:i,gs:s.slug}}
@@ -1545,18 +1545,22 @@ function dCubeSet(face,spin){const c=$('#dcube');if(!c)return;const [x,y]=DK_ROT
   c.classList.remove('hop');void c.offsetWidth;c.classList.add('roll','hop')}
  else{D.rx=x-20;D.ry=y+25;c.classList.remove('roll')}
  c.style.transform=`rotateX(${D.rx}deg) rotateY(${D.ry}deg)`}
-function dInit(){D.busy=0;dCubeSet(D.last!=null?dFace(D.last):5,0);dUpd()}
+/* на время броска всё управление заблокировано: шанс, меньше/больше, ставка, подарок */
+function dLock(on){const s=$('.dk-stage');const root=s&&s.parentNode;if(!root)return;
+ root.querySelectorAll('#dch,#dbet,.seg button,.card .btn,.gbb').forEach(e=>{e.disabled=on;e.style.pointerEvents=on?'none':''});
+ root.querySelectorAll('.seg,.card').forEach(e=>{e.style.opacity=on?.5:1;e.style.transition='opacity .2s'})}
+function dInit(){D.busy=0;dLock(0);dCubeSet(D.last!=null?dFace(D.last):5,0);dUpd()}
 function dDir(b,d){if(D.busy)return;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));D.dir=d;dUpd()}
 function dBet(k){const e=$('#dbet');if(!e||D.busy)return;e.value=Math.max(1,Math.round((+e.value||0)*k));dUpd()}
 async function diceRoll(){if(D.busy)return;const v=dBetVal();if(!(v>0))return toast('Введите ставку');
- D.bet=Math.round(+$('#dbet').value)||D.bet;D.busy=1;const btn=$('#dbtn');if(btn)btn.disabled=true;
+ D.bet=Math.round(+$('#dbet').value)||D.bet;D.busy=1;dLock(1);const btn=$('#dbtn');if(btn)btn.disabled=true;
  const ga=gbArgs('dbet');const j=await srv('dice',{bet:v,chance:D.ch,dir:D.dir,...ga},{hold:j=>j.win});
- if(!j){D.busy=0;if(btn)btn.disabled=false;return}if(ga.gi!=null)gbDone('dbet');
+ if(!j){D.busy=0;dLock(0);if(btn)btn.disabled=false;return}if(ga.gi!=null)gbDone('dbet');
  const r=$('#dres'),mk=$('#dmark'),mv=$('#dmv');if(r)r.className='dk-res';if(mk)mk.style.left=j.roll+'%';
  dCubeSet(dFace(j.roll),1);try{tg.HapticFeedback.impactOccurred('medium')}catch(e){}
  const from=D.last??50,t0=Date.now(),T0=1100;
  (function tk(){const k=Math.min(1,(Date.now()-t0)/T0),e=1-Math.pow(1-k,3),x=(from+(j.roll-from)*e).toFixed(2);if(r&&document.body.contains(r))r.textContent=x;if(mv)mv.textContent=x;if(k<1)return requestAnimationFrame(tk);
-  D.last=j.roll;D.busy=0;sync(j.me);if(r)r.className='dk-res '+(j.won?'win':'lose');try{tg.HapticFeedback.notificationOccurred(j.won?'success':'error')}catch(e){}const b2=$('#dbtn');if(b2)b2.disabled=false;
+  D.last=j.roll;D.busy=0;dLock(0);sync(j.me);if(r)r.className='dk-res '+(j.won?'win':'lose');try{tg.HapticFeedback.notificationOccurred(j.won?'success':'error')}catch(e){}const b2=$('#dbtn');if(b2)b2.disabled=false;
   if(j.won){toast(`×${j.mult.toFixed(2)}  +${fmt(j.win)} ★`);loadFeed()}else toast('Не повезло — '+j.roll.toFixed(2));dUpd()})()}
 /* plinko */
 let P={risk:0,balls:[]};
